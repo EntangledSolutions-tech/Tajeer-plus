@@ -43,7 +43,7 @@ export default function ContractDetailsStep() {
   const fetchContractStatuses = async () => {
     try {
       setStatusLoading(true);
-      const response = await fetch('/api/contract-statuses?limit=100');
+      const response = await fetch('/api/contract-configuration/statuses?limit=100');
       const result = await response.json();
 
       if (!response.ok) {
