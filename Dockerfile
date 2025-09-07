@@ -19,7 +19,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Install dependencies for the web app specifically
+WORKDIR /app/apps/web
+RUN corepack enable pnpm && pnpm install --frozen-lockfile
+
 # Build the application
+ENV NODE_ENV=production
+WORKDIR /app
 RUN corepack enable pnpm && pnpm build
 
 # Production image, copy all the files and run next
