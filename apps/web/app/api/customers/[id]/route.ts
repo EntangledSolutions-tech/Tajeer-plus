@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getAuthenticatedUser, updateUserRecord, deleteUserRecord } from '../../../../lib/api-helpers';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = getSupabaseServerClient();
-
-    // Check authentication
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { user, supabase } = await getAuthenticatedUser(request);
 
     const { id: customerId } = await params;
 
@@ -27,6 +22,7 @@ export async function GET(
         status:customer_statuses(name, color)
       `)
       .eq('id', customerId)
+      .eq('user_id', user.id) // Filter by user
       .single();
 
     if (error) {
@@ -50,30 +46,19 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = getSupabaseServerClient();
-
-    // Check authentication
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { user, supabase } = await getAuthenticatedUser(request);
 
     const { id: customerId } = await params;
     const body = await request.json();
 
-    // Update customer
-    const { data: updatedCustomer, error } = await supabase
-      .from('customers')
-      .update(body)
-      .eq('id', customerId)
-      .select(`
-        *,
-        classification:customer_classifications(classification),
-        license_type:customer_license_types(license_type),
-        nationality:customer_nationalities(nationality),
-        status:customer_statuses(name, color)
-      `)
-      .single();
+    // Update customer with user ownership validation
+    const { data: updatedCustomer, error } = await updateUserRecord(
+      supabase,
+      'customers',
+      customerId,
+      body,
+      user.id
+    );
 
     if (error) {
       console.error('Database error:', error);
@@ -93,21 +78,17 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = getSupabaseServerClient();
-
-    // Check authentication
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { user, supabase } = await getAuthenticatedUser(request);
 
     const { id: customerId } = await params;
 
-    // Delete customer
-    const { error } = await supabase
-      .from('customers')
-      .delete()
-      .eq('id', customerId);
+    // Delete customer with user ownership validation
+    const { error } = await deleteUserRecord(
+      supabase,
+      'customers',
+      customerId,
+      user.id
+    );
 
     if (error) {
       console.error('Database error:', error);

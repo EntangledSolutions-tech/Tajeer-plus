@@ -1,28 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getAuthenticatedUser, addUserIdToData, updateUserRecord, getUserData, buildPaginationResponse, getPaginationParams } from '../../../lib/api-helpers';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
-
-    // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError) {
-      console.error('Auth error:', authError);
-      return NextResponse.json(
-        { error: 'Authentication failed', details: authError.message },
-        { status: 401 }
-      );
-    }
-
-    if (!user) {
-      console.error('No user found in session');
-      return NextResponse.json(
-        { error: 'No authenticated user found' },
-        { status: 401 }
-      );
-    }
+    const { user, supabase } = await getAuthenticatedUser(request);
 
     const body = await request.json();
 
@@ -91,26 +73,25 @@ export async function POST(request: NextRequest) {
       documents: body.documents || [],
 
       // Status
-      status_id: body.status_id,
-
-      // Metadata
-      created_by: user.id,
-      updated_by: user.id
+      status_id: body.status_id
     };
 
+    // Add user_id to ensure user ownership
+    const contractDataWithUserId = addUserIdToData(contractData, user.id);
+
     // Log the contract data being inserted for debugging
-    console.log('Contract data being inserted:', contractData);
+    console.log('Contract data being inserted:', contractDataWithUserId);
 
     // Insert contract into database
     const { data, error: insertError } = await supabase
       .from('contracts')
-      .insert(contractData)
+      .insert(contractDataWithUserId)
       .select()
       .single();
 
     if (insertError) {
       console.error('Database insert error:', insertError);
-      console.error('Contract data that failed:', contractData);
+      console.error('Contract data that failed:', contractDataWithUserId);
       return NextResponse.json(
         { error: `Failed to create contract: ${insertError.message || JSON.stringify(insertError)}` },
         { status: 500 }
@@ -135,26 +116,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
-
-    // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError) {
-      console.error('Auth error:', authError);
-      return NextResponse.json(
-        { error: 'Authentication failed', details: authError.message },
-        { status: 401 }
-      );
-    }
-
-    if (!user) {
-      console.error('No user found in session');
-      return NextResponse.json(
-        { error: 'No authenticated user found' },
-        { status: 401 }
-      );
-    }
+    const { user, supabase } = await getAuthenticatedUser(request);
 
     const body = await request.json();
     const { id, ...updateData } = body;
@@ -188,19 +150,19 @@ export async function PUT(request: NextRequest) {
       }
     });
 
-    // Add metadata
-    filteredUpdateData.updated_by = user.id;
+    // No need to add updated_by since we're using user_id for ownership
 
     // Log the contract data being updated for debugging
     console.log('Contract data being updated:', filteredUpdateData);
 
-    // Update contract in database
-    const { data, error: updateError } = await supabase
-      .from('contracts')
-      .update(filteredUpdateData)
-      .eq('id', id)
-      .select()
-      .single();
+    // Update contract in database with user ownership validation
+    const { data, error: updateError } = await updateUserRecord(
+      supabase,
+      'contracts',
+      id,
+      filteredUpdateData,
+      user.id
+    );
 
     if (updateError) {
       console.error('Database update error:', updateError);
@@ -231,39 +193,15 @@ export async function PUT(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     console.log('Contracts API called');
-    const supabase = getSupabaseServerClient();
+    const { user, supabase } = await getAuthenticatedUser(request);
 
-    // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError) {
-      console.error('Auth error:', authError);
-      return NextResponse.json(
-        { error: 'Authentication failed', details: authError.message },
-        { status: 401 }
-      );
-    }
-
-    if (!user) {
-      console.error('No user found in session');
-      return NextResponse.json(
-        { error: 'No authenticated user found' },
-        { status: 401 }
-      );
-    }
-
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const search = searchParams.get('search') || '';
-    const status = searchParams.get('status') || '';
-
-    // Calculate offset
-    const offset = (page - 1) * limit;
+    const { page, limit, search, offset } = getPaginationParams(request);
+    const status = new URL(request.url).searchParams.get('status') || '';
 
     let query = supabase
       .from('contracts')
-      .select('*', { count: 'exact' });
+      .select('*', { count: 'exact' })
+      .eq('user_id', user.id); // Filter by user
 
     // Add search filter
     if (search) {

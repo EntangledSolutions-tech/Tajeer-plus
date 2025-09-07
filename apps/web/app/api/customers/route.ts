@@ -1,27 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getAuthenticatedUser, addUserIdToData, getUserData, buildPaginationResponse, getPaginationParams } from '../../../lib/api-helpers';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
+    const { user, supabase } = await getAuthenticatedUser(request);
 
-    // Check authentication
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
-    const search = searchParams.get('search') || '';
-    const status = searchParams.get('status') || '';
-    const classification = searchParams.get('classification') || '';
-    const blacklisted = searchParams.get('blacklisted') === 'true';
-    const withDues = searchParams.get('withDues') === 'true';
-
-    // Calculate offset
-    const offset = (page - 1) * limit;
+    const { page, limit, search, offset } = getPaginationParams(request);
+    const status = new URL(request.url).searchParams.get('status') || '';
+    const classification = new URL(request.url).searchParams.get('classification') || '';
+    const blacklisted = new URL(request.url).searchParams.get('blacklisted') === 'true';
+    const withDues = new URL(request.url).searchParams.get('withDues') === 'true';
 
     // Build query with joins to get related data
     let query = supabase
@@ -32,7 +21,8 @@ export async function GET(request: NextRequest) {
         license_type:customer_license_types(license_type),
         nationality:customer_nationalities(nationality),
         status:customer_statuses(name)
-      `, { count: 'exact' });
+      `, { count: 'exact' })
+      .eq('user_id', user.id); // Filter by user
 
     // Apply filters
     if (search) {
@@ -61,10 +51,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Database error' }, { status: 500 });
     }
 
-    // Get summary statistics
+    // Get summary statistics for this user only
     const { data: summaryData, error: summaryError } = await supabase
       .from('customers')
-      .select('status_id, customer_statuses(name)');
+      .select('status_id, customer_statuses(name)')
+      .eq('user_id', user.id);
 
     if (summaryError) {
       console.error('Summary error:', summaryError);
@@ -124,13 +115,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
-
-    // Check authentication
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { user, supabase } = await getAuthenticatedUser(request);
 
     const body = await request.json();
     const {
@@ -151,11 +136,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Check if ID number already exists
+    // Check if ID number already exists for this user
     const { data: existingCustomerByID, error: idCheckError } = await supabase
       .from('customers')
       .select('id')
       .eq('id_number', id_number)
+      .eq('user_id', user.id)
       .single();
 
     if (idCheckError && idCheckError.code !== 'PGRST116') {
@@ -167,21 +153,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Customer with this ID number already exists' }, { status: 400 });
     }
 
+    // Prepare customer data with user_id
+    const customerData = {
+      name: name,
+      id_type: id_type,
+      id_number: id_number,
+      classification_id: classification,
+      license_type_id: license_type,
+      date_of_birth: date_of_birth,
+      address: address,
+      mobile_number: mobile_number,
+      nationality_id: nationality,
+      status_id: status || (await supabase.from('customer_statuses').select('id').eq('name', 'Active').single()).data?.id
+    };
+
+    // Add user_id to ensure user ownership
+    const customerDataWithUserId = addUserIdToData(customerData, user.id);
+
     // Insert new customer with foreign key relationships
     const { data: newCustomer, error: insertError } = await supabase
       .from('customers')
-      .insert({
-        name: name,
-        id_type: id_type,
-        id_number: id_number,
-        classification_id: classification,
-        license_type_id: license_type,
-        date_of_birth: date_of_birth,
-        address: address,
-        mobile_number: mobile_number,
-        nationality_id: nationality,
-        status_id: status || (await supabase.from('customer_statuses').select('id').eq('name', 'Active').single()).data?.id
-      })
+      .insert(customerDataWithUserId)
       .select(`
         *,
         classification:customer_classifications(classification),
