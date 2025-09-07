@@ -63,24 +63,14 @@ function SuspendedPersonalAccountDropdown(props: { user: User | null }) {
 
 function AuthButtons() {
   return (
-    <div className={'flex space-x-2'}>
-      <div className={'hidden space-x-0.5 md:flex'}>
-        <If condition={features.enableThemeToggle}>
-          <ModeToggle />
-        </If>
-
-        <Button asChild variant={'ghost'}>
+    <div className={'flex space-x-3'}>
+      <div className={'hidden space-x-2 md:flex'}>
+        <Button asChild variant={'outline'} className="border-white text-white bg-transparent hover:!bg-white hover:!text-primary">
           <Link href={pathsConfig.auth.signIn}>
-            <Trans i18nKey={'auth:signIn'} />
+            Sign In
           </Link>
         </Button>
       </div>
-
-      <Button asChild className="group" variant={'default'}>
-        <Link href={pathsConfig.auth.signUp}>
-          <Trans i18nKey={'auth:signUp'} />
-        </Link>
-      </Button>
     </div>
   );
 }

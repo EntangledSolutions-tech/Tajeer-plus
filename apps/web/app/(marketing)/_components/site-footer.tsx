@@ -8,15 +8,11 @@ export function SiteFooter() {
   return (
     <Footer
       logo={<AppLogo className="w-[85px] md:w-[95px]" />}
-      description={<Trans i18nKey="marketing:footerDescription" />}
+      description="Tajeer Plus - Empowering car rental businesses in Saudi Arabia with cutting-edge technology and seamless operations management."
       copyright={
-        <Trans
-          i18nKey="marketing:copyright"
-          values={{
-            product: appConfig.name,
-            year: new Date().getFullYear(),
-          }}
-        />
+        <span>
+          © {new Date().getFullYear()} Tajeer Plus. All rights reserved.
+        </span>
       }
       sections={[
         {
@@ -24,28 +20,24 @@ export function SiteFooter() {
           links: [
             {
               href: '/auth/sign-in',
-              label: <Trans i18nKey="auth:signIn" />,
+              label: 'Sign In',
             },
             {
               href: '/auth/sign-up',
-              label: <Trans i18nKey="auth:signUp" />,
+              label: 'Get Started',
             },
           ],
         },
         {
-          heading: <Trans i18nKey="marketing:legal" />,
+          heading: 'Legal',
           links: [
             {
               href: '/terms-of-service',
-              label: <Trans i18nKey="marketing:termsOfService" />,
+              label: 'Terms of Service',
             },
             {
               href: '/privacy-policy',
-              label: <Trans i18nKey="marketing:privacyPolicy" />,
-            },
-            {
-              href: '/cookie-policy',
-              label: <Trans i18nKey="marketing:cookiePolicy" />,
+              label: 'Privacy Policy',
             },
           ],
         },
