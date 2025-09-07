@@ -1,0 +1,9 @@
+/* Hide any default X close button in the modal/dialog */
+.DialogClose, .rc-dialog-close, .modal-close, [data-testid="close-button"], .chakra-modal__close-btn {
+  display: none !important;
+}
+
+/* Hide Radix/other modal X close button in the top right */
+button.absolute.top-4.right-4 {
+  display: none !important;
+}

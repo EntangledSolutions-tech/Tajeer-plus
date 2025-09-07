@@ -1,0 +1,106 @@
+/* Custom Stepper Styles for Tajeer Plus */
+
+.custom-rc-steps .rc-steps-item-icon {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.9) !important;
+  color: #0472ac !important;
+}
+
+.custom-rc-steps .rc-steps-item-process .rc-steps-item-icon {
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #0472ac !important;
+}
+
+.custom-rc-steps .rc-steps-item-finish .rc-steps-item-icon {
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #0472ac !important;
+}
+
+.custom-rc-steps .rc-steps-item-title {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.custom-rc-steps .rc-steps-item-process .rc-steps-item-title {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+.custom-rc-steps .rc-steps-item-finish .rc-steps-item-title {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+.custom-rc-steps .rc-steps-item-tail {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.custom-rc-steps .rc-steps-item-finish .rc-steps-item-tail {
+  background-color: #ffffff !important;
+}
+
+.stepper-progress {
+  width: 100%;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  margin-bottom: 1rem;
+}
+
+.stepper-progress-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Critical scrolling fixes for CustomStepperModal */
+.custom-stepper-modal-content {
+  height: 90vh !important;
+  max-height: 90vh !important;
+  overflow: hidden !important;
+}
+
+/* Hide the default close button for CustomStepperModal */
+.custom-stepper-modal-content button[class*="absolute top-4 right-4"] {
+  display: none !important;
+}
+
+
+.custom-stepper-modal-content input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  color: rgb(var(--primary));
+}
+
+.custom-stepper-modal-content input[type="date"]::-webkit-datetime-edit {
+  color: rgb(var(--primary));
+}
+
+.custom-stepper-modal-content input[type="date"]::-webkit-datetime-edit-year-field,
+.custom-stepper-modal-content input[type="date"]::-webkit-datetime-edit-month-field,
+.custom-stepper-modal-content input[type="date"]::-webkit-datetime-edit-day-field {
+  color: rgb(var(--primary));
+}
+
+.custom-stepper-scrollable {
+  height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+.custom-stepper-scrollable::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-stepper-scrollable::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 4px;
+}
+
+.custom-stepper-scrollable::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 4px;
+}
+
+.custom-stepper-scrollable::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}

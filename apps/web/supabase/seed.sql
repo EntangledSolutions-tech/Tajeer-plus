@@ -1,0 +1,2 @@
+-- Seed file is now empty since all data is handled by migrations
+-- This prevents duplicate data insertion errors

@@ -1,0 +1,301 @@
+/* Remove custom base font size, revert to browser default */
+/* html {
+  font-size: 62.5%;
+} */
+
+/*
+* global.css
+*
+* Global styles for the entire application
+ */
+
+/* Tailwind CSS */
+@import 'tailwindcss';
+
+/* local styles - update the below if you add a new style */
+@import './theme.css';
+@import './theme.utilities.css';
+@import './shadcn-ui.css';
+@import './markdoc.css';
+@import './makerkit.css';
+
+/* plugins - update the below if you add a new plugin */
+@plugin "tailwindcss-animate";
+
+/* content sources - update the below if you add a new path */
+@source "../../../packages/*/src/**/*.{ts,tsx}";
+@source "../../../packages/features/*/src/**/*.{ts,tsx}";
+@source "../../../packages/billing/*/src/**/*.{ts,tsx}";
+@source "../../../packages/plugins/*/src/**/*.{ts,tsx}";
+@source "../../../packages/cms/*/src/**/*.{ts,tsx}";
+@source "../{app,components,config,lib}/**/*.{ts,tsx}";
+
+/* variants - update the below if you add a new variant */
+@variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border, currentColor);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: theme(--color-muted-foreground);
+  }
+}
+
+/* Improved rc-steps styles for Figma-accurate vertical stepper */
+.custom-rc-steps.rc-steps-vertical {
+  padding-left: 0.5rem;
+}
+.custom-rc-steps .rc-steps-item {
+  margin-bottom: 1.5rem;
+}
+.custom-rc-steps .rc-steps-item-tail {
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 3px solid #B5D6FF;
+  top: 14px;
+  height: calc(100%+ 1.5rem) !important;
+  min-height: 0;
+}
+.custom-rc-steps .rc-steps-item-tail::after {
+  display: none;
+}
+.custom-rc-steps .rc-steps-item-finish .rc-steps-item-tail {
+  border-left-color: #fff !important;
+}
+.custom-rc-steps .rc-steps-item:last-child .rc-steps-item-tail {
+  display: none;
+}
+.custom-rc-steps .rc-steps-item-icon {
+  width: 28px;
+  height: 28px;
+  background: #E2EEFF !important;
+  border: 3px solid #CDE2FF !important;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  font-size: 1rem;
+  color: #70ACFF !important;
+  position: relative;
+  z-index: 1;
+  margin: 0 auto;
+}
+.custom-rc-steps .rc-steps-item-active .rc-steps-item-icon {
+  border-color: #005F8E !important;
+  color: #fff !important;
+  background: #005F8E !important;
+  display:flex;
+  justify-content: center;
+  align-items: center;
+}
+.custom-rc-steps .rc-steps-item-finish .rc-steps-item-icon {
+  border-color: #005F8E !important;
+  background: #005F8E !important;
+  color: #fff !important;
+}
+.custom-rc-steps .rc-steps-item-finish .rc-steps-item-icon > .rc-steps-icon {
+  display: none;
+}
+.custom-rc-steps .rc-steps-item-finish .rc-steps-item-icon::after {
+  content: '\2713';
+  color: #005F8E;
+  font-size: 1.1rem;
+  font-weight: bold;
+  display: block;
+  line-height: 28px;
+  text-align: center;
+}
+.custom-rc-steps .rc-steps-item-icon > .rc-steps-icon{
+  top: 0 !important;
+  color: #70ACFF !important;
+
+}
+.custom-rc-steps .rc-steps-item-finish .rc-steps-item-title,
+.custom-rc-steps .rc-steps-item-active .rc-steps-item-title {
+  color: #005F8E !important;
+  font-weight: 600;
+}
+.custom-rc-steps .rc-steps-item-active .rc-steps-icon {
+  color: #005F8E !important;
+  font-weight: 600;
+}
+.custom-rc-steps .rc-steps-item-title {
+  color: #70ACFF !important;
+  font-weight: 400;
+  font-size: 0.98rem;
+  margin-left: 2rem;
+}
+.custom-rc-steps .rc-steps-item-description {
+  margin-left: 2rem;
+  color: #7D7D7D;
+  font-size: 0.9rem;
+}
+
+/* Progress bar styles for stepper */
+.vehicle-stepper-progress {
+  width: 100%;
+  height: 5px;
+  background: #E3EEFF;
+  border-radius: 3px;
+  margin: 0.5rem 0 1.5rem 0;
+  overflow: hidden;
+}
+.vehicle-stepper-progress-bar {
+  height: 100%;
+  background: #fff;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+/* Prevent unnecessary scrollbars in sidebar */
+.vehicle-stepper-sidebar {
+  overflow-y: auto;
+  max-height: 100vh;
+}
+
+/* Customer stepper styles - same as vehicle stepper */
+.customer-stepper-progress {
+  width: 100%;
+  height: 5px;
+  background: #E3EEFF;
+  border-radius: 3px;
+  margin: 0.5rem 0 1.5rem 0;
+  overflow: hidden;
+}
+.customer-stepper-progress-bar {
+  height: 100%;
+  background: #005F8E;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+/* Prevent unnecessary scrollbars in sidebar */
+.customer-stepper-sidebar {
+  overflow-y: auto;
+  max-height: 100vh;
+}
+
+/* Custom blue scrollbar for the whole website */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #005F8E;
+  border-radius: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 6px;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #005F8E transparent;
+}
+
+/* Cursor pointer for interactive elements */
+button,
+[role="button"],
+[data-radix-collection-item],
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
+/* Icons and buttons hover cursor */
+svg,
+.icon,
+[data-icon],
+button svg,
+[role="button"] svg {
+  cursor: pointer !important;
+}
+
+/* Action buttons and interactive elements */
+.action-button,
+.filter-button,
+.export-button,
+.search-button,
+.add-button,
+.view-button,
+.delete-button,
+.edit-button {
+  cursor: pointer !important;
+}
+
+/* Custom dark-gray color for tables and components */
+.text-dark-gray {
+  color: #4F4F4F;
+}
+
+.bg-dark-gray {
+  background-color: #4F4F4F;
+}
+
+.border-dark-gray {
+  border-color: #4F4F4F;
+}
+
+/* Fix dropdown clickable area issues */
+.custom-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.custom-dropdown .dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  z-index: 9999;
+  min-width: 160px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.custom-dropdown .dropdown-option {
+  display: block;
+  z-index: 9999999;
+  background: transparent;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  text-align: left;
+  color: #4F4F4F;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.custom-dropdown .dropdown-option:hover {
+  background-color: #f9fafb;
+}
+
+.custom-dropdown .dropdown-option:first-child {
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+}
+
+.custom-dropdown .dropdown-option:last-child {
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}
+
+
+

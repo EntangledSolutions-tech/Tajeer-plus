@@ -1,0 +1,103 @@
+/* Progress bar styling for contract stepper */
+.contract-stepper-progress {
+  width: 100%;
+  height: 8px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.contract-stepper-progress-bar {
+  height: 100%;
+  background-color: #0065F2;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* Custom styling for the contract stepper */
+.custom-rc-steps {
+  width: 100%;
+}
+
+.custom-rc-steps .rc-steps-item {
+  margin: 0 0 16px 0;
+  padding: 0;
+}
+
+.custom-rc-steps .rc-steps-item-container {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.custom-rc-steps .rc-steps-item-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #CDE2FF;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #A0B6D9;
+}
+
+.custom-rc-steps .rc-steps-item-process .rc-steps-item-icon,
+.custom-rc-steps .rc-steps-item-finish .rc-steps-item-icon {
+  border-color: #0065F2;
+  background-color: #0065F2;
+  color: white;
+}
+
+.custom-rc-steps .rc-steps-item-content {
+  flex: 1;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.custom-rc-steps .rc-steps-item-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #A0B6D9;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.custom-rc-steps .rc-steps-item-process .rc-steps-item-title,
+.custom-rc-steps .rc-steps-item-finish .rc-steps-item-title {
+  color: #0065F2;
+  font-weight: 600;
+}
+
+.custom-rc-steps .rc-steps-item-tail {
+  position: absolute;
+  left: 11px;
+  top: 24px;
+  width: 2px;
+  height: calc(100% - 24px);
+  background-color: #CDE2FF;
+}
+
+.custom-rc-steps .rc-steps-item-finish .rc-steps-item-tail {
+  background-color: #0065F2;
+}
+
+.custom-rc-steps .rc-steps-item:last-child .rc-steps-item-tail {
+  display: none;
+}
+
+/* Hide any default X close button in the modal/dialog */
+.DialogClose, .rc-dialog-close, .modal-close, [data-testid="close-button"], .chakra-modal__close-btn {
+  display: none !important;
+}
+
+/* Hide Radix/other modal X close button in the top right */
+button.absolute.top-4.right-4 {
+  display: none !important;
+}
