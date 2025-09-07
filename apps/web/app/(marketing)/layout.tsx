@@ -19,7 +19,7 @@ async function SiteLayout(props: React.PropsWithChildren) {
 
       {props.children}
 
-      <SiteFooter />
+      {/* <SiteFooter /> */}
     </div>
   );
 }
