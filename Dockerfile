@@ -1,63 +1,57 @@
-# Use the official Node.js 18 image as the base image
+# 1. Base image
 FROM node:18-alpine AS base
 
-# Install dependencies only when needed
+# 2. Dependencies layer
 FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
-COPY package.json pnpm-lock.yaml* ./
+# Copy workspace root files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+
+# Copy workspace package.jsons
 COPY apps/web/package.json ./apps/web/
 COPY packages/*/package.json ./packages/*/
+
+# Install dependencies via pnpm
 RUN corepack enable pnpm && pnpm install --frozen-lockfile
 
-# Rebuild the source code only when needed
+# 3. Builder layer
 FROM base AS builder
 WORKDIR /app
+
+# Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps ./apps
+COPY --from=deps /app/packages ./packages
 COPY . .
 
-# Install dependencies for the web app specifically
-WORKDIR /app/apps/web
-RUN corepack enable pnpm && pnpm install --frozen-lockfile
-
-# Build the application
+# Build Next.js app using standalone output
 ENV NODE_ENV=production
-WORKDIR /app
 RUN corepack enable pnpm && pnpm build
 
-# Production image, copy all the files and run next
+# 4. Production image
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
-# Uncomment the following line in case you want to disable telemetry during runtime.
-# ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 nextjs
 
-# Copy the built application
-COPY --from=builder /app/apps/web/public ./apps/web/public
-
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
-
-# Automatically leverage output traces to reduce image size
-# https://nextjs.org/docs/advanced-features/output-file-tracing
+# Copy app files
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 
+# Runtime permissions
+RUN mkdir .next && chown nextjs:nodejs .next
 USER nextjs
 
 EXPOSE 3000
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
-
-# server.js is created by next build from the standalone output
-# https://nextjs.org/docs/pages/api-reference/next-config-js/output
+# Start the app
 CMD ["node", "apps/web/server.js"]
