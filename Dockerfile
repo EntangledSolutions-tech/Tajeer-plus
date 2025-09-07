@@ -14,7 +14,7 @@ COPY apps/web/package.json ./apps/web/
 COPY packages/*/package.json ./packages/*/
 
 # Install dependencies via pnpm
-RUN corepack enable pnpm && pnpm install --frozen-lockfile
+RUN corepack enable pnpm && pnpm install
 
 # 3. Builder layer
 FROM base AS builder
