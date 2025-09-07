@@ -375,16 +375,16 @@ function Home() {
           />
         </div>
         <div className="container mx-auto px-4 relative z-10">
-          <div className="flex flex-col lg:flex-row gap-6 items-center max-w-6xl mx-auto">
+          <div className="flex flex-col lg:flex-row gap-2 items-center ">
             {/* Quote Section */}
-            <div className="flex-1 relative z-20">
-              <div className="relative max-w-md">
+            <div className="relative z-20">
+              <div className="relative">
                 <Image
                   src="/images/LandingPage/5. Testimonials/Quote Background.png"
                   alt="Quote Background"
-                  width={400}
-                  height={300}
-                  className="w-full h-auto"
+                  width={750}
+                  height={120}
+                  className=""
                 />
                 <div className="absolute inset-0 flex flex-col justify-center p-6">
                   <div className="space-y-3">
@@ -393,7 +393,7 @@ function Home() {
                     </blockquote>
                   </div>
                 </div>
-                <div className="absolute -bottom-6 left-0 space-y-1">
+                <div className="absolute bottom-10 left-5 space-y-1">
                   <p className="text-base font-semibold text-[#4F4F4F]">
                     Branch Manager
                   </p>
