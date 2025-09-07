@@ -251,30 +251,30 @@ export default function InsuranceModal({
                 <p className="mt-1 text-sm text-red-600">{errors.expiryDate}</p>
               )}
             </div>
+
+            {/* Form Actions */}
+            <div className="bg-white px-6 py-4 border-t border-primary/20 flex-shrink-0 mt-6 -mx-6">
+              <div className="flex gap-3 justify-end">
+                <CustomButton
+                  type="button"
+                  variant="outline"
+                  onClick={handleClose}
+                  disabled={isLoading}
+                >
+                  Cancel
+                </CustomButton>
+                <CustomButton
+                  type="submit"
+                  disabled={isLoading}
+                  className="bg-primary hover:bg-primary/90 text-white"
+                >
+                  {isLoading ? 'Saving...' : editingPolicy ? 'Update Policy' : 'Add Policy'}
+                </CustomButton>
+              </div>
+            </div>
           </Form>
         )}
       </Formik>
-
-      {/* Form Actions */}
-      <div className="bg-white px-6 py-4 border-t border-primary/20 flex-shrink-0">
-        <div className="flex gap-3 justify-end">
-          <CustomButton
-            type="button"
-            variant="outline"
-            onClick={handleClose}
-            disabled={isLoading}
-          >
-            Cancel
-          </CustomButton>
-          <CustomButton
-            type="submit"
-            disabled={isLoading}
-            className="bg-primary hover:bg-primary/90 text-white"
-          >
-            {isLoading ? 'Saving...' : editingPolicy ? 'Update Policy' : 'Add Policy'}
-          </CustomButton>
-        </div>
-      </div>
     </CustomModal>
   );
 }
