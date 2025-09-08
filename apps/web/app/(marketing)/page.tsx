@@ -371,7 +371,7 @@ function Home() {
             src="/images/LandingPage/5. Testimonials/Background Image.png"
             alt="Background"
             fill
-            className="object-cover"
+            className="object-fill"
           />
         </div>
         <div className="container mx-auto px-4 relative z-10">
@@ -388,12 +388,12 @@ function Home() {
                 />
                 <div className="absolute inset-0 flex flex-col justify-center p-6">
                   <div className="space-y-3">
-                    <blockquote className="text-xl lg:text-2xl text-[#4F4F4F] leading-relaxed font-medium">
+                    <blockquote className="text-xl lg:text-2xl text-[#4F4F4F] leading-relaxed font-bold">
                       "Tajeer Plus changed the way we work. We saved over 40% of the time we used to spend on manual data entry and document verification. Now, we can focus on serving our customers better."
                     </blockquote>
                   </div>
                 </div>
-                <div className="absolute bottom-10 left-5 space-y-1">
+                <div className="absolute bottom-5 left-5 space-y-1">
                   <p className="text-base font-semibold text-[#4F4F4F]">
                     Branch Manager
                   </p>
@@ -411,7 +411,7 @@ function Home() {
                   src="/images/LandingPage/5. Testimonials/Customer Image.png"
                   alt="Customer"
                   fill
-                  className="object-cover object-center"
+                  className="object-contain object-center"
                 />
               </div>
             </div>
@@ -448,7 +448,7 @@ function Home() {
             src="/images/LandingPage/7. Our Story/Background Image.png"
             alt="Background"
             fill
-            className="object-cover"
+            className="object-fill"
           />
         </div>
         <div className="container mx-auto px-4 relative z-10">
@@ -483,7 +483,7 @@ function Home() {
                   src="/images/LandingPage/8. Banner/Banner Background Image.png"
                   alt="Banner Background"
                   fill
-                  className="object-cover"
+                  className="object-fill"
                 />
               </div>
               <div className="relative z-10 p-12 lg:p-16 text-center space-y-8">
