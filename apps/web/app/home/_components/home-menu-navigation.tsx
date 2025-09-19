@@ -15,8 +15,16 @@ export function HomeMenuNavigation() {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
+      const target = event.target as Element;
+
+      // Check if click is outside the search input container
+      if (searchRef.current && !searchRef.current.contains(target)) {
+        // Also check if click is on the dropdown (which is rendered via portal)
+        const isDropdownClick = target.closest('[data-global-search-dropdown]');
+
+        if (!isDropdownClick) {
+          setShowDropdown(false);
+        }
       }
     };
 

@@ -27,6 +27,7 @@ export function GlobalSearchDropdown({ query, onClose, searchInputRef }: GlobalS
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [hasMoreResults, setHasMoreResults] = useState(false);
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -71,10 +72,16 @@ export function GlobalSearchDropdown({ query, onClose, searchInputRef }: GlobalS
 
         if (data.success) {
           setResults(data.allResults || []);
+          setHasMoreResults(data.hasMoreResults || false);
+        } else {
+          console.error('Search failed:', data.error);
+          setResults([]);
+          setHasMoreResults(false);
         }
       } catch (error) {
         console.error('Search error:', error);
         setResults([]);
+        setHasMoreResults(false);
       } finally {
         setLoading(false);
       }
@@ -140,7 +147,7 @@ export function GlobalSearchDropdown({ query, onClose, searchInputRef }: GlobalS
   const renderDropdown = () => {
     if (loading) {
       return (
-        <div ref={dropdownRef} className="fixed bg-white rounded-lg shadow-xl border border-gray-200 z-[99999] min-w-[400px]">
+        <div ref={dropdownRef} data-global-search-dropdown className="fixed bg-white rounded-lg shadow-xl border border-gray-200 z-[99999] min-w-[400px]">
           <div className="p-4">
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
@@ -153,7 +160,7 @@ export function GlobalSearchDropdown({ query, onClose, searchInputRef }: GlobalS
 
     if (results.length === 0 && query.trim().length >= 2) {
       return (
-        <div ref={dropdownRef} className="fixed bg-white rounded-lg shadow-xl border border-gray-200 z-[99999] min-w-[400px]">
+        <div ref={dropdownRef} data-global-search-dropdown className="fixed bg-white rounded-lg shadow-xl border border-gray-200 z-[99999] min-w-[400px]">
           <div className="p-4">
             <div className="text-center py-4 text-gray-500">
               No results found for "{query}"
@@ -168,7 +175,7 @@ export function GlobalSearchDropdown({ query, onClose, searchInputRef }: GlobalS
     }
 
     return (
-      <div ref={dropdownRef} className="fixed bg-white rounded-lg shadow-xl border border-gray-200 z-[99999] min-w-[400px]">
+      <div ref={dropdownRef} data-global-search-dropdown className="fixed bg-white rounded-lg shadow-xl border border-gray-200 z-[99999] min-w-[400px]">
         <div className="p-2">
           {results.map((result, index) => (
             <div
@@ -197,14 +204,16 @@ export function GlobalSearchDropdown({ query, onClose, searchInputRef }: GlobalS
             </div>
           ))}
 
-          <div className="border-t border-gray-100 mt-2 pt-2">
-            <button
-              onClick={handleViewAllClick}
-              className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            >
-              View all results
-            </button>
-          </div>
+          {hasMoreResults && (
+            <div className="border-t border-gray-100 mt-2 pt-2">
+              <button
+                onClick={handleViewAllClick}
+                className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                View all results
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -215,19 +224,20 @@ export function GlobalSearchDropdown({ query, onClose, searchInputRef }: GlobalS
     return null;
   }
 
-  // Use portal to render at document root level
-  return createPortal(
-    <div
-      style={{
-        position: 'fixed',
-        top: dropdownPosition.top,
-        left: dropdownPosition.left,
-        width: Math.max(dropdownPosition.width, 400),
-        zIndex: 99999
-      }}
-    >
-      {renderDropdown()}
-    </div>,
-    document.body
-  );
+      // Use portal to render at document root level
+      return createPortal(
+        <div
+          data-global-search-dropdown
+          style={{
+            position: 'fixed',
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: Math.max(dropdownPosition.width, 400),
+            zIndex: 99999
+          }}
+        >
+          {renderDropdown()}
+        </div>,
+        document.body
+      );
 }

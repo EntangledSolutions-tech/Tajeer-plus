@@ -28,7 +28,7 @@ INSERT INTO public.finance_transactions (
     status,
     user_id
 )
-SELECT 
+SELECT
     generate_transaction_number('FUEL_EXPENSE'),
     ftt.id,
     150.00,
@@ -56,7 +56,7 @@ CROSS JOIN public.vehicles v
 CROSS JOIN public.finance_transaction_types ftt
 WHERE u.email = 'admin@example.com'
   AND b.is_active = true
-  AND v.is_active = true
+  AND v.id IS NOT NULL
   AND ftt.code = 'FUEL_EXPENSE'
 LIMIT 1;
 
@@ -85,7 +85,7 @@ INSERT INTO public.finance_transactions (
     status,
     user_id
 )
-SELECT 
+SELECT
     generate_transaction_number('RENTAL_INCOME'),
     ftt.id,
     500.00,
@@ -115,8 +115,8 @@ CROSS JOIN public.contracts c
 CROSS JOIN public.finance_transaction_types ftt
 WHERE u.email = 'admin@example.com'
   AND b.is_active = true
-  AND v.is_active = true
-  AND c.is_active = true
+  AND v.id IS NOT NULL
+  AND c.id IS NOT NULL
   AND ftt.code = 'RENTAL_INCOME'
 LIMIT 1;
 
@@ -145,7 +145,7 @@ INSERT INTO public.finance_transactions (
     status,
     user_id
 )
-SELECT 
+SELECT
     generate_transaction_number('CUSTOMER_PAYMENT'),
     ftt.id,
     1000.00,
@@ -175,8 +175,8 @@ CROSS JOIN public.contracts c
 CROSS JOIN public.finance_transaction_types ftt
 WHERE u.email = 'admin@example.com'
   AND b.is_active = true
-  AND cust.is_active = true
-  AND c.is_active = true
+  AND cust.id IS NOT NULL
+  AND c.id IS NOT NULL
   AND ftt.code = 'CUSTOMER_PAYMENT'
 LIMIT 1;
 
@@ -205,7 +205,7 @@ INSERT INTO public.finance_transactions (
     status,
     user_id
 )
-SELECT 
+SELECT
     generate_transaction_number('VEHICLE_SALE'),
     ftt.id,
     50000.00,
@@ -235,14 +235,14 @@ CROSS JOIN public.customers cust
 CROSS JOIN public.finance_transaction_types ftt
 WHERE u.email = 'admin@example.com'
   AND b.is_active = true
-  AND v.is_active = true
-  AND cust.is_active = true
+  AND v.id IS NOT NULL
+  AND cust.id IS NOT NULL
   AND ftt.code = 'VEHICLE_SALE'
 LIMIT 1;
 
 -- Insert corresponding rental expenses
 INSERT INTO public.rental_expenses (transaction_id, expense_type, vendor_name, receipt_number, receipt_date, user_id)
-SELECT 
+SELECT
     ft.id,
     'fuel',
     'Saudi Aramco',
@@ -255,7 +255,7 @@ LIMIT 1;
 
 -- Insert corresponding rental income
 INSERT INTO public.rental_income (transaction_id, income_type, source, user_id)
-SELECT 
+SELECT
     ft.id,
     'rental',
     'contract',
@@ -266,7 +266,7 @@ LIMIT 1;
 
 -- Insert corresponding customer finance transaction
 INSERT INTO public.customer_finance_transactions (transaction_id, customer_id, transaction_category, user_id)
-SELECT 
+SELECT
     ft.id,
     ft.customer_id,
     'payment',
@@ -277,7 +277,7 @@ LIMIT 1;
 
 -- Insert corresponding vehicle finance transaction
 INSERT INTO public.vehicle_finance_transactions (transaction_id, vehicle_id, transaction_category, user_id)
-SELECT 
+SELECT
     ft.id,
     ft.vehicle_id,
     'sell',
@@ -302,7 +302,7 @@ INSERT INTO public.finance_summaries (
     insurance_costs,
     user_id
 )
-SELECT 
+SELECT
     'daily',
     CURRENT_DATE - INTERVAL '1 day',
     NULL,
@@ -335,7 +335,7 @@ INSERT INTO public.finance_summaries (
     insurance_costs,
     user_id
 )
-SELECT 
+SELECT
     'monthly',
     DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month'),
     NULL,

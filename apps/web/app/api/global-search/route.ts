@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
     // Search vehicles
     let vehicleResults: any[] = [];
     if (type === 'all' || type === 'vehicles') {
+      // First search by direct vehicle fields
       const { data: vehicles, error: vehicleError } = await supabase
         .from('vehicles')
         .select(`
@@ -50,29 +51,25 @@ export async function GET(request: NextRequest) {
           status:vehicle_statuses!status_id(name)
         `)
         .eq('user_id', user.id)
-        .or(`
-          plate_number.ilike.${searchTerm},
-          serial_number.ilike.${searchTerm},
-          make_year.ilike.${searchTerm}
-        `)
+        .or(`plate_number.ilike.${searchTerm},serial_number.ilike.${searchTerm}`)
         .limit(limit);
 
       if (!vehicleError && vehicles) {
-        // Also search by make, model, color, status names
-        const [makeResults, modelResults, colorResults, statusResults] = await Promise.all([
+        // Also search by make, model, color names
+        const [makeResults, modelResults, colorResults] = await Promise.all([
           supabase.from('vehicle_makes').select('id').ilike('name', searchTerm),
           supabase.from('vehicle_models').select('id').ilike('name', searchTerm),
-          supabase.from('vehicle_colors').select('id').ilike('name', searchTerm),
-          supabase.from('vehicle_statuses').select('id').ilike('name', searchTerm)
+          supabase.from('vehicle_colors').select('id').ilike('name', searchTerm)
         ]);
 
         const makeIds = makeResults.data?.map(m => m.id) || [];
         const modelIds = modelResults.data?.map(m => m.id) || [];
         const colorIds = colorResults.data?.map(c => c.id) || [];
-        const statusIds = statusResults.data?.map(s => s.id) || [];
 
-        if (makeIds.length > 0 || modelIds.length > 0 || colorIds.length > 0 || statusIds.length > 0) {
-          const { data: additionalVehicles, error: additionalError } = await supabase
+        let additionalVehicles: any[] = [];
+
+        if (makeIds.length > 0 || modelIds.length > 0 || colorIds.length > 0) {
+          const { data: additionalVehiclesData, error: additionalError } = await supabase
             .from('vehicles')
             .select(`
               id,
@@ -88,21 +85,22 @@ export async function GET(request: NextRequest) {
             .or([
               ...(makeIds.length > 0 ? [`make_id.in.(${makeIds.join(',')})`] : []),
               ...(modelIds.length > 0 ? [`model_id.in.(${modelIds.join(',')})`] : []),
-              ...(colorIds.length > 0 ? [`color_id.in.(${colorIds.join(',')})`] : []),
-              ...(statusIds.length > 0 ? [`status_id.in.(${statusIds.join(',')})`] : [])
+              ...(colorIds.length > 0 ? [`color_id.in.(${colorIds.join(',')})`] : [])
             ].join(','))
             .limit(limit);
 
-          if (!additionalError && additionalVehicles) {
-            vehicleResults = [...vehicles, ...additionalVehicles].slice(0, limit);
-          } else {
-            vehicleResults = vehicles;
+          if (!additionalError && additionalVehiclesData) {
+            additionalVehicles = additionalVehiclesData;
           }
-        } else {
-          vehicleResults = vehicles;
         }
 
-        vehicleResults = vehicleResults.map(vehicle => ({
+        // Combine and deduplicate results
+        const allVehicleResults = [...vehicles, ...additionalVehicles];
+        const uniqueVehicles = allVehicleResults.filter((vehicle, index, self) =>
+          index === self.findIndex(v => v.id === vehicle.id)
+        ).slice(0, limit);
+
+        vehicleResults = uniqueVehicles.map(vehicle => ({
           id: vehicle.id,
           type: 'vehicle',
           title: vehicle.plate_number,
@@ -117,6 +115,8 @@ export async function GET(request: NextRequest) {
     // Search customers
     let customerResults: any[] = [];
     if (type === 'all' || type === 'customers') {
+      console.log('🔍 Searching customers with term:', searchTerm);
+
       const { data: customers, error: customerError } = await supabase
         .from('customers')
         .select(`
@@ -124,24 +124,30 @@ export async function GET(request: NextRequest) {
           name,
           mobile_number,
           id_number,
+          address,
           classification:customer_classifications(classification),
           status:customer_statuses(name)
         `)
-        .or(`
-          name.ilike.${searchTerm},
-          mobile_number.ilike.${searchTerm},
-          id_number.ilike.${searchTerm}
-        `)
+        .or(`name.ilike.${searchTerm},mobile_number.ilike.${searchTerm},id_number.ilike.${searchTerm},address.ilike.${searchTerm}`)
         .limit(limit);
+
+      console.log('👤 Customer search results:', {
+        customers: customers?.length || 0,
+        error: customerError,
+        searchTerm,
+        customersData: customers,
+        query: `name.ilike.${searchTerm},mobile_number.ilike.${searchTerm},id_number.ilike.${searchTerm},address.ilike.${searchTerm}`
+      });
 
       if (!customerError && customers) {
         customerResults = customers.map(customer => ({
           id: customer.id,
           type: 'customer',
           title: customer.name,
-          subtitle: `${customer.mobile_number || 'N/A'} • ${customer.id_number || 'N/A'}`,
+          subtitle: `${customer.mobile_number || 'N/A'} • ${customer.classification?.classification || 'N/A'}`,
           badge: 'Customer',
           badgeColor: 'bg-green-100 text-green-800',
+          status: customer.status,
           data: customer
         }));
       }
@@ -158,15 +164,9 @@ export async function GET(request: NextRequest) {
           tajeer_number,
           customer_name,
           vehicle_plate,
-          status_id,
-          status:contract_statuses(name, color)
+          vehicle_serial_number
         `)
-        .or(`
-          contract_number.ilike.${searchTerm},
-          tajeer_number.ilike.${searchTerm},
-          customer_name.ilike.${searchTerm},
-          vehicle_plate.ilike.${searchTerm}
-        `)
+        .or(`contract_number.ilike.${searchTerm},tajeer_number.ilike.${searchTerm},customer_name.ilike.${searchTerm},vehicle_plate.ilike.${searchTerm},vehicle_serial_number.ilike.${searchTerm}`)
         .limit(limit);
 
       if (!contractError && contracts) {
@@ -174,10 +174,10 @@ export async function GET(request: NextRequest) {
           id: contract.id,
           type: 'contract',
           title: contract.contract_number || contract.tajeer_number || `Contract #${contract.id.slice(-6)}`,
-          subtitle: contract.customer_name,
+          subtitle: `${contract.customer_name} • ${contract.vehicle_plate || 'N/A'}`,
           badge: 'Contract',
           badgeColor: 'bg-purple-100 text-purple-800',
-          status: contract.status,
+          status: { name: contract.status, color: '#6B7280' },
           data: contract
         }));
       }
@@ -185,6 +185,7 @@ export async function GET(request: NextRequest) {
 
     const allResults = [...vehicleResults, ...customerResults, ...contractResults];
     const totalResults = allResults.length;
+    const limitedResults = allResults.slice(0, limit);
 
     return NextResponse.json({
       success: true,
@@ -193,8 +194,9 @@ export async function GET(request: NextRequest) {
         customers: customerResults,
         contracts: contractResults
       },
-      allResults: allResults.slice(0, limit),
+      allResults: limitedResults,
       totalResults,
+      hasMoreResults: totalResults > limit,
       query
     });
 
