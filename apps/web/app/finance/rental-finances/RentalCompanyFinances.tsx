@@ -1,9 +1,9 @@
 'use client';
 
-import { Button } from '@kit/ui/button';
 import { ArrowLeft, ArrowRight, DollarSign, TrendingUp, TrendingDown, Plus, Filter, FileSpreadsheet, MoreVertical, Search } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
 import CustomButton from '../../reusableComponents/CustomButton';
 import CustomCard from '../../reusableComponents/CustomCard';
 import CustomTable, { TableAction, TableColumn } from '../../reusableComponents/CustomTable';
@@ -11,110 +11,190 @@ import { SearchBar } from '../../reusableComponents/SearchBar';
 
 interface Transaction {
   id: string;
-  date: string;
-  transaction: string;
-  transactionType: string;
-  description: string;
+  transaction_number: string;
+  transaction_date: string;
   amount: number;
+  description: string;
+  employee_name: string;
+  status: string;
+  transaction_type: {
+    name: string;
+    category: string;
+  };
+  branch?: {
+    name: string;
+  };
+  vehicle?: {
+    plate_number: string;
+  };
+  contract?: {
+    contract_number: string;
+  };
+  transaction: string;
   type: 'income' | 'expense';
 }
 
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 export default function RentalCompanyFinances() {
+  const router = useRouter();
   const [search, setSearch] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [summaryStats, setSummaryStats] = useState({
+    revenue: 0,
+    expenses: 0,
+    netBalance: 0
+  });
+
+  // Pagination state
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
+
+  // Current limit state for server-side pagination
   const [currentLimit, setCurrentLimit] = useState(10);
 
-  // Dummy transaction data
-  const transactions: Transaction[] = [
-    {
-      id: '1',
-      date: '03/14/2022',
-      transaction: 'Income',
-      transactionType: 'Contract Closure',
-      description: 'Lorem Ipsum text',
-      amount: 23456,
-      type: 'income'
-    },
-    {
-      id: '2',
-      date: '11/22/2021',
-      transaction: 'Income',
-      transactionType: 'Contract Closure',
-      description: 'Lorem Ipsum text',
-      amount: 9876,
-      type: 'income'
-    },
-    {
-      id: '3',
-      date: '07/30/2020',
-      transaction: 'Expense',
-      transactionType: 'General spending',
-      description: 'Lorem Ipsum text',
-      amount: 34567,
-      type: 'expense'
-    },
-    {
-      id: '4',
-      date: '01/05/2023',
-      transaction: 'Expense',
-      transactionType: 'Tire Change',
-      description: 'Lorem Ipsum text',
-      amount: 12345,
-      type: 'expense'
-    },
-    {
-      id: '5',
-      date: '09/12/2022',
-      transaction: 'Expense',
-      transactionType: 'Maintenance',
-      description: 'Lorem Ipsum text',
-      amount: 67890,
-      type: 'expense'
-    },
-    {
-      id: '6',
-      date: '05/19/2021',
-      transaction: 'Expense',
-      transactionType: 'Maintenance',
-      description: 'Lorem Ipsum text',
-      amount: 45678,
-      type: 'expense'
-    },
-    {
-      id: '7',
-      date: '02/28/2023',
-      transaction: 'Expense',
-      transactionType: 'General spending',
-      description: 'Lorem Ipsum text',
-      amount: 78901,
-      type: 'expense'
-    },
-    {
-      id: '8',
-      date: '12/15/2020',
-      transaction: 'Income',
-      transactionType: 'Contract Closure',
-      description: 'Lorem Ipsum text',
-      amount: 32210,
-      type: 'income'
+  // Filter state
+  const [transactionType, setTransactionType] = useState('all');
+  const [period, setPeriod] = useState('all');
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  // Fetch transactions from API with pagination
+  const fetchTransactions = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: currentLimit.toString(),
+        search: debouncedSearch,
+        transactionType: transactionType,
+        period: period
+      });
+
+      // Fetch both income and expense transactions with pagination
+      const [incomeResponse, expenseResponse] = await Promise.all([
+        fetch(`/api/finance/income?${params}`),
+        fetch(`/api/finance/expense?${params}`)
+      ]);
+
+      const incomeData = incomeResponse.ok ? await incomeResponse.json() : { transactions: [], pagination: pagination };
+      const expenseData = expenseResponse.ok ? await expenseResponse.json() : { transactions: [], pagination: pagination };
+
+      // Combine and format transactions
+      const allTransactions: Transaction[] = [
+        ...incomeData.transactions.map((t: any) => ({
+          ...t,
+          transaction: 'Income',
+          type: 'income' as const
+        })),
+        ...expenseData.transactions.map((t: any) => ({
+          ...t,
+          transaction: 'Expense',
+          type: 'expense' as const
+        }))
+      ];
+
+      // Sort by date (newest first)
+      allTransactions.sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime());
+
+      setTransactions(allTransactions);
+
+      console.log('All transactions:', allTransactions);
+      console.log('First transaction:', allTransactions[0]);
+
+      // Calculate total count from both APIs
+      const totalCount = (incomeData.pagination?.total || 0) + (expenseData.pagination?.total || 0);
+      const totalPages = Math.ceil(totalCount / currentLimit);
+      const hasNextPage = pagination.page < totalPages;
+      const hasPrevPage = pagination.page > 1;
+
+      setPagination({
+        page: pagination.page,
+        limit: currentLimit,
+        total: totalCount,
+        totalPages,
+        hasNextPage,
+        hasPrevPage
+      });
+
+      // Calculate summary stats from all data (not just current page)
+      const revenue = incomeData.transactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+      const expenses = expenseData.transactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+      setSummaryStats({
+        revenue,
+        expenses,
+        netBalance: revenue - expenses
+      });
+
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  }, [debouncedSearch, pagination.page, currentLimit, transactionType, period]);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [fetchTransactions]);
+
+  // Pagination handlers
+  const handlePageChange = (newPage: number) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setCurrentLimit(newLimit);
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  const handleRefresh = () => {
+    fetchTransactions();
+  };
 
   // Summary cards data
   const summaryCards = [
     {
       title: 'Revenue',
-      value: 'SAR 12,450.00',
+      value: `SAR ${summaryStats.revenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: <DollarSign className="w-6 h-6 text-gray-600" />
     },
     {
       title: 'Expenses',
-      value: 'SAR 10,000.00',
+      value: `SAR ${summaryStats.expenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: <TrendingUp className="w-6 h-6 text-gray-600" />
     },
     {
       title: 'Net Balance',
-      value: 'SAR 2,450.00',
+      value: `SAR ${summaryStats.netBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: <TrendingDown className="w-6 h-6 text-gray-600" />
     }
   ];
@@ -122,11 +202,19 @@ export default function RentalCompanyFinances() {
   // Table columns
   const columns: TableColumn[] = [
     {
-      key: 'date',
+      key: 'transaction_date',
       label: 'Date',
       type: 'text',
       sortable: true,
-      width: '120px'
+      width: '120px',
+      render: (value: string) => {
+        const date = new Date(value);
+        return date.toLocaleDateString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric'
+        });
+      }
     },
     {
       key: 'transaction',
@@ -147,10 +235,11 @@ export default function RentalCompanyFinances() {
       }
     },
     {
-      key: 'transactionType',
+      key: 'transaction_type',
       label: 'Transaction type',
       type: 'text',
-      sortable: true
+      sortable: true,
+      render: (value: any) => value?.name || 'N/A'
     },
     {
       key: 'description',
@@ -167,7 +256,7 @@ export default function RentalCompanyFinances() {
         const isIncome = row.type === 'income';
         return (
           <span className={`font-medium ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
-            SAR {value.toLocaleString()}
+            SAR {value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         );
       }
@@ -183,8 +272,17 @@ export default function RentalCompanyFinances() {
       icon: <ArrowRight className="w-4 h-4 ml-2" />,
       variant: 'ghost',
       className: 'text-primary flex items-center',
-      onClick: (row) => {
-        console.log('View details for transaction:', row.id);
+      onClick: (row, index) => {
+        console.log('View Details clicked for row:', row, 'index:', index);
+        const detailPath = row.type === 'income' ? `/finance/income/${row.id}` : `/finance/expense/${row.id}`;
+        console.log('Navigating to:', detailPath);
+        try {
+          router.push(detailPath);
+        } catch (error) {
+          console.error('Navigation error:', error);
+          // Fallback to window.location
+          window.location.href = detailPath;
+        }
       }
     }
   ];
@@ -227,10 +325,13 @@ export default function RentalCompanyFinances() {
             </p>
           </div>
         </div>
-        <Button className="bg-primary hover:bg-primary/90 text-white">
+        <CustomButton
+          className="bg-primary hover:bg-primary/90 text-white"
+          onClick={handleRefresh}
+        >
           <Plus className="w-4 h-4 mr-2" />
           Add
-        </Button>
+        </CustomButton>
       </div>
 
       {/* Summary Cards */}
@@ -271,7 +372,10 @@ export default function RentalCompanyFinances() {
             isDropdown
             size="sm"
             dropdownOptions={transactionOptions}
-            onDropdownSelect={(option) => console.log('Transaction filter:', option.value)}
+            onDropdownSelect={(option) => {
+              setTransactionType(option.value);
+              setPagination(prev => ({ ...prev, page: 1 }));
+            }}
           >
             Transaction
           </CustomButton>
@@ -281,7 +385,10 @@ export default function RentalCompanyFinances() {
             isDropdown
             size="sm"
             dropdownOptions={periodOptions}
-            onDropdownSelect={(option) => console.log('Period filter:', option.value)}
+            onDropdownSelect={(option) => {
+              setPeriod(option.value);
+              setPagination(prev => ({ ...prev, page: 1 }));
+            }}
           >
             Period
           </CustomButton>
@@ -291,14 +398,17 @@ export default function RentalCompanyFinances() {
             isDropdown
             size="sm"
             dropdownOptions={transactionTypeOptions}
-            onDropdownSelect={(option) => console.log('Type filter:', option.value)}
+            onDropdownSelect={(option) => {
+              setTransactionType(option.value);
+              setPagination(prev => ({ ...prev, page: 1 }));
+            }}
           >
             Transaction Type
           </CustomButton>
           <div className="flex-1 flex justify-end gap-2">
             <SearchBar
               value={search}
-              onChange={setSearch}
+              onChange={handleSearchChange}
               placeholder="Search"
               width="w-72"
             />
@@ -318,7 +428,7 @@ export default function RentalCompanyFinances() {
         <CustomTable
           data={transactions}
           columns={columns}
-          loading={false}
+          loading={loading}
           tableBackground="transparent"
           emptyMessage="No transactions found. Try adjusting your search or filters."
           emptyIcon={
@@ -329,11 +439,11 @@ export default function RentalCompanyFinances() {
           actions={actions}
           searchable={false}
           pagination={true}
-          currentPage={currentPage}
-          totalPages={10}
-          onPageChange={setCurrentPage}
+          currentPage={pagination.page}
+          totalPages={pagination.totalPages}
+          onPageChange={handlePageChange}
           currentLimit={currentLimit}
-          onLimitChange={setCurrentLimit}
+          onLimitChange={handleLimitChange}
           sortable={false}
           sortColumn=""
           sortDirection="asc"

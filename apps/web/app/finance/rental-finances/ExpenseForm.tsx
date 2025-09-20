@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import CustomInput from '../../reusableComponents/CustomInput';
@@ -8,7 +8,7 @@ import CustomSelect from '../../reusableComponents/CustomSelect';
 import CustomTextarea from '../../reusableComponents/CustomTextarea';
 import CustomButton from '../../reusableComponents/CustomButton';
 import CustomModal from '../../reusableComponents/CustomModal';
-import { SimpleSearchableSelect } from '../../reusableComponents/SearchableSelect';
+import SearchableSelect, { SimpleSearchableSelect } from '../../reusableComponents/SearchableSelect';
 
 // Validation schema for expense form
 const ExpenseSchema = Yup.object({
@@ -30,6 +30,14 @@ interface ExpenseFormProps {
   loading: boolean;
 }
 
+interface TransactionType {
+  id: string;
+  name: string;
+  code: string;
+  category: string;
+  description?: string;
+}
+
 export const ExpenseForm: React.FC<ExpenseFormProps> = ({
   isOpen,
   onClose,
@@ -38,13 +46,62 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
   branches,
   loading,
 }) => {
+  const [transactionTypes, setTransactionTypes] = useState<TransactionType[]>([]);
+  const [loadingTransactionTypes, setLoadingTransactionTypes] = useState(false);
+
+  // Fetch transaction types on component mount
+  useEffect(() => {
+    const fetchTransactionTypes = async () => {
+      try {
+        setLoadingTransactionTypes(true);
+        const response = await fetch('/api/finance/transaction-types?category=expense');
+        if (response.ok) {
+          const data = await response.json();
+          setTransactionTypes(data.transactionTypes || []);
+        }
+      } catch (error) {
+        console.error('Error fetching transaction types:', error);
+      } finally {
+        setLoadingTransactionTypes(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchTransactionTypes();
+    }
+  }, [isOpen]);
   const handleSubmit = async (values: any, { setSubmitting, resetForm }: any) => {
     try {
-      await onSubmit(values);
+      console.log('Expense form submitting with values:', values);
+
+      // Call the API to create expense transaction
+      const response = await fetch('/api/finance/expense', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create expense transaction');
+      }
+
+      const result = await response.json();
+      console.log('Expense transaction created:', result);
+
+      // Call the parent onSubmit callback if provided
+      if (onSubmit) {
+        await onSubmit(values);
+      }
+
       resetForm();
       onClose();
     } catch (error) {
       console.error('Error submitting expense:', error);
+      // You might want to show an error message to the user here
+      alert(`Error: ${error instanceof Error ? error.message : 'An unexpected error occurred'}`);
     } finally {
       setSubmitting(false);
     }
@@ -98,21 +155,19 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 />
 
                 {/* Transaction Type */}
-                <CustomSelect
+                <SearchableSelect
                   name="transactionType"
                   label="Transaction type"
-                  value={values.transactionType}
-                  onChange={(value: string) => setFieldValue('transactionType', value)}
-                  options={[
-                    { value: '', label: 'Select type' },
-                    { value: 'Maintenance', label: 'Maintenance' },
-                    { value: 'Fuel', label: 'Fuel' },
-                    { value: 'Insurance', label: 'Insurance' },
-                    { value: 'Repair', label: 'Repair' },
-                    { value: 'Other', label: 'Other' }
-                  ]}
-                  error={errors.transactionType && touched.transactionType ? errors.transactionType : undefined}
+                  required
+                  options={transactionTypes.map(type => ({
+                    key: type.id,
+                    id: type.id,
+                    value: type.name,
+                    subValue: type.description || type.code
+                  }))}
+                  placeholder="Select transaction type"
                   className="w-full"
+                  disabled={loadingTransactionTypes}
                 />
 
                 {/* Vehicle */}

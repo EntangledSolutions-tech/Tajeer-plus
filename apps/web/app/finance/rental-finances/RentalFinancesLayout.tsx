@@ -51,15 +51,28 @@ interface ExpenseFormValues {
   description: string;
 }
 
-interface IncomeFormValues {
-  amount: string;
-  date: string;
-  transactionType: string;
-  contract: string;
-  branch: string;
-  vehicle: string;
-  employee: string;
+interface Transaction {
+  id: string;
+  transaction_number: string;
+  transaction_date: string;
+  amount: number;
   description: string;
+  employee_name: string;
+  status: string;
+  transaction_type: {
+    name: string;
+    category: string;
+  };
+  branch?: {
+    name: string;
+  };
+  vehicle?: {
+    plate_number: string;
+  };
+  contract?: {
+    contract_number: string;
+  };
+  isIncome: boolean;
 }
 
 
@@ -70,10 +83,12 @@ export default function RentalFinancesLayout() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState({
     branches: false,
     vehicles: false,
     contracts: false,
+    transactions: false,
     expenseSubmit: false,
     incomeSubmit: false
   });
@@ -103,53 +118,43 @@ export default function RentalFinancesLayout() {
     }
   ];
 
-  const transactions = [
-    {
-      id: '1',
-      date: '03/14/2022',
-      transaction: 'Income',
-      type: 'Contract Closure',
-      description: 'Lorem Ipsum text',
-      amount: 'SAR 23,456',
-      isIncome: true
-    },
-    {
-      id: '2',
-      date: '11/22/2021',
-      transaction: 'Income',
-      type: 'Contract Closure',
-      description: 'Lorem Ipsum text',
-      amount: 'SAR 9,876',
-      isIncome: true
-    },
-    {
-      id: '3',
-      date: '07/30/2020',
-      transaction: 'Expense',
-      type: 'General spending',
-      description: 'Lorem Ipsum text',
-      amount: 'SAR 34,567',
-      isIncome: false
-    },
-    {
-      id: '4',
-      date: '01/05/2023',
-      transaction: 'Expense',
-      type: 'Tire Change',
-      description: 'Lorem Ipsum text',
-      amount: 'SAR 12,345',
-      isIncome: false
-    },
-    {
-      id: '5',
-      date: '09/12/2022',
-      transaction: 'Expense',
-      type: 'Maintenance',
-      description: 'Lorem Ipsum text',
-      amount: 'SAR 67,890',
-      isIncome: false
+  const fetchTransactions = async () => {
+    try {
+      setLoading(prev => ({ ...prev, transactions: true }));
+
+      // Fetch both income and expense transactions
+      const [incomeResponse, expenseResponse] = await Promise.all([
+        fetch('/api/finance/income?limit=-1'),
+        fetch('/api/finance/expense?limit=-1')
+      ]);
+
+      const incomeData = incomeResponse.ok ? await incomeResponse.json() : { transactions: [] };
+      const expenseData = expenseResponse.ok ? await expenseResponse.json() : { transactions: [] };
+
+      // Combine and format transactions
+      const allTransactions: Transaction[] = [
+        ...incomeData.transactions.map((t: any) => ({
+          ...t,
+          isIncome: true,
+          transaction: 'Income'
+        })),
+        ...expenseData.transactions.map((t: any) => ({
+          ...t,
+          isIncome: false,
+          transaction: 'Expense'
+        }))
+      ];
+
+      // Sort by date (newest first)
+      allTransactions.sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime());
+
+      setTransactions(allTransactions);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, transactions: false }));
     }
-  ];
+  };
 
   const [transactionFilter, setTransactionFilter] = React.useState('All');
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -203,53 +208,33 @@ export default function RentalFinancesLayout() {
   };
 
   // Form handlers
-  const handleExpenseSubmit = async (values: ExpenseFormValues) => {
+  const handleExpenseSubmit = async (values: any) => {
     try {
       setLoading(prev => ({ ...prev, expenseSubmit: true }));
 
-      const response = await fetch('/api/finance/expenses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
+      // The actual API call is now handled in ExpenseForm
+      console.log('Expense submitted:', values);
 
-      if (!response.ok) {
-        throw new Error('Failed to create expense');
-      }
-
-      setIsExpenseModalOpen(false);
-      // Refresh data or show success message
-      console.log('Expense created successfully');
+      // Refresh transactions after successful submission
+      await fetchTransactions();
     } catch (error) {
-      console.error('Error creating expense:', error);
+      console.error('Error submitting expense:', error);
     } finally {
       setLoading(prev => ({ ...prev, expenseSubmit: false }));
     }
   };
 
-  const handleIncomeSubmit = async (values: IncomeFormValues) => {
+  const handleIncomeSubmit = async (values: any) => {
     try {
       setLoading(prev => ({ ...prev, incomeSubmit: true }));
 
-      const response = await fetch('/api/finance/income', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
+      // The actual API call is now handled in IncomeForm
+      console.log('Income submitted:', values);
 
-      if (!response.ok) {
-        throw new Error('Failed to create income');
-      }
-
-      setIsIncomeModalOpen(false);
-      // Refresh data or show success message
-      console.log('Income created successfully');
+      // Refresh transactions after successful submission
+      await fetchTransactions();
     } catch (error) {
-      console.error('Error creating income:', error);
+      console.error('Error submitting income:', error);
     } finally {
       setLoading(prev => ({ ...prev, incomeSubmit: false }));
     }
@@ -260,6 +245,7 @@ export default function RentalFinancesLayout() {
     fetchBranches();
     fetchVehicles();
     fetchContracts();
+    fetchTransactions();
   }, []);
 
   const filterOptions = [
@@ -269,18 +255,31 @@ export default function RentalFinancesLayout() {
   ];
 
   const filteredTransactions = transactions.filter(transaction => {
-    const matchesFilter = transactionFilter === 'All' || transaction.transaction === transactionFilter;
+    const matchesFilter = transactionFilter === 'All' ||
+      (transactionFilter === 'Income' && transaction.isIncome) ||
+      (transactionFilter === 'Expense' && !transaction.isIncome);
+
     const matchesSearch = searchTerm === '' ||
       transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.type.toLowerCase().includes(searchTerm.toLowerCase());
+      transaction.transaction_type?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.employee_name.toLowerCase().includes(searchTerm.toLowerCase());
+
     return matchesFilter && matchesSearch;
   });
 
   const columns: TableColumn[] = [
     {
-      key: 'date',
+      key: 'transaction_date',
       label: 'Date',
-      type: 'text'
+      type: 'text',
+      render: (value: string) => {
+        const date = new Date(value);
+        return date.toLocaleDateString('en-US', {
+          month: '2-digit',
+          day: '2-digit',
+          year: 'numeric'
+        });
+      }
     },
     {
       key: 'transaction',
@@ -297,9 +296,10 @@ export default function RentalFinancesLayout() {
       )
     },
     {
-      key: 'type',
+      key: 'transaction_type',
       label: 'Transaction type',
-      type: 'text'
+      type: 'text',
+      render: (value: any) => value?.name || 'N/A'
     },
     {
       key: 'description',
@@ -310,9 +310,9 @@ export default function RentalFinancesLayout() {
       key: 'amount',
       label: 'Amount',
       type: 'text',
-      render: (value: string, row: any) => (
+      render: (value: number, row: any) => (
         <span className={row.isIncome ? 'text-green-600' : 'text-red-600'}>
-          {value}
+          SAR {value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </span>
       )
     }
