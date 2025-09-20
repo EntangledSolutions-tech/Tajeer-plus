@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Filter, FileSpreadsheet, MoreHorizontal, ChevronDown, DollarSign, Wrench, Fuel, TrendingUp } from 'lucide-react';
+import { toast } from '@kit/ui/sonner';
 import CustomButton from '../../reusableComponents/CustomButton';
 import CustomCard from '../../reusableComponents/CustomCard';
 import CustomTable, { TableColumn, TableAction } from '../../reusableComponents/CustomTable';
@@ -14,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
 import { useHttpService } from '../../../lib/http-service';
+import { Vehicle, Customer } from './types';
 
 // Import modal components
 import AddTransactionModal from './AddTransactionModal';
@@ -24,32 +26,6 @@ import PenaltyModal from './PenaltyModal';
 import InsuranceModal from './InsuranceModal';
 import MaintenanceModal from './MaintenanceModal';
 import AccidentModal from './AccidentModal';
-
-// Interfaces
-interface Vehicle {
-  id: string;
-  plate_number: string;
-  make: {
-    name: string;
-  };
-  model: {
-    name: string;
-  };
-  make_year?: number;
-  year?: number;
-  status: {
-    name: string;
-    color: string;
-  };
-}
-
-interface Customer {
-  id: string;
-  name: string;
-  mobile: string;
-  id_number: string;
-  status: string;
-}
 
 export default function VehicleFinancesLayout() {
   // HTTP service hook
@@ -66,9 +42,11 @@ export default function VehicleFinancesLayout() {
   const [isAccidentModalOpen, setIsAccidentModalOpen] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState({
     vehicles: false,
     customers: false,
+    transactions: false,
     submit: false
   });
 
@@ -96,97 +74,6 @@ export default function VehicleFinancesLayout() {
     }
   ];
 
-  const transactions = [
-    {
-      id: '1',
-      date: '03/14/2022',
-      transactionType: 'Sell',
-      vehiclePlate: 'ABC-1234',
-      vehicleInfo: 'Toyota Camry 2020',
-      amount: 'SAR 2,500',
-      invoiceNumber: 'INV-V001',
-      status: 'Paid',
-      isPaid: true
-    },
-    {
-      id: '2',
-      date: '03/10/2022',
-      transactionType: 'Maintenance',
-      vehiclePlate: 'XYZ-5678',
-      vehicleInfo: 'Honda Accord 2019',
-      amount: 'SAR 1,200',
-      invoiceNumber: 'INV-V002',
-      status: 'Unpaid',
-      isPaid: false
-    },
-    {
-      id: '3',
-      date: '03/08/2022',
-      transactionType: 'Service',
-      vehiclePlate: 'DEF-9012',
-      vehicleInfo: 'Nissan Altima 2021',
-      amount: 'SAR 450',
-      invoiceNumber: 'INV-V003',
-      status: 'Paid',
-      isPaid: true
-    },
-    {
-      id: '4',
-      date: '03/05/2022',
-      transactionType: 'Insurance',
-      vehiclePlate: 'GHI-3456',
-      vehicleInfo: 'Hyundai Elantra 2020',
-      amount: 'SAR 1,800',
-      invoiceNumber: 'INV-V004',
-      status: 'Paid',
-      isPaid: true
-    },
-    {
-      id: '5',
-      date: '03/02/2022',
-      transactionType: 'Penalty',
-      vehiclePlate: 'JKL-7890',
-      vehicleInfo: 'Kia Optima 2019',
-      amount: 'SAR 3,200',
-      invoiceNumber: 'INV-V005',
-      status: 'Unpaid',
-      isPaid: false
-    },
-    {
-      id: '6',
-      date: '02/28/2022',
-      transactionType: 'Accident',
-      vehiclePlate: 'MNO-2468',
-      vehicleInfo: 'Mazda 6 2021',
-      amount: 'SAR 2,200',
-      invoiceNumber: 'INV-V006',
-      status: 'Paid',
-      isPaid: true
-    },
-    {
-      id: '7',
-      date: '02/25/2022',
-      transactionType: 'Deprecation',
-      vehiclePlate: 'PQR-1357',
-      vehicleInfo: 'Subaru Legacy 2020',
-      amount: 'SAR 850',
-      invoiceNumber: 'INV-V007',
-      status: 'Paid',
-      isPaid: true
-    },
-    {
-      id: '8',
-      date: '02/22/2022',
-      transactionType: 'Return',
-      vehiclePlate: 'STU-9753',
-      vehicleInfo: 'Volkswagen Passat 2019',
-      amount: 'SAR 1,950',
-      invoiceNumber: 'INV-V008',
-      status: 'Unpaid',
-      isPaid: false
-    }
-  ];
-
   const [vehicleFilter, setVehicleFilter] = useState('All');
   const [periodFilter, setPeriodFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -195,6 +82,37 @@ export default function VehicleFinancesLayout() {
   const [currentLimit, setCurrentLimit] = useState(10);
 
   // API fetching functions
+  const fetchTransactions = async () => {
+    try {
+      setLoading(prev => ({ ...prev, transactions: true }));
+      console.log('Fetching vehicle transactions...');
+
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: currentLimit.toString(),
+        search: searchTerm,
+        vehicle: vehicleFilter,
+        status: statusFilter,
+        period: periodFilter
+      });
+
+      const response = await getRequest(`/api/finance/vehicle-transactions-list?${params}`);
+      console.log('Transactions API response:', response);
+
+      if (response.success && response.data) {
+        setTransactions(response.data.transactions || []);
+      } else {
+        console.error('Transactions API error:', response.error);
+        toast.error('Failed to load transactions');
+      }
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      toast.error('An unexpected error occurred while loading transactions');
+    } finally {
+      setLoading(prev => ({ ...prev, transactions: false }));
+    }
+  };
+
   const fetchVehicles = async () => {
     try {
       setLoading(prev => ({ ...prev, vehicles: true }));
@@ -238,12 +156,17 @@ export default function VehicleFinancesLayout() {
 
       if (response.success) {
         setIsAddModalOpen(false);
+        toast.success('Service transaction created successfully!');
         console.log('Transaction created successfully');
+        // Refresh transactions
+        fetchTransactions();
       } else {
         console.error('Error creating transaction:', response.error);
+        toast.error(`Failed to create service transaction: ${response.error}`);
       }
     } catch (error) {
       console.error('Error creating transaction:', error);
+      toast.error('An unexpected error occurred while creating the service transaction');
     } finally {
       setLoading(prev => ({ ...prev, submit: false }));
     }
@@ -257,12 +180,17 @@ export default function VehicleFinancesLayout() {
 
       if (response.success) {
         setIsSellModalOpen(false);
+        toast.success('Vehicle sale transaction created successfully!');
         console.log('Sell transaction created successfully');
+        // Refresh transactions
+        fetchTransactions();
       } else {
         console.error('Error creating sell transaction:', response.error);
+        toast.error(`Failed to create sell transaction: ${response.error}`);
       }
     } catch (error) {
       console.error('Error creating sell transaction:', error);
+      toast.error('An unexpected error occurred while creating the sell transaction');
     } finally {
       setLoading(prev => ({ ...prev, submit: false }));
     }
@@ -276,12 +204,17 @@ export default function VehicleFinancesLayout() {
 
       if (response.success) {
         setIsReturnModalOpen(false);
+        toast.success('Vehicle return transaction created successfully!');
         console.log('Return transaction created successfully');
+        // Refresh transactions
+        fetchTransactions();
       } else {
         console.error('Error creating return transaction:', response.error);
+        toast.error(`Failed to create return transaction: ${response.error}`);
       }
     } catch (error) {
       console.error('Error creating return transaction:', error);
+      toast.error('An unexpected error occurred while creating the return transaction');
     } finally {
       setLoading(prev => ({ ...prev, submit: false }));
     }
@@ -295,12 +228,17 @@ export default function VehicleFinancesLayout() {
 
       if (response.success) {
         setIsDeprecationModalOpen(false);
+        toast.success('Vehicle deprecation record created successfully!');
         console.log('Deprecation record created successfully');
+        // Refresh transactions
+        fetchTransactions();
       } else {
         console.error('Error creating deprecation record:', response.error);
+        toast.error(`Failed to create deprecation record: ${response.error}`);
       }
     } catch (error) {
       console.error('Error creating deprecation record:', error);
+      toast.error('An unexpected error occurred while creating the deprecation record');
     } finally {
       setLoading(prev => ({ ...prev, submit: false }));
     }
@@ -314,12 +252,17 @@ export default function VehicleFinancesLayout() {
 
       if (response.success) {
         setIsPenaltyModalOpen(false);
+        toast.success('Vehicle penalty record created successfully!');
         console.log('Penalty record created successfully');
+        // Refresh transactions
+        fetchTransactions();
       } else {
         console.error('Error creating penalty record:', response.error);
+        toast.error(`Failed to create penalty record: ${response.error}`);
       }
     } catch (error) {
       console.error('Error creating penalty record:', error);
+      toast.error('An unexpected error occurred while creating the penalty record');
     } finally {
       setLoading(prev => ({ ...prev, submit: false }));
     }
@@ -333,12 +276,17 @@ export default function VehicleFinancesLayout() {
 
       if (response.success) {
         setIsInsuranceModalOpen(false);
+        toast.success('Vehicle insurance payment created successfully!');
         console.log('Insurance payment created successfully');
+        // Refresh transactions
+        fetchTransactions();
       } else {
         console.error('Error creating insurance payment:', response.error);
+        toast.error(`Failed to create insurance payment: ${response.error}`);
       }
     } catch (error) {
       console.error('Error creating insurance payment:', error);
+      toast.error('An unexpected error occurred while creating the insurance payment');
     } finally {
       setLoading(prev => ({ ...prev, submit: false }));
     }
@@ -352,12 +300,17 @@ export default function VehicleFinancesLayout() {
 
       if (response.success) {
         setIsMaintenanceModalOpen(false);
+        toast.success('Vehicle maintenance record created successfully!');
         console.log('Maintenance log created successfully');
+        // Refresh transactions
+        fetchTransactions();
       } else {
         console.error('Error creating maintenance log:', response.error);
+        toast.error(`Failed to create maintenance record: ${response.error}`);
       }
     } catch (error) {
       console.error('Error creating maintenance log:', error);
+      toast.error('An unexpected error occurred while creating the maintenance record');
     } finally {
       setLoading(prev => ({ ...prev, submit: false }));
     }
@@ -371,12 +324,17 @@ export default function VehicleFinancesLayout() {
 
       if (response.success) {
         setIsAccidentModalOpen(false);
+        toast.success('Vehicle accident record created successfully!');
         console.log('Accident record created successfully');
+        // Refresh transactions
+        fetchTransactions();
       } else {
         console.error('Error creating accident record:', response.error);
+        toast.error(`Failed to create accident record: ${response.error}`);
       }
     } catch (error) {
       console.error('Error creating accident record:', error);
+      toast.error('An unexpected error occurred while creating the accident record');
     } finally {
       setLoading(prev => ({ ...prev, submit: false }));
     }
@@ -386,14 +344,20 @@ export default function VehicleFinancesLayout() {
   useEffect(() => {
     fetchVehicles();
     fetchCustomers();
+    fetchTransactions();
   }, []);
+
+  // Refetch transactions when filters change
+  useEffect(() => {
+    fetchTransactions();
+  }, [currentPage, currentLimit, searchTerm, vehicleFilter, statusFilter, periodFilter]);
 
   const vehicleFilterOptions = [
     { value: 'All', label: 'All' },
-    { value: 'ABC-1234', label: 'ABC-1234' },
-    { value: 'XYZ-5678', label: 'XYZ-5678' },
-    { value: 'DEF-9012', label: 'DEF-9012' },
-    { value: 'GHI-3456', label: 'GHI-3456' }
+    ...vehicles.map(vehicle => ({
+      value: vehicle.id,
+      label: vehicle.plate_number
+    }))
   ];
 
   const periodFilterOptions = [
@@ -411,7 +375,7 @@ export default function VehicleFinancesLayout() {
   ];
 
   const filteredTransactions = transactions.filter(transaction => {
-    const matchesVehicle = vehicleFilter === 'All' || transaction.vehiclePlate === vehicleFilter;
+    const matchesVehicle = vehicleFilter === 'All' || transaction.vehicleId === vehicleFilter;
     const matchesStatus = statusFilter === 'All' || transaction.status === statusFilter;
     const matchesSearch = searchTerm === '' ||
       transaction.vehiclePlate.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -544,7 +508,7 @@ export default function VehicleFinancesLayout() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {summaryCards.map((card, index) => (
-          <CustomCard key={index} className="bg-white" padding="default">
+          <CustomCard hover={false} key={index} className="bg-white" padding="default">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
                 <div className="text-primary">
@@ -621,7 +585,7 @@ export default function VehicleFinancesLayout() {
           data={filteredTransactions}
           columns={columns}
           actions={actions}
-          loading={false}
+          loading={loading.transactions}
           emptyMessage="No transactions found"
           tableBackground="transparent"
           searchable={false}
@@ -657,6 +621,7 @@ export default function VehicleFinancesLayout() {
         onClose={() => setIsReturnModalOpen(false)}
         onSubmit={handleReturnSubmit}
         vehicles={vehicles}
+        customers={customers}
         loading={loading.submit}
       />
 

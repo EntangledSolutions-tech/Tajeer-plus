@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import CustomButton from '../../reusableComponents/CustomButton';
@@ -9,16 +9,8 @@ import CustomSelect from '../../reusableComponents/CustomSelect';
 import CustomTextarea from '../../reusableComponents/CustomTextarea';
 import SearchableSelect from '../../reusableComponents/SearchableSelect';
 import { RadioButtonGroup } from '../../reusableComponents/RadioButtonGroup';
-
-// Interfaces
-interface Vehicle {
-  id: string;
-  plate_number: string;
-  make: string;
-  model: string;
-  year: number;
-  is_active: boolean;
-}
+import { Vehicle } from './types';
+import { useHttpService } from '../../../lib/http-service';
 
 interface MaintenanceFormValues {
   vehicle: string;
@@ -70,6 +62,14 @@ const MaintenanceSchema = Yup.object().shape({
     .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount')
 });
 
+// Vehicle details state interface
+interface VehicleDetailsState {
+  paginatedVehicles: Vehicle[];
+  vehiclesPage: number;
+  vehiclesHasMore: boolean;
+  vehiclesLoading: boolean;
+}
+
 export default function MaintenanceModal({
   isOpen,
   onClose,
@@ -77,6 +77,67 @@ export default function MaintenanceModal({
   vehicles,
   loading
 }: MaintenanceModalProps) {
+  const { getRequest } = useHttpService();
+  const [vehicleDetails, setVehicleDetails] = useState<VehicleDetailsState>({
+    paginatedVehicles: [],
+    vehiclesPage: 1,
+    vehiclesHasMore: true,
+    vehiclesLoading: false,
+  });
+
+  // Fetch vehicles with pagination
+  const fetchVehicles = useCallback(async (page: number = 1, search: string = '') => {
+    try {
+      setVehicleDetails(prev => ({ ...prev, vehiclesLoading: true }));
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '3',
+        search
+      });
+
+      const response = await getRequest(`/api/vehicles?${params}`);
+
+      if (response.success && response.data?.vehicles) {
+        if (page === 1) {
+          setVehicleDetails(prev => ({
+            ...prev,
+            paginatedVehicles: response.data.vehicles || [],
+            vehiclesPage: page,
+            vehiclesHasMore: response.data.pagination?.hasNextPage || false,
+            vehiclesLoading: false
+          }));
+        } else {
+          setVehicleDetails(prev => ({
+            ...prev,
+            paginatedVehicles: [...prev.paginatedVehicles, ...(response.data.vehicles || [])],
+            vehiclesPage: page,
+            vehiclesHasMore: response.data.pagination?.hasNextPage || false,
+            vehiclesLoading: false
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching vehicles:', error);
+      setVehicleDetails(prev => ({ ...prev, vehiclesLoading: false }));
+    }
+  }, [getRequest]);
+
+  // Load more vehicles
+  const handleLoadMoreVehicles = useCallback(async () => {
+    await fetchVehicles(vehicleDetails.vehiclesPage + 1);
+  }, [fetchVehicles, vehicleDetails.vehiclesPage]);
+
+  // Search vehicles
+  const handleSearchVehicles = useCallback(async (searchTerm: string) => {
+    await fetchVehicles(1, searchTerm);
+  }, [fetchVehicles]);
+
+  // Load initial data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchVehicles(1);
+    }
+  }, [isOpen, fetchVehicles]);
   return (
     <CustomModal
       isOpen={isOpen}
@@ -115,14 +176,27 @@ export default function MaintenanceModal({
                         name="vehicle"
                         label="Vehicle"
                         required
-                        options={vehicles.filter(vehicle => vehicle.is_active).map(vehicle => ({
+                        options={vehicleDetails.paginatedVehicles.map(vehicle => ({
                           key: vehicle.id,
                           id: vehicle.id,
                           value: vehicle.plate_number,
-                          subValue: `${vehicle.make} ${vehicle.model} ${vehicle.year}`
+                          subValue: `${typeof vehicle.make === 'object' ? vehicle.make?.name : vehicle.make || 'N/A'} ${typeof vehicle.model === 'object' ? vehicle.model?.name : vehicle.model || 'N/A'} ${vehicle.make_year || vehicle.year || 'N/A'}`,
+                          badge: {
+                            text: vehicle.status?.name || 'Unknown',
+                            color: vehicle.status?.color || '#6B7280'
+                          }
                         }))}
                         placeholder="Select vehicle"
                         className="w-full"
+                        enablePagination={true}
+                        pageSize={3}
+                        loadMoreText="Load More Vehicles"
+                        onLoadMore={handleLoadMoreVehicles}
+                        hasMore={vehicleDetails.vehiclesHasMore}
+                        loading={vehicleDetails.vehiclesLoading}
+                        enableBackendSearch={true}
+                        onSearch={handleSearchVehicles}
+                        searchDebounceMs={300}
                       />
                     </div>
                     <CustomSelect

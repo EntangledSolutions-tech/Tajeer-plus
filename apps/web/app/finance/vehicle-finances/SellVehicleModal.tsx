@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import CustomButton from '../../reusableComponents/CustomButton';
@@ -8,31 +8,23 @@ import CustomInput from '../../reusableComponents/CustomInput';
 import CustomSelect from '../../reusableComponents/CustomSelect';
 import SearchableSelect from '../../reusableComponents/SearchableSelect';
 import { RadioButtonGroup } from '../../reusableComponents/RadioButtonGroup';
+import { Vehicle, Customer } from './types';
+import { useHttpService } from '../../../lib/http-service';
 
-// Interfaces
-interface Vehicle {
-  id: string;
-  plate_number: string;
-  make: {
-    name: string;
-  };
-  model: {
-    name: string;
-  };
-  make_year?: number;
-  year?: number;
-  status: {
-    name: string;
-    color: string;
-  };
+// Vehicle details state interface
+interface VehicleDetailsState {
+  paginatedVehicles: Vehicle[];
+  vehiclesPage: number;
+  vehiclesHasMore: boolean;
+  vehiclesLoading: boolean;
 }
 
-interface Customer {
-  id: string;
-  name: string;
-  mobile: string;
-  id_number: string;
-  status: string;
+// Customer details state interface
+interface CustomerDetailsState {
+  paginatedCustomers: Customer[];
+  customersPage: number;
+  customersHasMore: boolean;
+  customersLoading: boolean;
 }
 
 interface SellVehicleFormValues {
@@ -98,6 +90,130 @@ export default function SellVehicleModal({
   customers,
   loading
 }: SellVehicleModalProps) {
+  const { getRequest } = useHttpService();
+  const [vehicleDetails, setVehicleDetails] = useState<VehicleDetailsState>({
+    paginatedVehicles: [],
+    vehiclesPage: 1,
+    vehiclesHasMore: true,
+    vehiclesLoading: false,
+  });
+
+  const [customerDetails, setCustomerDetails] = useState<CustomerDetailsState>({
+    paginatedCustomers: [],
+    customersPage: 1,
+    customersHasMore: true,
+    customersLoading: false,
+  });
+
+  // Fetch vehicles with pagination
+  const fetchVehicles = useCallback(async (page: number = 1, search: string = '') => {
+    try {
+      setVehicleDetails(prev => ({ ...prev, vehiclesLoading: true }));
+      console.log('Fetching vehicles - page:', page, 'search:', search);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '3',
+        search
+      });
+
+      const response = await getRequest(`/api/vehicles?${params}`);
+      console.log('Vehicles API response:', response);
+
+      if (response.success && response.data?.vehicles) {
+        console.log('Received vehicles:', response.data.vehicles.length);
+        if (page === 1) {
+          setVehicleDetails(prev => ({
+            ...prev,
+            paginatedVehicles: response.data.vehicles || [],
+            vehiclesPage: page,
+            vehiclesHasMore: response.data.pagination?.hasNextPage || false,
+            vehiclesLoading: false
+          }));
+          console.log('Set initial vehicles:', response.data.vehicles.length);
+        } else {
+          setVehicleDetails(prev => ({
+            ...prev,
+            paginatedVehicles: [...prev.paginatedVehicles, ...(response.data.vehicles || [])],
+            vehiclesPage: page,
+            vehiclesHasMore: response.data.pagination?.hasNextPage || false,
+            vehiclesLoading: false
+          }));
+          console.log('Appended vehicles. Total now:', prev.paginatedVehicles.length + (response.data.vehicles || []).length);
+        }
+        console.log('Has more vehicles:', response.data.pagination?.hasNextPage);
+      }
+    } catch (error) {
+      console.error('Error fetching vehicles:', error);
+      setVehicleDetails(prev => ({ ...prev, vehiclesLoading: false }));
+    }
+  }, [getRequest]);
+
+  // Fetch customers with pagination
+  const fetchCustomers = useCallback(async (page: number = 1, search: string = '') => {
+    try {
+      setCustomerDetails(prev => ({ ...prev, customersLoading: true }));
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '3',
+        search,
+        status: 'active'
+      });
+
+      const response = await getRequest(`/api/customers?${params}`);
+
+      if (response.success && response.data?.customers) {
+        if (page === 1) {
+          setCustomerDetails(prev => ({
+            ...prev,
+            paginatedCustomers: response.data.customers || [],
+            customersPage: page,
+            customersHasMore: response.data.pagination?.hasNextPage || false,
+            customersLoading: false
+          }));
+        } else {
+          setCustomerDetails(prev => ({
+            ...prev,
+            paginatedCustomers: [...prev.paginatedCustomers, ...(response.data.customers || [])],
+            customersPage: page,
+            customersHasMore: response.data.pagination?.hasNextPage || false,
+            customersLoading: false
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+      setCustomerDetails(prev => ({ ...prev, customersLoading: false }));
+    }
+  }, [getRequest]);
+
+  // Load more vehicles
+  const handleLoadMoreVehicles = useCallback(async () => {
+    console.log('Loading more vehicles, current page:', vehicleDetails.vehiclesPage);
+    await fetchVehicles(vehicleDetails.vehiclesPage + 1);
+  }, [fetchVehicles, vehicleDetails.vehiclesPage]);
+
+  // Load more customers
+  const handleLoadMoreCustomers = useCallback(async () => {
+    await fetchCustomers(customerDetails.customersPage + 1);
+  }, [fetchCustomers, customerDetails.customersPage]);
+
+  // Search vehicles
+  const handleSearchVehicles = useCallback(async (searchTerm: string) => {
+    await fetchVehicles(1, searchTerm);
+  }, [fetchVehicles]);
+
+  // Search customers
+  const handleSearchCustomers = useCallback(async (searchTerm: string) => {
+    await fetchCustomers(1, searchTerm);
+  }, [fetchCustomers]);
+
+  // Load initial data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchVehicles(1);
+      fetchCustomers(1);
+    }
+  }, [isOpen, fetchVehicles, fetchCustomers]);
   return (
     <CustomModal
       isOpen={isOpen}
@@ -136,14 +252,31 @@ export default function SellVehicleModal({
                       name="vehicle"
                       label="Vehicle"
                       required
-                      options={vehicles.map(vehicle => ({
-                        key: vehicle.id,
-                        id: vehicle.id,
-                        value: vehicle.plate_number,
-                        subValue: `${vehicle.make?.name || 'N/A'} ${vehicle.model?.name || 'N/A'} ${vehicle.make_year || vehicle.year || 'N/A'}`
-                      }))}
+                      options={(() => {
+                        const options = vehicleDetails.paginatedVehicles.map(vehicle => ({
+                          key: vehicle.id,
+                          id: vehicle.id,
+                          value: vehicle.plate_number,
+                          subValue: `${typeof vehicle.make === 'object' ? vehicle.make?.name : vehicle.make || 'N/A'} ${typeof vehicle.model === 'object' ? vehicle.model?.name : vehicle.model || 'N/A'} ${vehicle.make_year || vehicle.year || 'N/A'}`,
+                          badge: {
+                            text: vehicle.status?.name || 'Unknown',
+                            color: vehicle.status?.color || '#6B7280'
+                          }
+                        }));
+                        console.log('SearchableSelect options:', options.length, 'hasMore:', vehicleDetails.vehiclesHasMore);
+                        return options;
+                      })()}
                       placeholder="Select vehicle"
                       className="w-full"
+                      enablePagination={true}
+                      pageSize={3}
+                      loadMoreText="Load More Vehicles"
+                      onLoadMore={handleLoadMoreVehicles}
+                      hasMore={vehicleDetails.vehiclesHasMore}
+                      loading={vehicleDetails.vehiclesLoading}
+                      enableBackendSearch={true}
+                      onSearch={handleSearchVehicles}
+                      searchDebounceMs={300}
                     />
                   </div>
                 </div>
@@ -202,7 +335,7 @@ export default function SellVehicleModal({
                         name="customerName"
                         label="Customer Name"
                         required
-                        options={customers.filter(customer => customer.status === 'Active').map(customer => ({
+                        options={customerDetails.paginatedCustomers.map(customer => ({
                           key: customer.id,
                           id: customer.id,
                           value: customer.name,
@@ -210,6 +343,15 @@ export default function SellVehicleModal({
                         }))}
                         placeholder="Select Customer"
                         className="w-full"
+                        enablePagination={true}
+                        pageSize={3}
+                        loadMoreText="Load More Customers"
+                        onLoadMore={handleLoadMoreCustomers}
+                        hasMore={customerDetails.customersHasMore}
+                        loading={customerDetails.customersLoading}
+                        enableBackendSearch={true}
+                        onSearch={handleSearchCustomers}
+                        searchDebounceMs={300}
                       />
                     </div>
                   </div>

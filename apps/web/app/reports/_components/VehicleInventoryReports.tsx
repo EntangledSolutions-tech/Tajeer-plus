@@ -49,6 +49,8 @@ export default function VehicleInventoryReports() {
   });
   const [vehicleTypeData, setVehicleTypeData] = useState<VehicleTypeData[]>([]);
   const [vehicleStatuses, setVehicleStatuses] = useState<VehicleStatus[]>([]);
+  const [allStatusCounts, setAllStatusCounts] = useState<{ status: string; count: number; color: string }[]>([]);
+  const [statusForPie, setStatusForPie] = useState<{ status: string; count: number; color: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch vehicle inventory data from API
@@ -59,7 +61,7 @@ export default function VehicleInventoryReports() {
         setError(null);
 
         // Fetch all vehicles from the existing API
-        const response = await getRequest('/api/vehicles?limit=1000'); // Get all vehicles
+        const response = await getRequest('/api/vehicles?limit=-1'); // Get all vehicles
 
         if (response.success && response.data) {
           const result = response.data;
@@ -80,18 +82,36 @@ export default function VehicleInventoryReports() {
           // Get unique vehicle statuses
           const vehicleStatuses: { id: string; name: string; color: string | null }[] = [];
           const statusMap: { [key: string]: { id: string; name: string; color: string | null } } = {};
-          const statusCounts: { [key: string]: number } = {};
+          const statusCounts: { [key: string]: number } = {}; // For summary cards only
+          const allStatusCountsTemp: { [key: string]: number } = {}; // Temporary object for counting
+          const statusForPieTemp: { [key: string]: { status: string; count: number; color: string } } = {}; // For pie chart
 
-          // Process each vehicle
           vehicles.forEach((vehicle: any) => {
-            // Count by status (only predefined summary labels)
+            // Count by status (only predefined summary labels for summary cards)
             const statusName = vehicle.status?.name || 'Unknown';
 
-            // Only count if it matches one of our predefined summary labels
+            // Collect status for pie chart with color
+            if (vehicle.status && !statusForPieTemp[statusName]) {
+              statusForPieTemp[statusName] = {
+                status: statusName,
+                count: 0,
+                color: vehicle.status.color || '#6b7280'
+              };
+            }
+
+            // Increment count for this status
+            if (statusForPieTemp[statusName]) {
+              statusForPieTemp[statusName].count++;
+            }
+
+            // Count for summary cards (only predefined labels)
             const predefinedLabels = ['Available', 'Reserved', 'Out for Service', 'Sold'];
             if (predefinedLabels.includes(statusName)) {
               statusCounts[statusName] = (statusCounts[statusName] || 0) + 1;
             }
+
+            // Count for pie chart (ALL statuses)
+            allStatusCountsTemp[statusName] = (allStatusCountsTemp[statusName] || 0) + 1;
 
             // Count by make (company)
             const makeName = vehicle.make?.name || 'Unknown';
@@ -99,6 +119,7 @@ export default function VehicleInventoryReports() {
 
             // Collect unique statuses (for pie chart - all statuses)
             if (vehicle.status && !statusMap[vehicle.status.id]) {
+              console.log('Processing vehicle status:', vehicle.status);
               statusMap[vehicle.status.id] = {
                 id: vehicle.status.id,
                 name: vehicle.status.name,
@@ -125,12 +146,37 @@ export default function VehicleInventoryReports() {
             vehicleStatuses.push(status);
           });
 
-          console.log('Processed data:', { inventoryStats, vehicleTypeStats, vehicleStatuses });
+          console.log('StatusMap:', statusMap);
+          console.log('VehicleStatuses:', vehicleStatuses);
+          console.log('AllStatusCountsTemp:', allStatusCountsTemp);
+
+          // Convert allStatusCountsTemp to array format with colors
+          const allStatusCountsArray = Object.entries(allStatusCountsTemp).map(([statusName, count]) => {
+            // Find the status by looking through the statusMap values
+            const status = vehicleStatuses.find(s => s.name === statusName);
+            console.log(`Status: ${statusName}, Found status:`, status, 'Color:', status?.color);
+
+            // Use only the color from the backend, fallback to default gray if null/undefined
+            const color = status?.color || '#6b7280';
+
+            return {
+              status: statusName,
+              count: count,
+              color: color
+            };
+          });
+
+          // Convert statusForPieTemp to array
+          const statusForPieArray = Object.values(statusForPieTemp);
+
+          console.log('Processed data:', { inventoryStats, vehicleTypeStats, vehicleStatuses, allStatusCountsArray, statusForPieArray });
 
           // Update state
           setVehicleData(inventoryStats as VehicleData);
           setVehicleTypeData(vehicleTypeStats);
           setVehicleStatuses(vehicleStatuses);
+          setAllStatusCounts(allStatusCountsArray);
+          setStatusForPie(statusForPieArray);
         }
       } catch (err: any) {
         console.error('Error fetching inventory data:', err);
@@ -160,16 +206,18 @@ export default function VehicleInventoryReports() {
   }));
 
   // Prepare data for Pie Chart with dynamic statuses
-  const pieChartData = vehicleStatuses.map(status => ({
-    name: status.name,
-    value: vehicleData[status.name] || 0,
-    fill: status.color || '#6b7280' // Use status color or default gray
+  const pieChartData = statusForPie.map(statusData => ({
+    name: statusData.status,
+    value: statusData.count,
+    fill: statusData.color
   })).filter(item => item.value > 0); // Only show segments with values
 
   // Debug logging
   console.log('Pie chart data:', pieChartData);
   console.log('Vehicle statuses:', vehicleStatuses);
   console.log('Vehicle data:', vehicleData);
+  console.log('All status counts:', allStatusCounts);
+  console.log('Status for pie:', statusForPie);
 
   // Custom label function for pie chart (from Recharts example)
   const renderCustomizedLabel = ({

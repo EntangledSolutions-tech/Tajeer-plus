@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import CustomButton from '../../reusableComponents/CustomButton';
@@ -8,15 +8,23 @@ import CustomInput from '../../reusableComponents/CustomInput';
 import CustomSelect from '../../reusableComponents/CustomSelect';
 import SearchableSelect from '../../reusableComponents/SearchableSelect';
 import { RadioButtonGroup } from '../../reusableComponents/RadioButtonGroup';
+import { Vehicle, Customer } from './types';
+import { useHttpService } from '../../../lib/http-service';
 
-// Interfaces
-interface Vehicle {
-  id: string;
-  plate_number: string;
-  make: string;
-  model: string;
-  year: number;
-  is_active: boolean;
+// Vehicle details state interface
+interface VehicleDetailsState {
+  paginatedVehicles: Vehicle[];
+  vehiclesPage: number;
+  vehiclesHasMore: boolean;
+  vehiclesLoading: boolean;
+}
+
+// Customer details state interface
+interface CustomerDetailsState {
+  paginatedCustomers: Customer[];
+  customersPage: number;
+  customersHasMore: boolean;
+  customersLoading: boolean;
 }
 
 interface ReturnVehicleFormValues {
@@ -40,6 +48,7 @@ interface ReturnVehicleModalProps {
   onClose: () => void;
   onSubmit: (values: ReturnVehicleFormValues) => Promise<void>;
   vehicles: Vehicle[];
+  customers: Customer[];
   loading: boolean;
 }
 
@@ -73,13 +82,139 @@ const ReturnVehicleSchema = Yup.object().shape({
     .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount')
 });
 
+// Vehicle details state interface
+interface VehicleDetailsState {
+  paginatedVehicles: Vehicle[];
+  vehiclesPage: number;
+  vehiclesHasMore: boolean;
+  vehiclesLoading: boolean;
+}
+
 export default function ReturnVehicleModal({
   isOpen,
   onClose,
   onSubmit,
   vehicles,
+  customers,
   loading
 }: ReturnVehicleModalProps) {
+  const { getRequest } = useHttpService();
+  const [vehicleDetails, setVehicleDetails] = useState<VehicleDetailsState>({
+    paginatedVehicles: [],
+    vehiclesPage: 1,
+    vehiclesHasMore: true,
+    vehiclesLoading: false,
+  });
+
+  const [customerDetails, setCustomerDetails] = useState<CustomerDetailsState>({
+    paginatedCustomers: [],
+    customersPage: 1,
+    customersHasMore: true,
+    customersLoading: false,
+  });
+
+  // Fetch vehicles with pagination
+  const fetchVehicles = useCallback(async (page: number = 1, search: string = '') => {
+    try {
+      setVehicleDetails(prev => ({ ...prev, vehiclesLoading: true }));
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '3',
+        search
+      });
+
+      const response = await getRequest(`/api/vehicles?${params}`);
+
+      if (response.success && response.data?.vehicles) {
+        if (page === 1) {
+          setVehicleDetails(prev => ({
+            ...prev,
+            paginatedVehicles: response.data.vehicles || [],
+            vehiclesPage: page,
+            vehiclesHasMore: response.data.pagination?.hasNextPage || false,
+            vehiclesLoading: false
+          }));
+        } else {
+          setVehicleDetails(prev => ({
+            ...prev,
+            paginatedVehicles: [...prev.paginatedVehicles, ...(response.data.vehicles || [])],
+            vehiclesPage: page,
+            vehiclesHasMore: response.data.pagination?.hasNextPage || false,
+            vehiclesLoading: false
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching vehicles:', error);
+      setVehicleDetails(prev => ({ ...prev, vehiclesLoading: false }));
+    }
+  }, [getRequest]);
+
+  // Load more vehicles
+  const handleLoadMoreVehicles = useCallback(async () => {
+    await fetchVehicles(vehicleDetails.vehiclesPage + 1);
+  }, [fetchVehicles, vehicleDetails.vehiclesPage]);
+
+  // Search vehicles
+  const handleSearchVehicles = useCallback(async (searchTerm: string) => {
+    await fetchVehicles(1, searchTerm);
+  }, [fetchVehicles]);
+
+  // Fetch customers with pagination
+  const fetchCustomers = useCallback(async (page: number = 1, search: string = '') => {
+    try {
+      setCustomerDetails(prev => ({ ...prev, customersLoading: true }));
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '3',
+        search,
+        status: 'active'
+      });
+
+      const response = await getRequest(`/api/customers?${params}`);
+
+      if (response.success && response.data?.customers) {
+        if (page === 1) {
+          setCustomerDetails(prev => ({
+            ...prev,
+            paginatedCustomers: response.data.customers || [],
+            customersPage: page,
+            customersHasMore: response.data.pagination?.hasNextPage || false,
+            customersLoading: false
+          }));
+        } else {
+          setCustomerDetails(prev => ({
+            ...prev,
+            paginatedCustomers: [...prev.paginatedCustomers, ...(response.data.customers || [])],
+            customersPage: page,
+            customersHasMore: response.data.pagination?.hasNextPage || false,
+            customersLoading: false
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+      setCustomerDetails(prev => ({ ...prev, customersLoading: false }));
+    }
+  }, [getRequest]);
+
+  // Load more customers
+  const handleLoadMoreCustomers = useCallback(async () => {
+    await fetchCustomers(customerDetails.customersPage + 1);
+  }, [fetchCustomers, customerDetails.customersPage]);
+
+  // Search customers
+  const handleSearchCustomers = useCallback(async (searchTerm: string) => {
+    await fetchCustomers(1, searchTerm);
+  }, [fetchCustomers]);
+
+  // Load initial data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchVehicles(1);
+      fetchCustomers(1);
+    }
+  }, [isOpen, fetchVehicles, fetchCustomers]);
   return (
     <CustomModal
       isOpen={isOpen}
@@ -114,19 +249,31 @@ export default function ReturnVehicleModal({
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Vehicle details</h3>
                   <div>
-                    <label className="block text-sm font-medium text-primary mb-2">Vehicle</label>
                     <SearchableSelect
                       name="vehicle"
                       label="Vehicle"
                       required
-                      options={vehicles.filter(vehicle => vehicle.is_active).map(vehicle => ({
+                      options={vehicleDetails.paginatedVehicles.map(vehicle => ({
                         key: vehicle.id,
                         id: vehicle.id,
                         value: vehicle.plate_number,
-                        subValue: `${vehicle.make} ${vehicle.model} ${vehicle.year}`
+                        subValue: `${typeof vehicle.make === 'object' ? vehicle.make?.name : vehicle.make || 'N/A'} ${typeof vehicle.model === 'object' ? vehicle.model?.name : vehicle.model || 'N/A'} ${vehicle.make_year || vehicle.year || 'N/A'}`,
+                        badge: {
+                          text: vehicle.status?.name || 'Unknown',
+                          color: vehicle.status?.color || '#6B7280'
+                        }
                       }))}
                       placeholder="Select vehicle"
                       className="w-full"
+                      enablePagination={true}
+                      pageSize={3}
+                      loadMoreText="Load More Vehicles"
+                      onLoadMore={handleLoadMoreVehicles}
+                      hasMore={vehicleDetails.vehiclesHasMore}
+                      loading={vehicleDetails.vehiclesLoading}
+                      enableBackendSearch={true}
+                      onSearch={handleSearchVehicles}
+                      searchDebounceMs={300}
                     />
                   </div>
                 </div>
@@ -180,15 +327,30 @@ export default function ReturnVehicleModal({
                         className="mt-2"
                       />
                     </div>
-                    <CustomInput
-                      name="customerName"
-                      label="Customer Name"
-                      type="text"
-                      value={values.customerName}
-                      onChange={(value: string) => setFieldValue('customerName', value)}
-                      error={errors.customerName && touched.customerName ? errors.customerName : undefined}
-                      className="w-full"
-                    />
+                    <div>
+                      <SearchableSelect
+                        name="customerName"
+                        label="Customer Name"
+                        required
+                        options={customerDetails.paginatedCustomers.map(customer => ({
+                          key: customer.id,
+                          id: customer.id,
+                          value: customer.name,
+                          subValue: `${customer.mobile} - ${customer.id_number}`
+                        }))}
+                        placeholder="Select Customer"
+                        className="w-full"
+                        enablePagination={true}
+                        pageSize={3}
+                        loadMoreText="Load More Customers"
+                        onLoadMore={handleLoadMoreCustomers}
+                        hasMore={customerDetails.customersHasMore}
+                        loading={customerDetails.customersLoading}
+                        enableBackendSearch={true}
+                        onSearch={handleSearchCustomers}
+                        searchDebounceMs={300}
+                      />
+                    </div>
                   </div>
                 </div>
 

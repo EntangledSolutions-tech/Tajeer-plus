@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import CustomButton from '../../reusableComponents/CustomButton';
@@ -8,16 +8,8 @@ import CustomInput from '../../reusableComponents/CustomInput';
 import CustomSelect from '../../reusableComponents/CustomSelect';
 import CustomTextarea from '../../reusableComponents/CustomTextarea';
 import SearchableSelect from '../../reusableComponents/SearchableSelect';
-
-// Interfaces
-interface Vehicle {
-  id: string;
-  plate_number: string;
-  make: string;
-  model: string;
-  year: number;
-  is_active: boolean;
-}
+import { Vehicle } from './types';
+import { useHttpService } from '../../../lib/http-service';
 
 interface PenaltyFormValues {
   vehicle: string;
@@ -55,8 +47,10 @@ const PenaltySchema = Yup.object().shape({
     .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
   totalDiscount: Yup.string()
     .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  vat: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+  vat: Yup.number()
+    .min(0, 'VAT cannot be less than 0%')
+    .max(100, 'VAT cannot be more than 100%')
+    .required('VAT is required'),
   netInvoice: Yup.string()
     .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
   totalPaid: Yup.string()
@@ -65,6 +59,14 @@ const PenaltySchema = Yup.object().shape({
     .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount')
 });
 
+// Vehicle details state interface
+interface VehicleDetailsState {
+  paginatedVehicles: Vehicle[];
+  vehiclesPage: number;
+  vehiclesHasMore: boolean;
+  vehiclesLoading: boolean;
+}
+
 export default function PenaltyModal({
   isOpen,
   onClose,
@@ -72,6 +74,67 @@ export default function PenaltyModal({
   vehicles,
   loading
 }: PenaltyModalProps) {
+  const { getRequest } = useHttpService();
+  const [vehicleDetails, setVehicleDetails] = useState<VehicleDetailsState>({
+    paginatedVehicles: [],
+    vehiclesPage: 1,
+    vehiclesHasMore: true,
+    vehiclesLoading: false,
+  });
+
+  // Fetch vehicles with pagination
+  const fetchVehicles = useCallback(async (page: number = 1, search: string = '') => {
+    try {
+      setVehicleDetails(prev => ({ ...prev, vehiclesLoading: true }));
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '3',
+        search
+      });
+
+      const response = await getRequest(`/api/vehicles?${params}`);
+
+      if (response.success && response.data?.vehicles) {
+        if (page === 1) {
+          setVehicleDetails(prev => ({
+            ...prev,
+            paginatedVehicles: response.data.vehicles || [],
+            vehiclesPage: page,
+            vehiclesHasMore: response.data.pagination?.hasNextPage || false,
+            vehiclesLoading: false
+          }));
+        } else {
+          setVehicleDetails(prev => ({
+            ...prev,
+            paginatedVehicles: [...prev.paginatedVehicles, ...(response.data.vehicles || [])],
+            vehiclesPage: page,
+            vehiclesHasMore: response.data.pagination?.hasNextPage || false,
+            vehiclesLoading: false
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching vehicles:', error);
+      setVehicleDetails(prev => ({ ...prev, vehiclesLoading: false }));
+    }
+  }, [getRequest]);
+
+  // Load more vehicles
+  const handleLoadMoreVehicles = useCallback(async () => {
+    await fetchVehicles(vehicleDetails.vehiclesPage + 1);
+  }, [fetchVehicles, vehicleDetails.vehiclesPage]);
+
+  // Search vehicles
+  const handleSearchVehicles = useCallback(async (searchTerm: string) => {
+    await fetchVehicles(1, searchTerm);
+  }, [fetchVehicles]);
+
+  // Load initial data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchVehicles(1);
+    }
+  }, [isOpen, fetchVehicles]);
   return (
     <CustomModal
       isOpen={isOpen}
@@ -85,12 +148,12 @@ export default function PenaltyModal({
           reason: '',
           date: '',
           notes: '',
-          totalAmount: 'SAR 1.00',
-          totalDiscount: 'SAR 0.00',
-          vat: 'SAR 15%',
-          netInvoice: 'SAR 1.15',
-          totalPaid: 'SAR 0.00',
-          remaining: 'SAR 0.00'
+          totalAmount: '0',
+          totalDiscount: '0',
+          vat: '0',
+          netInvoice: '0',
+          totalPaid: '0',
+          remaining: '0'
         }}
         validationSchema={PenaltySchema}
         onSubmit={onSubmit}
@@ -107,14 +170,27 @@ export default function PenaltyModal({
                       name="vehicle"
                       label="Vehicle"
                       required
-                      options={vehicles.filter(vehicle => vehicle.is_active).map(vehicle => ({
+                      options={vehicleDetails.paginatedVehicles.map(vehicle => ({
                         key: vehicle.id,
                         id: vehicle.id,
                         value: vehicle.plate_number,
-                        subValue: `${vehicle.make} ${vehicle.model} ${vehicle.year}`
+                        subValue: `${typeof vehicle.make === 'object' ? vehicle.make?.name : vehicle.make || 'N/A'} ${typeof vehicle.model === 'object' ? vehicle.model?.name : vehicle.model || 'N/A'} ${vehicle.make_year || vehicle.year || 'N/A'}`,
+                        badge: {
+                          text: vehicle.status?.name || 'Unknown',
+                          color: vehicle.status?.color || '#6B7280'
+                        }
                       }))}
                       placeholder="Select vehicle"
                       className="w-full"
+                      enablePagination={true}
+                      pageSize={3}
+                      loadMoreText="Load More Vehicles"
+                      onLoadMore={handleLoadMoreVehicles}
+                      hasMore={vehicleDetails.vehiclesHasMore}
+                      loading={vehicleDetails.vehiclesLoading}
+                      enableBackendSearch={true}
+                      onSearch={handleSearchVehicles}
+                      searchDebounceMs={300}
                     />
                   </div>
                 </div>
@@ -170,56 +246,64 @@ export default function PenaltyModal({
                     <CustomInput
                       name="totalAmount"
                       label="Total Amount"
-                      type="text"
+                      type="number"
                       value={values.totalAmount}
                       onChange={(value: string) => setFieldValue('totalAmount', value)}
                       error={errors.totalAmount && touched.totalAmount ? errors.totalAmount : undefined}
                       className="w-full"
+                      isCurrency={true}
                     />
                     <CustomInput
                       name="totalDiscount"
                       label="Total Discount"
-                      type="text"
+                      type="number"
                       value={values.totalDiscount}
                       onChange={(value: string) => setFieldValue('totalDiscount', value)}
                       error={errors.totalDiscount && touched.totalDiscount ? errors.totalDiscount : undefined}
                       className="w-full"
+                      isCurrency={true}
                     />
                     <CustomInput
                       name="vat"
-                      label="VAT"
-                      type="text"
+                      label="VAT(%)"
+                      type="number"
                       value={values.vat}
                       onChange={(value: string) => setFieldValue('vat', value)}
                       error={errors.vat && touched.vat ? errors.vat : undefined}
                       className="w-full"
+                      suffix="%"
+                      min={0}
+                      max={100}
                     />
                     <CustomInput
                       name="netInvoice"
                       label="Net Invoice"
-                      type="text"
+                      type="number"
                       value={values.netInvoice}
                       onChange={(value: string) => setFieldValue('netInvoice', value)}
                       error={errors.netInvoice && touched.netInvoice ? errors.netInvoice : undefined}
                       className="w-full"
+                      isCurrency={true}
                     />
                     <CustomInput
                       name="totalPaid"
                       label="Total Paid"
-                      type="text"
+                      type="number"
                       value={values.totalPaid}
                       onChange={(value: string) => setFieldValue('totalPaid', value)}
                       error={errors.totalPaid && touched.totalPaid ? errors.totalPaid : undefined}
                       className="w-full"
+                      isCurrency={true}
                     />
                     <CustomInput
                       name="remaining"
                       label="Remaining"
-                      type="text"
+                      type="number"
                       value={values.remaining}
                       onChange={(value: string) => setFieldValue('remaining', value)}
                       error={errors.remaining && touched.remaining ? errors.remaining : undefined}
                       className="w-full"
+                      isCurrency={true}
                     />
                   </div>
                 </div>

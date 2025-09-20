@@ -18,6 +18,17 @@ interface SearchableSelectProps {
   className?: string;
   searchPlaceholder?: string;
   multi?: boolean;
+  // Pagination props
+  enablePagination?: boolean;
+  pageSize?: number;
+  loadMoreText?: string;
+  onLoadMore?: () => Promise<void>;
+  hasMore?: boolean;
+  loading?: boolean;
+  // Backend search props
+  enableBackendSearch?: boolean;
+  onSearch?: (searchTerm: string) => Promise<void>;
+  searchDebounceMs?: number;
 }
 
 interface CustomOption {
@@ -41,6 +52,17 @@ export const SimpleSearchableSelect = ({
   onChange,
   searchPlaceholder = 'Search...',
   multi = false,
+  // Pagination props
+  enablePagination = false,
+  pageSize = 3,
+  loadMoreText = 'Load More',
+  onLoadMore,
+  hasMore = false,
+  loading = false,
+  // Backend search props
+  enableBackendSearch = false,
+  onSearch,
+  searchDebounceMs = 300,
   ...props
 }: {
   label?: string;
@@ -55,12 +77,26 @@ export const SimpleSearchableSelect = ({
   onChange?: (value: string | string[]) => void;
   searchPlaceholder?: string;
   multi?: boolean;
+  // Pagination props
+  enablePagination?: boolean;
+  pageSize?: number;
+  loadMoreText?: string;
+  onLoadMore?: () => Promise<void>;
+  hasMore?: boolean;
+  loading?: boolean;
+  // Backend search props
+  enableBackendSearch?: boolean;
+  onSearch?: (searchTerm: string) => Promise<void>;
+  searchDebounceMs?: number;
   [key: string]: any;
 }) => {
   const [filteredOptions, setFilteredOptions] = useState<CustomOption[]>(options);
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<CustomOption[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Convert value to array for multi-select
   const valueArray = React.useMemo(() =>
@@ -83,27 +119,65 @@ export const SimpleSearchableSelect = ({
     }
   }, [valueArray, options]);
 
+  // Load more options
+  const handleLoadMore = useCallback(async () => {
+    if (!onLoadMore || isLoadingMore) return;
+
+    console.log('SearchableSelect: Load more clicked');
+    setIsLoadingMore(true);
+    try {
+      await onLoadMore();
+      console.log('SearchableSelect: Load more completed');
+    } catch (error) {
+      console.error('Error loading more options:', error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [onLoadMore, isLoadingMore]);
+
   // Filter options based on search term
   const filterOptions = useCallback((search: string) => {
-    if (!search.trim()) {
-      setFilteredOptions(options);
-      return;
+    if (enableBackendSearch && onSearch) {
+      // Backend search - clear timeout if exists
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+
+      // Set loading state
+      setIsSearching(true);
+
+      // Debounce the search
+      searchTimeoutRef.current = setTimeout(async () => {
+        try {
+          await onSearch(search);
+        } catch (error) {
+          console.error('Error searching:', error);
+        } finally {
+          setIsSearching(false);
+        }
+      }, searchDebounceMs);
+    } else {
+      // Client-side search
+      if (!search.trim()) {
+        setFilteredOptions(options);
+        return;
+      }
+
+      const filtered = options.filter(option => {
+        const keyStr = typeof option.key === 'string' ? option.key : '';
+        const valueStr = typeof option.value === 'string' ? option.value : '';
+        const subValueStr = typeof option.subValue === 'string' ? option.subValue : '';
+
+        return (
+          keyStr.toLowerCase().includes(search.toLowerCase()) ||
+          valueStr.toLowerCase().includes(search.toLowerCase()) ||
+          subValueStr.toLowerCase().includes(search.toLowerCase())
+        );
+      });
+
+      setFilteredOptions(filtered);
     }
-
-    const filtered = options.filter(option => {
-      const keyStr = typeof option.key === 'string' ? option.key : '';
-      const valueStr = typeof option.value === 'string' ? option.value : '';
-      const subValueStr = typeof option.subValue === 'string' ? option.subValue : '';
-
-      return (
-        keyStr.toLowerCase().includes(search.toLowerCase()) ||
-        valueStr.toLowerCase().includes(search.toLowerCase()) ||
-        subValueStr.toLowerCase().includes(search.toLowerCase())
-      );
-    });
-
-    setFilteredOptions(filtered);
-  }, [options]);
+  }, [options, enableBackendSearch, onSearch, searchDebounceMs]);
 
   // Memoize the handleSearchChange function
   const handleSearchChange = useCallback((searchValue: string) => {
@@ -268,35 +342,65 @@ export const SimpleSearchableSelect = ({
 
           {/* Options List */}
           <div className="max-h-48 overflow-y-auto">
-            {filteredOptions.length === 0 ? (
+            {(isSearching || loading) ? (
+              <div className="p-3 text-center text-gray-500">
+                <div className="flex items-center justify-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                  <span>Loading...</span>
+                </div>
+              </div>
+            ) : filteredOptions.length === 0 ? (
               <div className="p-3 text-center text-gray-500">
                 {searchTerm ? 'No options found' : 'No options available'}
               </div>
             ) : (
-              filteredOptions.map((option) => {
-                const isSelected = selectedOptions.some(opt => opt.id === option.id);
-                return (
-                  <SelectItem
-                    key={option.id}
-                    value={option.id}
-                    className={`text-primary hover:bg-accent hover:text-primary focus:bg-accent focus:text-primary focus:outline-none cursor-pointer data-[highlighted]:bg-accent data-[highlighted]:text-primary ${
-                      isSelected ? 'bg-accent' : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 py-1">
-                      <div className="flex-1">
-                        <div className="font-medium">{option.value}</div>
-                        {option.subValue && (
-                          <div className="text-sm text-gray-500">{option.subValue}</div>
+              <>
+                {filteredOptions.map((option) => {
+                  const isSelected = selectedOptions.some(opt => opt.id === option.id);
+                  return (
+                    <SelectItem
+                      key={option.id}
+                      value={option.id}
+                      className={`text-primary hover:bg-accent hover:text-primary focus:bg-accent focus:text-primary focus:outline-none cursor-pointer data-[highlighted]:bg-accent data-[highlighted]:text-primary ${
+                        isSelected ? 'bg-accent' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 py-1">
+                        <div className="flex-1">
+                          <div className="font-medium">{option.value}</div>
+                          {option.subValue && (
+                            <div className="text-sm text-gray-500">{option.subValue}</div>
+                          )}
+                        </div>
+                        {multi && isSelected && (
+                          <span className="text-primary ml-auto">✓</span>
                         )}
                       </div>
-                      {multi && isSelected && (
-                        <span className="text-primary ml-auto">✓</span>
+                    </SelectItem>
+                  );
+                })}
+
+                {/* Load More Button */}
+                {enablePagination && hasMore && !isSearching && (
+                  <div className="p-2 border-t border-gray-200">
+                    <button
+                      type="button"
+                      onClick={handleLoadMore}
+                      disabled={isLoadingMore}
+                      className="w-full py-2 px-3 text-sm text-primary hover:bg-accent hover:text-primary rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoadingMore ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary"></div>
+                          <span>Loading...</span>
+                        </div>
+                      ) : (
+                        loadMoreText
                       )}
-                    </div>
-                  </SelectItem>
-                );
-              })
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </SelectContent>
@@ -321,6 +425,15 @@ const SearchableSelect = ({
   readOnly = false,
   searchPlaceholder,
   multi = false,
+  enablePagination = false,
+  pageSize = 3,
+  loadMoreText = 'Load More',
+  onLoadMore,
+  hasMore = false,
+  loading = false,
+  enableBackendSearch = false,
+  onSearch,
+  searchDebounceMs = 300,
   ...otherProps
 }: SearchableSelectProps) => {
   const { setFieldValue } = useFormikContext();
@@ -352,6 +465,15 @@ const SearchableSelect = ({
       onChange={handleChange}
       searchPlaceholder={searchPlaceholder}
       multi={multi}
+      enablePagination={enablePagination}
+      pageSize={pageSize}
+      loadMoreText={loadMoreText}
+      onLoadMore={onLoadMore}
+      hasMore={hasMore}
+      loading={loading}
+      enableBackendSearch={enableBackendSearch}
+      onSearch={onSearch}
+      searchDebounceMs={searchDebounceMs}
     />
   );
 };
