@@ -73,10 +73,10 @@ export function HomeMenuNavigation() {
         {/* Branch Dropdown */}
         <BranchSelector variant="transparent" />
 
-        {/* New Button */}
+        {/* New Button
         <CustomButton isSecondary variant='primary'>
           <Plus className="w-4 h-4" /> New
-        </CustomButton>
+        </CustomButton> */}
 
         {/* Notification Icon */}
         <CustomButton variant="ghost" size="icon" className=" hover:bg-transparent">

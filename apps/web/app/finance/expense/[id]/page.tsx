@@ -2,11 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { Edit, MoreHorizontal, ChevronDown, ExternalLink } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@kit/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@kit/ui/dialog';
+import { toast } from '@kit/ui/sonner';
 import CustomButton from '../../../reusableComponents/CustomButton';
 import CollapsibleSection from '../../../reusableComponents/CollapsibleSection';
+import { ExpenseForm } from '../../rental-finances/ExpenseForm';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface Expense {
   id: string;
@@ -40,9 +44,9 @@ interface Expense {
     name: string;
     id_type: string;
     id_number: string;
-    classification: string;
+    classification_id: string;
     mobile_number: string;
-    nationality: string;
+    nationality_id: string;
     date_of_birth: string;
     address: string;
     membership_tier: string;
@@ -58,42 +62,135 @@ interface Expense {
 
 export default function ExpenseDetailPage() {
   const params = useParams();
+  const router = useRouter();
+  const { getRequest } = useHttpService();
   const expenseId = params.id as string;
 
   const [expense, setExpense] = useState<Expense | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // Options for edit form
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [employees, setEmployees] = useState<any[]>([]);
+
+  const fetchExpense = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/finance/expense/${expenseId}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch expense details');
+      }
+
+      const data = await response.json();
+      setExpense(data);
+    } catch (err) {
+      console.error('Error fetching expense:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch expense');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchOptions = async () => {
+    try {
+      // Fetch vehicles
+      const vehiclesResponse = await getRequest('/api/vehicles?limit=-1');
+      if (vehiclesResponse.success) {
+        setVehicles(vehiclesResponse.data.vehicles || []);
+      }
+
+      // Fetch branches
+      const branchesResponse = await getRequest('/api/branches?limit=-1');
+      if (branchesResponse.success) {
+        setBranches(branchesResponse.data.branches || []);
+      }
+
+      // Fetch contracts
+      const contractsResponse = await getRequest('/api/contracts?limit=-1');
+      if (contractsResponse.success) {
+        setContracts(contractsResponse.data.contracts || []);
+      }
+
+      // Fetch employees (you might need to create this API endpoint)
+      // For now, we'll use an empty array
+      setEmployees([]);
+    } catch (error) {
+      console.error('Error fetching options:', error);
+    }
+  };
 
   useEffect(() => {
-    const fetchExpense = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/finance/expense/${expenseId}`);
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch expense details');
-        }
-
-        const data = await response.json();
-        setExpense(data);
-      } catch (err) {
-        console.error('Error fetching expense:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch expense');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (expenseId) {
       fetchExpense();
+      fetchOptions();
     }
   }, [expenseId]);
+
+  const handleDelete = () => {
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleEdit = () => {
+    console.log('Edit button clicked, opening modal');
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSuccess = () => {
+    setIsEditModalOpen(false);
+    // Refresh the expense data
+    fetchExpense();
+    toast.success('Expense updated successfully!', {
+      description: 'The expense transaction has been updated.',
+      duration: 4000,
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (!expense) return;
+
+    try {
+      setIsDeleting(true);
+      const response = await fetch(`/api/finance/expense/${expenseId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete expense');
+      }
+
+      // Show success toast
+      toast.success('Expense deleted successfully!', {
+        description: `Transaction ${expense.transaction_number} has been deleted.`,
+        duration: 4000,
+      });
+
+      // Close modal and redirect to the finance list page
+      setIsDeleteModalOpen(false);
+      router.push('/finance/rental-finances');
+    } catch (err: any) {
+      console.error('Error deleting expense:', err);
+      toast.error('Failed to delete expense', {
+        description: err?.message || 'An unexpected error occurred. Please try again.',
+        duration: 5000,
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   if (loading) {
     return (
       <div className="flex flex-col min-h-screen bg-[#fff]">
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0065F2]"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </div>
     );
@@ -124,7 +221,7 @@ export default function ExpenseDetailPage() {
       {/* Header */}
       <div className="bg-transparent">
         <div className="px-6 pb-2">
-          <Link href="/finance/rental-finances" className="text-white font-medium text-sm hover:text-blue-100 transition-colors">
+          <Link href="/finance/rental-finances" className="text-white font-medium text-sm hover:text-white/80 transition-colors">
             &lt; Back
           </Link>
         </div>
@@ -133,7 +230,7 @@ export default function ExpenseDetailPage() {
             <div className="flex items-center gap-4">
               <div>
                 <div className="text-3xl font-bold text-white">Expense</div>
-                <div className="text-lg text-blue-100 font-medium">
+                <div className="text-lg text-white/80 font-medium">
                   {expense.transaction_number}
                 </div>
               </div>
@@ -144,7 +241,11 @@ export default function ExpenseDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <CustomButton isSecondary className="bg-transparent text-white border-white hover:bg-white hover:text-primary hover:border-white">
+              <CustomButton
+                isSecondary
+                className="bg-transparent text-white border-white hover:bg-white hover:text-primary hover:border-white"
+                onClick={handleEdit}
+              >
                 <Edit className="w-4 h-4 mr-2" />
                 Edit
               </CustomButton>
@@ -157,8 +258,12 @@ export default function ExpenseDetailPage() {
                   </CustomButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50">
-                    Delete Expense
+                  <DropdownMenuItem
+                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete Expense'}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -169,46 +274,46 @@ export default function ExpenseDetailPage() {
 
       {/* Content */}
       <div className="flex-1 px-6 pb-6">
-        <div className="space-y-6">
+        <div className="space-y-6 mt-6">
           {/* Details Section */}
           <CollapsibleSection title="Details" defaultOpen={true}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Date</label>
-                  <p className="text-lg font-semibold text-gray-900">
+                  <div className="text-sm text-primary font-medium">Date</div>
+                  <div className="font-bold text-primary text-base">
                     {new Date(expense.transaction_date).toLocaleDateString('en-US', {
                       month: '2-digit',
                       day: '2-digit',
                       year: 'numeric'
                     })}
-                  </p>
+                  </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Employee</label>
-                  <p className="text-lg font-semibold text-gray-900">{expense.employee_name}</p>
+                  <div className="text-sm text-primary font-medium">Employee</div>
+                  <div className="font-bold text-primary text-base">{expense.employee_name}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-primary font-medium">Transaction Type</div>
+                  <div className="font-bold text-primary text-base">{expense.transaction_type.name}</div>
                 </div>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Transaction Type</label>
-                  <p className="text-lg font-semibold text-gray-900">{expense.transaction_type.name}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Amount</label>
-                  <p className="text-lg font-semibold text-red-600">
+                  <div className="text-sm text-primary font-medium">Amount</div>
+                  <div className="font-bold text-primary text-base">
                     SAR {expense.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
+                  </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Linked Invoice</label>
-                  <p className="text-lg font-semibold text-blue-600 hover:text-blue-800 cursor-pointer">
+                  <div className="text-sm text-primary font-medium">Linked Invoice</div>
+                  <div className="font-bold text-primary text-base hover:text-primary/80 cursor-pointer">
                     INV-123
-                  </p>
+                  </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Method</label>
-                  <p className="text-lg font-semibold text-gray-900">{expense.payment_method || 'Bank Transfer'}</p>
+                  <div className="text-sm text-primary font-medium">Method</div>
+                  <div className="font-bold text-primary text-base">{expense.payment_method || 'Bank Transfer'}</div>
                 </div>
               </div>
             </div>
@@ -220,54 +325,54 @@ export default function ExpenseDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Price</label>
-                    <p className="text-lg font-semibold text-gray-900">SAR 1,450</p>
+                    <div className="text-sm text-primary font-medium">Price</div>
+                    <div className="font-bold text-primary text-base">SAR 1,450</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Start Date</label>
-                    <p className="text-lg font-semibold text-gray-900">
+                    <div className="text-sm text-primary font-medium">Start Date</div>
+                    <div className="font-bold text-primary text-base">
                       {new Date(expense.contract.start_date).toLocaleDateString('en-US', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric'
                       })}
-                    </p>
+                    </div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">End Date</label>
-                    <p className="text-lg font-semibold text-gray-900">
+                    <div className="text-sm text-primary font-medium">End Date</div>
+                    <div className="font-bold text-primary text-base">
                       {new Date(expense.contract.end_date).toLocaleDateString('en-US', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric'
                       })}
-                    </p>
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Created on</label>
-                    <p className="text-lg font-semibold text-gray-900">
+                    <div className="text-sm text-primary font-medium">Created on</div>
+                    <div className="font-bold text-primary text-base">
                       {new Date(expense.contract.created_at).toLocaleDateString('en-US', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric'
                       })}
-                    </p>
+                    </div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Tajeer Contract</label>
-                    <p className="text-lg font-semibold text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-1">
+                    <div className="text-sm text-primary font-medium">Tajeer Contract</div>
+                    <div className="font-bold text-primary text-base hover:text-primary/80 cursor-pointer flex items-center gap-1">
                       {expense.contract.contract_number}
                       <ExternalLink className="w-4 h-4" />
-                    </p>
+                    </div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Add-ons</label>
-                    <p className="text-lg font-semibold text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-1">
+                    <div className="text-sm text-primary font-medium">Add-ons</div>
+                    <div className="font-bold text-primary text-base hover:text-primary/80 cursor-pointer flex items-center gap-1">
                       3 Add-ons
                       <ChevronDown className="w-4 h-4" />
-                    </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -280,31 +385,31 @@ export default function ExpenseDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Name</label>
-                    <p className="text-lg font-semibold text-gray-900">{expense.rental_expense.vendor_name}</p>
+                    <div className="text-sm text-primary font-medium">Name</div>
+                    <div className="font-bold text-primary text-base">{expense.rental_expense.vendor_name}</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Phone</label>
-                    <p className="text-lg font-semibold text-gray-900">+966 55 123 4567</p>
+                    <div className="text-sm text-primary font-medium">Phone</div>
+                    <div className="font-bold text-primary text-base">+966 55 123 4567</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Email</label>
-                    <p className="text-lg font-semibold text-gray-900">garageinnovations@email.com</p>
+                    <div className="text-sm text-primary font-medium">Email</div>
+                    <div className="font-bold text-primary text-base">garageinnovations@email.com</div>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Registration Number</label>
-                    <p className="text-lg font-semibold text-gray-900">29057285</p>
+                    <div className="text-sm text-primary font-medium">Registration Number</div>
+                    <div className="font-bold text-primary text-base">29057285</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Tax Number</label>
-                    <p className="text-lg font-semibold text-gray-900">29837575</p>
+                    <div className="text-sm text-primary font-medium">Tax Number</div>
+                    <div className="font-bold text-primary text-base">29837575</div>
                   </div>
                   {expense.rental_expense.receipt_number && (
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Receipt Number</label>
-                      <p className="text-lg font-semibold text-gray-900">{expense.rental_expense.receipt_number}</p>
+                      <div className="text-sm text-primary font-medium">Receipt Number</div>
+                      <div className="font-bold text-primary text-base">{expense.rental_expense.receipt_number}</div>
                     </div>
                   )}
                 </div>
@@ -318,52 +423,52 @@ export default function ExpenseDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Customer Name</label>
-                    <p className="text-lg font-semibold text-gray-900">{expense.customer.name}</p>
+                    <div className="text-sm text-primary font-medium">Customer Name</div>
+                    <div className="font-bold text-primary text-base">{expense.customer.name}</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Nationality</label>
-                    <p className="text-lg font-semibold text-gray-900">{expense.customer.nationality}</p>
+                    <div className="text-sm text-primary font-medium">Nationality</div>
+                    <div className="font-bold text-primary text-base">{expense.customer.nationality_id}</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">ID Type</label>
-                    <p className="text-lg font-semibold text-gray-900">{expense.customer.id_type}</p>
+                    <div className="text-sm text-primary font-medium">ID Type</div>
+                    <div className="font-bold text-primary text-base">{expense.customer.id_type}</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">ID Number</label>
-                    <p className="text-lg font-semibold text-gray-900">{expense.customer.id_number}</p>
+                    <div className="text-sm text-primary font-medium">ID Number</div>
+                    <div className="font-bold text-primary text-base">{expense.customer.id_number}</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Classification</label>
-                    <p className="text-lg font-semibold text-gray-900">{expense.customer.classification}</p>
+                    <div className="text-sm text-primary font-medium">Classification</div>
+                    <div className="font-bold text-primary text-base">{expense.customer.classification_id}</div>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Mobile Number</label>
-                    <p className="text-lg font-semibold text-gray-900">{expense.customer.mobile_number}</p>
+                    <div className="text-sm text-primary font-medium">Mobile Number</div>
+                    <div className="font-bold text-primary text-base">{expense.customer.mobile_number}</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Date of Birth</label>
-                    <p className="text-lg font-semibold text-gray-900">
+                    <div className="text-sm text-primary font-medium">Date of Birth</div>
+                    <div className="font-bold text-primary text-base">
                       {expense.customer.date_of_birth ? new Date(expense.customer.date_of_birth).toLocaleDateString('en-US', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric'
                       }) : 'N/A'}
-                    </p>
+                    </div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">License type</label>
-                    <p className="text-lg font-semibold text-gray-900">Heavy Transport</p>
+                    <div className="text-sm text-primary font-medium">License type</div>
+                    <div className="font-bold text-primary text-base">Heavy Transport</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Address</label>
-                    <p className="text-lg font-semibold text-gray-900">{expense.customer.address || 'Buraydah-Al Dhahi'}</p>
+                    <div className="text-sm text-primary font-medium">Address</div>
+                    <div className="font-bold text-primary text-base">{expense.customer.address || 'Buraydah-Al Dhahi'}</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Membership</label>
-                    <p className="text-lg font-semibold text-gray-900">{expense.customer.membership_tier || 'Gold'}</p>
+                    <div className="text-sm text-primary font-medium">Membership</div>
+                    <div className="font-bold text-primary text-base">{expense.customer.membership_tier || 'Gold'}</div>
                   </div>
                 </div>
               </div>
@@ -376,52 +481,52 @@ export default function ExpenseDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Serial Number</label>
-                    <p className="text-lg font-semibold text-gray-900">343525315</p>
+                    <div className="text-sm text-primary font-medium">Serial Number</div>
+                    <div className="font-bold text-primary text-base">343525315</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Plate</label>
-                    <p className="text-lg font-semibold text-gray-900">{expense.vehicle.plate_number}</p>
+                    <div className="text-sm text-primary font-medium">Plate</div>
+                    <div className="font-bold text-primary text-base">{expense.vehicle.plate_number}</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Plate registration type</label>
-                    <p className="text-lg font-semibold text-gray-900">Private</p>
+                    <div className="text-sm text-primary font-medium">Plate registration type</div>
+                    <div className="font-bold text-primary text-base">Private</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Year</label>
-                    <p className="text-lg font-semibold text-gray-900">{expense.vehicle.make_year}</p>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Model</label>
-                    <p className="text-lg font-semibold text-gray-900">{expense.vehicle.model.name}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Make</label>
-                    <p className="text-lg font-semibold text-gray-900">{expense.vehicle.make.name}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Color</label>
-                    <p className="text-lg font-semibold text-gray-900">Black</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Age Range</label>
-                    <p className="text-lg font-semibold text-gray-900">1-3 years</p>
+                    <div className="text-sm text-primary font-medium">Year</div>
+                    <div className="font-bold text-primary text-base">{expense.vehicle.make_year}</div>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Year of Manufacture</label>
-                    <p className="text-lg font-semibold text-gray-900">{expense.vehicle.make_year}</p>
+                    <div className="text-sm text-primary font-medium">Model</div>
+                    <div className="font-bold text-primary text-base">{expense.vehicle.model.name}</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Mileage (km)</label>
-                    <p className="text-lg font-semibold text-gray-900">28,914</p>
+                    <div className="text-sm text-primary font-medium">Make</div>
+                    <div className="font-bold text-primary text-base">{expense.vehicle.make.name}</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Oil Expiry (km)</label>
-                    <p className="text-lg font-semibold text-gray-900">5,901</p>
+                    <div className="text-sm text-primary font-medium">Color</div>
+                    <div className="font-bold text-primary text-base">Black</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-primary font-medium">Age Range</div>
+                    <div className="font-bold text-primary text-base">1-3 years</div>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-sm text-primary font-medium">Year of Manufacture</div>
+                    <div className="font-bold text-primary text-base">{expense.vehicle.make_year}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-primary font-medium">Mileage (km)</div>
+                    <div className="font-bold text-primary text-base">28,914</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-primary font-medium">Oil Expiry (km)</div>
+                    <div className="font-bold text-primary text-base">5,901</div>
                   </div>
                 </div>
               </div>
@@ -431,11 +536,71 @@ export default function ExpenseDetailPage() {
           {/* Description Section */}
           <CollapsibleSection title="Description" defaultOpen={true}>
             <div>
-              <p className="text-gray-700 leading-relaxed">{expense.description}</p>
+              <div className="text-primary leading-relaxed">{expense.description}</div>
             </div>
           </CollapsibleSection>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Delete Expense</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this expense transaction? This action cannot be undone.
+              {expense && (
+                <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                  <p className="font-medium">Transaction Details:</p>
+                  <p>Transaction Number: {expense.transaction_number}</p>
+                  <p>Amount: SAR {expense.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                  <p>Date: {expense.transaction_date}</p>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-6">
+            <CustomButton
+              isSecondary
+              onClick={() => setIsDeleteModalOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </CustomButton>
+            <CustomButton
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Expense'}
+            </CustomButton>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Modal */}
+      {expense && (
+        <ExpenseForm
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSubmit={handleEditSuccess}
+          vehicles={vehicles}
+          branches={branches}
+          contracts={contracts}
+          loading={false}
+          isEdit={true}
+          initialValues={{
+            amount: expense.amount,
+            date: expense.transaction_date,
+            transactionType: expense.transaction_type?.id || '',
+            vehicle: expense.vehicle?.id || '',
+            branch: expense.branch?.id || '',
+            employee: expense.employee?.id || '',
+            description: expense.description || '',
+          }}
+          transactionId={expense.id}
+        />
+      )}
     </div>
   );
 }

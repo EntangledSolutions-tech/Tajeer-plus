@@ -13,6 +13,7 @@ import CustomButton from '../../../reusableComponents/CustomButton';
 import CustomInput from '../../../reusableComponents/CustomInput';
 import CustomSwitch from '../../../reusableComponents/CustomSwitch';
 import CustomModal from '../../../reusableComponents/CustomModal';
+import { useHttpService } from '../../../../lib/http-service';
 
 type VehicleOwner = Database['public']['Tables']['vehicle_owners']['Row'];
 
@@ -22,6 +23,7 @@ interface OwnersProps {
 }
 
 export default function Owners({ loading, onDelete }: OwnersProps) {
+  const { getRequest, postRequest, putRequest } = useHttpService();
   const [owners, setOwners] = useState<VehicleOwner[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -68,14 +70,16 @@ export default function Owners({ loading, onDelete }: OwnersProps) {
         ...(debouncedSearch && { search: debouncedSearch })
       });
 
-      const response = await fetch(`/api/vehicle-configuration/owners?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch owners');
-      const data = await response.json();
+      const response = await getRequest(`/api/vehicle-configuration/owners?${params}`);
 
-      setOwners(data.owners || []);
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      setOwners(response.data.owners || []);
       setPagination(prev => ({
         ...prev,
-        total: data.pagination?.total || 0
+        total: response.data.pagination?.total || 0
       }));
     } catch (error) {
       console.error('Error fetching owners:', error);
@@ -87,28 +91,18 @@ export default function Owners({ loading, onDelete }: OwnersProps) {
 
   const handleSubmit = async (values: any, { setSubmitting, resetForm }: any) => {
     try {
-      if (editingOwner) {
-        const response = await fetch('/api/vehicle-configuration/owners', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...values, id: editingOwner.id })
-        });
+      let response;
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update owner');
+      if (editingOwner) {
+        response = await putRequest('/api/vehicle-configuration/owners', { ...values, id: editingOwner.id });
+        if (response.error) {
+          throw new Error(response.error);
         }
         setIsEditModalOpen(false);
       } else {
-        const response = await fetch('/api/vehicle-configuration/owners', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values)
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create owner');
+        response = await postRequest('/api/vehicle-configuration/owners', values);
+        if (response.error) {
+          throw new Error(response.error);
         }
         setIsAddModalOpen(false);
       }
@@ -143,13 +137,15 @@ export default function Owners({ loading, onDelete }: OwnersProps) {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/vehicle-configuration/owners');
-      if (!response.ok) throw new Error('Failed to export owners');
-      const data = await response.json();
+      const response = await getRequest('/api/vehicle-configuration/owners');
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
 
       const csvContent = [
         ['Code', 'Name', 'Status', 'Created At'],
-        ...(data.owners || []).map((owner: any) => [
+        ...(response.data.owners || []).map((owner: any) => [
           owner.code || '',
           owner.name || '',
           owner.is_active ? 'Active' : 'Inactive',

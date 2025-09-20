@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Filter, FileSpreadsheet, MoreHorizontal, ChevronDown } from 'lucide-react';
 import CustomButton from '../../reusableComponents/CustomButton';
 import CustomCard from '../../reusableComponents/CustomCard';
@@ -77,6 +78,8 @@ interface Transaction {
 
 
 export default function RentalFinancesLayout() {
+  const router = useRouter();
+
   // State management
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isIncomeModalOpen, setIsIncomeModalOpen] = useState(false);
@@ -324,8 +327,17 @@ export default function RentalFinancesLayout() {
       label: 'View Details',
       icon: <span>→</span>,
       variant: 'ghost',
-      onClick: (row) => {
-        console.log('View details for:', row.id);
+      onClick: (row, index) => {
+        console.log('View details for:', row.id, 'index:', index);
+        const detailPath = row.isIncome ? `/finance/income/${row.id}` : `/finance/expense/${row.id}`;
+        console.log('Navigating to:', detailPath);
+        try {
+          router.push(detailPath);
+        } catch (error) {
+          console.error('Navigation error:', error);
+          // Fallback to window.location
+          window.location.href = detailPath;
+        }
       },
       className: 'text-primary',
       iconPosition: 'right'

@@ -10,6 +10,7 @@ import CustomTextarea from '../../reusableComponents/CustomTextarea';
 import CustomSelect from '../../reusableComponents/CustomSelect';
 import { SimpleSearchableSelect } from '../../reusableComponents/SearchableSelect';
 import { toast } from '@kit/ui/sonner';
+import { useHttpService } from '../../../lib/http-service';
 
 interface VehicleDetails {
   id: string;
@@ -81,6 +82,7 @@ export default function TotalLossModal({ isOpen, onClose, vehicleId, onSuccess }
     submitLoading: false
   });
   const [error, setError] = useState<string | null>(null);
+  const { getRequest, postRequest, putRequest } = useHttpService();
 
   // Initial form values
   const initialValues: TotalLossFormValues = {
@@ -97,13 +99,17 @@ export default function TotalLossModal({ isOpen, onClose, vehicleId, onSuccess }
       setLoading(prev => ({ ...prev, vehicleLoading: true }));
       setError(null);
 
-      const response = await fetch(`/api/vehicles/${vehicleId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch vehicle details');
-      }
+      const response = await getRequest(`/api/vehicles/${vehicleId}`);
 
-      const vehicleData = await response.json();
-      setCurrentVehicle(vehicleData);
+      if (response.success && response.data) {
+        setCurrentVehicle(response.data);
+      } else {
+        console.error('Error fetching vehicle:', response.error);
+        setError('Failed to load vehicle details');
+        if (response.error) {
+          alert(`Error: ${response.error}`);
+        }
+      }
     } catch (error) {
       console.error('Error fetching vehicle:', error);
       setError('Failed to load vehicle details');
@@ -117,20 +123,23 @@ export default function TotalLossModal({ isOpen, onClose, vehicleId, onSuccess }
     try {
       setLoading(prev => ({ ...prev, insuranceLoading: true }));
 
-      const response = await fetch('/api/insurance-options');
+      const response = await getRequest('/api/insurance-options');
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch insurance options');
+      if (response.success && response.data) {
+        // The API returns { success: true, insuranceOptions: [...] }
+        const optionsArray = response.data.insuranceOptions || [];
+        setInsuranceOptions(optionsArray);
+      } else {
+        console.error('Error fetching insurance options:', response.error);
+        setError('Failed to load insurance options');
+        setInsuranceOptions([]);
+        if (response.error) {
+          alert(`Error: ${response.error}`);
+        }
       }
-
-      const data = await response.json();
-      // The API returns { success: true, insuranceOptions: [...] }
-      const optionsArray = data.insuranceOptions || [];
-      setInsuranceOptions(optionsArray);
     } catch (error) {
       console.error('Error fetching insurance options:', error);
       setError('Failed to load insurance options');
-      // Set empty array as fallback
       setInsuranceOptions([]);
     } finally {
       setLoading(prev => ({ ...prev, insuranceLoading: false }));
@@ -149,44 +158,35 @@ export default function TotalLossModal({ isOpen, onClose, vehicleId, onSuccess }
   const findOrCreateDestroyedStatus = async (): Promise<string> => {
     try {
       // First, try to find existing destroyed status
-      const statusResponse = await fetch('/api/vehicle-configuration/statuses?limit=100');
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json();
-        if (statusData.success && Array.isArray(statusData.statuses)) {
-          // Look for any status containing "destroyed" (case insensitive)
-          const destroyedStatus = statusData.statuses.find((status: any) =>
-            status.name.toLowerCase().includes('destroyed')
-          );
+      const statusResponse = await getRequest('/api/vehicle-configuration/statuses?limit=100');
 
-          if (destroyedStatus) {
-            console.log('Found existing destroyed status:', destroyedStatus);
-            return destroyedStatus.id;
-          }
+      if (statusResponse.success && statusResponse.data && Array.isArray(statusResponse.data.statuses)) {
+        // Look for any status containing "destroyed" (case insensitive)
+        const destroyedStatus = statusResponse.data.statuses.find((status: any) =>
+          status.name.toLowerCase().includes('destroyed')
+        );
+
+        if (destroyedStatus) {
+          console.log('Found existing destroyed status:', destroyedStatus);
+          return destroyedStatus.id;
         }
       }
 
       // If no destroyed status found, create one
       console.log('No destroyed status found, creating new one...');
-      const createResponse = await fetch('/api/vehicle-configuration/statuses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: 'Destroyed',
-          description: 'Vehicle is destroyed/total loss',
-          color: '#DC2626', // Dark red color for destroyed status
-          is_active: true
-        }),
+      const createResponse = await postRequest('/api/vehicle-configuration/statuses', {
+        name: 'Destroyed',
+        description: 'Vehicle is destroyed/total loss',
+        color: '#DC2626', // Dark red color for destroyed status
+        is_active: true
       });
 
-      if (!createResponse.ok) {
-        throw new Error('Failed to create destroyed status');
+      if (createResponse.success && createResponse.data) {
+        console.log('Created new destroyed status:', createResponse.data);
+        return createResponse.data.id;
+      } else {
+        throw new Error(createResponse.error || 'Failed to create destroyed status');
       }
-
-      const newStatus = await createResponse.json();
-      console.log('Created new destroyed status:', newStatus);
-      return newStatus.id;
 
     } catch (error) {
       console.error('Error finding/creating destroyed status:', error);
@@ -197,21 +197,14 @@ export default function TotalLossModal({ isOpen, onClose, vehicleId, onSuccess }
   // Helper function to update vehicle status
   const updateVehicleStatus = async (statusId: string) => {
     try {
-      const response = await fetch(`/api/vehicles/${vehicleId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status_id: statusId }),
-      });
+      const response = await putRequest(`/api/vehicles/${vehicleId}`, { status_id: statusId });
 
-      if (!response.ok) {
-        throw new Error('Failed to update vehicle status');
+      if (response.success && response.data) {
+        console.log('Vehicle status updated:', response.data);
+        return response.data;
+      } else {
+        throw new Error(response.error || 'Failed to update vehicle status');
       }
-
-      const updatedVehicle = await response.json();
-      console.log('Vehicle status updated:', updatedVehicle);
-      return updatedVehicle;
 
     } catch (error) {
       console.error('Error updating vehicle status:', error);
@@ -242,21 +235,13 @@ export default function TotalLossModal({ isOpen, onClose, vehicleId, onSuccess }
         toLocation: 'Garbage'
       };
 
-      const totalLossResponse = await fetch(`/api/vehicles/${vehicleId}/total-loss`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(totalLossData),
-      });
+      const totalLossResponse = await postRequest(`/api/vehicles/${vehicleId}/total-loss`, totalLossData);
 
-      if (!totalLossResponse.ok) {
-        const errorData = await totalLossResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to save total loss data');
+      if (totalLossResponse.success && totalLossResponse.data) {
+        console.log('Total loss record created:', totalLossResponse.data);
+      } else {
+        throw new Error(totalLossResponse.error || 'Failed to save total loss data');
       }
-
-      const totalLossResult = await totalLossResponse.json();
-      console.log('Total loss record created:', totalLossResult);
 
       // Step 3: Update vehicle status to Destroyed
       await updateVehicleStatus(destroyedStatusId);

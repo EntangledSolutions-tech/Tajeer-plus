@@ -3,6 +3,7 @@ import { useFormikContext } from 'formik';
 import CustomInput from '../../../reusableComponents/CustomInput';
 import SearchableSelect from '../../../reusableComponents/SearchableSelect';
 import CustomButton from '../../../reusableComponents/CustomButton';
+import { useHttpService } from '../../../../lib/http-service';
 
 const vehicleFeatures = [
   { key: 'gps', id: 'gps', value: 'GPS Navigation', subValue: 'Built-in GPS navigation system' },
@@ -51,6 +52,7 @@ interface DropdownOption {
 
 export default function AdditionalDetailsStep() {
   const { values, setFieldValue } = useFormikContext<FormValues>();
+  const { getRequest } = useHttpService();
 
   // State for dropdown options
   const [loading, setLoading] = useState({
@@ -79,12 +81,11 @@ export default function AdditionalDetailsStep() {
   const fetchStatuses = async () => {
     try {
       setLoading(prev => ({ ...prev, statuses: true }));
-      const response = await fetch('/api/vehicle-configuration/statuses?page=1&limit=100');
-      const data = await response.json();
-      console.log('Statuses API response:', data);
-      if (data.success) {
+      const result = await getRequest('/api/vehicle-configuration/statuses?page=1&limit=100');
+      console.log('Statuses API response:', result);
+      if (result.success && result.data) {
         // Map the data to the format needed for SearchableSelect
-        const mappedStatuses = data.statuses?.map((status: any) => {
+        const mappedStatuses = result.data.statuses?.map((status: any) => {
           console.log('Mapping status:', status);
           // Ensure all values are strings and not undefined
           const code = status.code || '';
@@ -117,11 +118,10 @@ export default function AdditionalDetailsStep() {
   const fetchOwners = async () => {
     try {
       setLoading(prev => ({ ...prev, owners: true }));
-      const response = await fetch('/api/vehicle-configuration/owners?page=1&limit=100');
-      const data = await response.json();
-      if (data.success) {
+      const result = await getRequest('/api/vehicle-configuration/owners?page=1&limit=100');
+      if (result.success && result.data) {
         // Map the data to the format needed for SearchableSelect
-        const mappedOwners = data.owners?.map((owner: any) => {
+        const mappedOwners = result.data.owners?.map((owner: any) => {
           // Ensure all values are strings and not undefined
           const code = owner.code || '';
           const id = owner.id || '';
@@ -152,11 +152,10 @@ export default function AdditionalDetailsStep() {
   const fetchActualUsers = async () => {
     try {
       setLoading(prev => ({ ...prev, actualUsers: true }));
-      const response = await fetch('/api/vehicle-configuration/actual-users?page=1&limit=100');
-      const data = await response.json();
-      if (data.success) {
+      const result = await getRequest('/api/vehicle-configuration/actual-users?page=1&limit=100');
+      if (result.success && result.data) {
         // Map the data to the format needed for SearchableSelect
-        const mappedUsers = data.actualUsers?.map((user: any) => {
+        const mappedUsers = result.data.actualUsers?.map((user: any) => {
           // Ensure all values are strings and not undefined
           const code = user.code || '';
           const id = user.id || '';
@@ -187,11 +186,10 @@ export default function AdditionalDetailsStep() {
   const fetchInsuranceCompanies = async () => {
     try {
       setLoading(prev => ({ ...prev, insuranceCompanies: true }));
-      const response = await fetch('/api/insurance-policies');
-      const data = await response.json();
-      if (data.success) {
+      const result = await getRequest('/api/insurance-policies');
+      if (result.success && result.data) {
         // Extract unique companies and map to SearchableSelect format
-        const uniqueCompanies = [...new Set(data.policies?.map((p: any) => p.policy_company) || [])] as string[];
+        const uniqueCompanies = [...new Set(result.data.policies?.map((p: any) => p.policy_company) || [])] as string[];
         const mappedCompanies: DropdownOption[] = uniqueCompanies
           .filter(company => company && typeof company === 'string')
           .map((company, index) => ({
@@ -213,11 +211,10 @@ export default function AdditionalDetailsStep() {
   const fetchInsuranceTypes = async (company: string) => {
     try {
       setLoading(prev => ({ ...prev, insuranceTypes: true }));
-      const response = await fetch('/api/insurance-policies');
-      const data = await response.json();
-      if (data.success) {
+      const result = await getRequest('/api/insurance-policies');
+      if (result.success && result.data) {
         // Filter policies by company and map to SearchableSelect format
-        const filteredPolicies = data.policies?.filter((policy: any) => policy.policy_company === company) || [];
+        const filteredPolicies = result.data.policies?.filter((policy: any) => policy.policy_company === company) || [];
         const mappedTypes = filteredPolicies
           .filter((policy: any) => policy && policy.id && policy.policy_number && policy.policy_type && policy.name)
           .map((policy: any) => ({

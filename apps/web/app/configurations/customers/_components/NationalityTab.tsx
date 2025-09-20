@@ -6,6 +6,7 @@ import { toast } from '@kit/ui/sonner';
 import CustomTable, { TableColumn, TableAction } from '../../../reusableComponents/CustomTable';
 import CustomButton from '../../../reusableComponents/CustomButton';
 import NationalityModal from './NationalityModal';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface Nationality {
   id: string;
@@ -18,6 +19,7 @@ interface Nationality {
 }
 
 export default function NationalityTab() {
+  const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
   const [nationalities, setNationalities] = useState<Nationality[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -91,15 +93,14 @@ export default function NationalityTab() {
         search: searchValue,
       });
 
-      const response = await fetch(`/api/customer-configurations/nationalities?${params}`);
+      const response = await getRequest(`/api/customer-configurations/nationalities?${params}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch nationalities');
+      if (response.error) {
+        throw new Error(response.error);
       }
 
-      const result = await response.json();
-      setNationalities(result.data);
-      setTotalPages(result.pagination.totalPages);
+      setNationalities(response.data.data);
+      setTotalPages(response.data.pagination.totalPages);
     } catch (error) {
       console.error('Error fetching nationalities:', error);
       toast.error('Failed to fetch nationalities');
@@ -114,13 +115,10 @@ export default function NationalityTab() {
     }
 
     try {
-      const response = await fetch(`/api/customer-configurations/nationalities/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await deleteRequest(`/api/customer-configurations/nationalities/${id}`);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete nationality');
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       toast.success('Nationality deleted successfully');
@@ -133,23 +131,16 @@ export default function NationalityTab() {
 
   const handleSubmit = async (values: { nationality: string; description?: string }) => {
     try {
-      const url = editingNationality
-        ? `/api/customer-configurations/nationalities/${editingNationality.id}`
-        : '/api/customer-configurations/nationalities';
+      let response;
 
-      const method = editingNationality ? 'PATCH' : 'POST';
+      if (editingNationality) {
+        response = await putRequest(`/api/customer-configurations/nationalities/${editingNationality.id}`, values);
+      } else {
+        response = await postRequest('/api/customer-configurations/nationalities', values);
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || `Failed to ${editingNationality ? 'update' : 'create'} nationality`);
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       toast.success(`Nationality ${editingNationality ? 'updated' : 'created'} successfully`);

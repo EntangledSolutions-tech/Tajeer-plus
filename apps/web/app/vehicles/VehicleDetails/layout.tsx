@@ -30,6 +30,7 @@ import { MoreHorizontal, Trash2, ChevronDown } from 'lucide-react';
 import StatusChangeModal from './StatusChangeModal';
 import * as Yup from 'yup';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
+import { useHttpService } from '../../../lib/http-service';
 
 interface Vehicle {
   id: string;
@@ -235,6 +236,7 @@ export default function VehicleDetailsLayout() {
 
   // Delete confirmation modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
 
   const tabs = [
     { label: 'Overview', key: 'overview' },
@@ -422,13 +424,15 @@ export default function VehicleDetailsLayout() {
   const fetchVehicleStatuses = async () => {
     try {
       setLoading(prev => ({ ...prev, statuses: true }));
-      const response = await fetch('/api/vehicle-configuration/statuses?limit=100');
-      if (!response.ok) {
-        throw new Error('Failed to fetch vehicle statuses');
-      }
-      const data = await response.json();
-      if (data.success && Array.isArray(data.statuses)) {
-        setVehicleStatuses(data.statuses);
+      const response = await getRequest('/api/vehicle-configuration/statuses?limit=100');
+
+      if (response.success && response.data && Array.isArray(response.data.statuses)) {
+        setVehicleStatuses(response.data.statuses);
+      } else {
+        console.error('Error fetching vehicle statuses:', response.error);
+        if (response.error) {
+          alert(`Error: ${response.error}`);
+        }
       }
     } catch (err) {
       console.error('Error fetching vehicle statuses:', err);
@@ -441,21 +445,14 @@ export default function VehicleDetailsLayout() {
   const updateVehicleStatus = async (statusId: string) => {
     try {
       setLoading(prev => ({ ...prev, statusUpdate: true }));
-      const response = await fetch(`/api/vehicles/${vehicleId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status_id: statusId }),
-      });
+      const response = await putRequest(`/api/vehicles/${vehicleId}`, { status_id: statusId });
 
-      if (!response.ok) {
-        throw new Error('Failed to update vehicle status');
+      if (response.success && response.data) {
+        setVehicle(response.data);
+        setIsStatusModalOpen(false);
+      } else {
+        throw new Error(response.error || 'Failed to update vehicle status');
       }
-
-      const updatedVehicle = await response.json();
-      setVehicle(updatedVehicle);
-      setIsStatusModalOpen(false);
     } catch (err) {
       console.error('Error updating vehicle status:', err);
       setError(err instanceof Error ? err.message : 'Failed to update vehicle status');
@@ -481,49 +478,42 @@ export default function VehicleDetailsLayout() {
 
         if (!isUUID) {
           // If it's not a UUID, treat it as a plate number and fetch the vehicle ID
-          const vehicleResponse = await fetch(`/api/vehicles?plate_number=${vehicleId}`);
+          const vehicleResponse = await getRequest(`/api/vehicles?plate_number=${vehicleId}`);
 
-          if (!vehicleResponse.ok) {
-            throw new Error(`Failed to fetch vehicle data: ${vehicleResponse.status}`);
-          }
-
-          const vehicleResponseData = await vehicleResponse.json();
-
-          // Handle the API response format
-          let vehicleData;
-          if (vehicleResponseData && typeof vehicleResponseData === 'object') {
-            if (Array.isArray(vehicleResponseData)) {
-              vehicleData = vehicleResponseData;
-            } else if (vehicleResponseData.vehicles && Array.isArray(vehicleResponseData.vehicles)) {
-              vehicleData = vehicleResponseData.vehicles;
+          if (vehicleResponse.success && vehicleResponse.data) {
+            // Handle the API response format
+            let vehicleData;
+            if (Array.isArray(vehicleResponse.data)) {
+              vehicleData = vehicleResponse.data;
+            } else if (vehicleResponse.data.vehicles && Array.isArray(vehicleResponse.data.vehicles)) {
+              vehicleData = vehicleResponse.data.vehicles;
             } else {
               throw new Error('Unexpected vehicle response format');
             }
+
+            if (!vehicleData || !Array.isArray(vehicleData) || vehicleData.length === 0) {
+              throw new Error(`Vehicle not found for plate number: ${vehicleId}`);
+            }
+
+            const foundVehicleId = vehicleData[0]?.id;
+            if (!foundVehicleId) {
+              throw new Error('Vehicle ID not found in response');
+            }
+
+            actualVehicleId = foundVehicleId;
           } else {
-            throw new Error('Invalid vehicle response data');
+            throw new Error(vehicleResponse.error || 'Failed to fetch vehicle data');
           }
-
-          if (!vehicleData || !Array.isArray(vehicleData) || vehicleData.length === 0) {
-            throw new Error(`Vehicle not found for plate number: ${vehicleId}`);
-          }
-
-          const foundVehicleId = vehicleData[0]?.id;
-          if (!foundVehicleId) {
-            throw new Error('Vehicle ID not found in response');
-          }
-
-          actualVehicleId = foundVehicleId;
         }
 
         // Fetch vehicle details
-        const response = await fetch(`/api/vehicles/${actualVehicleId}`);
+        const response = await getRequest(`/api/vehicles/${actualVehicleId}`);
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch vehicle details: ${response.status}`);
+        if (response.success && response.data) {
+          setVehicle(response.data);
+        } else {
+          throw new Error(response.error || 'Failed to fetch vehicle details');
         }
-
-        const data = await response.json();
-        setVehicle(data);
       } catch (err) {
         console.error('Error fetching vehicle data:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch vehicle data');

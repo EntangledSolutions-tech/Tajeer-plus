@@ -3,6 +3,7 @@ import { useFormikContext } from 'formik';
 import CustomInput from '../../../reusableComponents/CustomInput';
 import CustomSelect from '../../../reusableComponents/CustomSelect';
 import CustomSearchableDropdown, { SearchableDropdownOption } from '../../../reusableComponents/SearchableDropdown';
+import { useHttpService } from '../../../../lib/http-service';
 
 const customerDetailsFields = [
   { label: 'Name', name: 'name', type: 'text', isRequired: true, placeholder: 'Enter name', min: 2, max: 100 },
@@ -67,6 +68,7 @@ interface ApiResponse<T> {
 
 export default function CustomerDetailsStep() {
   const { values, setFieldValue } = useFormikContext<any>();
+  const { getRequest } = useHttpService();
   const [classifications, setClassifications] = useState<SearchableDropdownOption[]>([]);
   const [licenseTypes, setLicenseTypes] = useState<SearchableDropdownOption[]>([]);
   const [nationalities, setNationalities] = useState<SearchableDropdownOption[]>([]);
@@ -93,22 +95,18 @@ export default function CustomerDetailsStep() {
         searchParams.append('search', search);
       }
 
-      const response = await fetch(`/api/customer-configurations/classifications?${searchParams}`);
+      const result = await getRequest(`/api/customer-configurations/classifications?${searchParams}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch classifications');
+      if (result.success && result.data) {
+        const options: SearchableDropdownOption[] = result.data.data.map((item: Classification) => ({
+          id: item.id,
+          value: item.id, // Store the ID instead of the string
+          label: item.classification,
+          subLabel: item.description
+        }));
+
+        setClassifications(options);
       }
-
-      const result: ApiResponse<Classification> = await response.json();
-
-      const options: SearchableDropdownOption[] = result.data.map(item => ({
-        id: item.id,
-        value: item.id, // Store the ID instead of the string
-        label: item.classification,
-        subLabel: item.description
-      }));
-
-      setClassifications(options);
     } catch (err) {
       console.error('Error fetching classifications:', err);
       setClassifications([]);
@@ -132,22 +130,18 @@ export default function CustomerDetailsStep() {
         searchParams.append('search', search);
       }
 
-      const response = await fetch(`/api/customer-configurations/license-types?${searchParams}`);
+      const result = await getRequest(`/api/customer-configurations/license-types?${searchParams}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch license types');
+      if (result.success && result.data) {
+        const options: SearchableDropdownOption[] = result.data.data.map((item: LicenseType) => ({
+          id: item.id,
+          value: item.id, // Store the ID instead of the string
+          label: item.license_type,
+          subLabel: item.description
+        }));
+
+        setLicenseTypes(options);
       }
-
-      const result: ApiResponse<LicenseType> = await response.json();
-
-      const options: SearchableDropdownOption[] = result.data.map(item => ({
-        id: item.id,
-        value: item.id, // Store the ID instead of the string
-        label: item.license_type,
-        subLabel: item.description
-      }));
-
-      setLicenseTypes(options);
     } catch (err) {
       console.error('Error fetching license types:', err);
       setLicenseTypes([]);
@@ -171,22 +165,18 @@ export default function CustomerDetailsStep() {
         searchParams.append('search', search);
       }
 
-      const response = await fetch(`/api/customer-configurations/nationalities?${searchParams}`);
+      const result = await getRequest(`/api/customer-configurations/nationalities?${searchParams}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch nationalities');
+      if (result.success && result.data) {
+        const options: SearchableDropdownOption[] = result.data.data.map((item: Nationality) => ({
+          id: item.id,
+          value: item.id, // Store the ID instead of the string
+          label: item.nationality,
+          subLabel: item.description
+        }));
+
+        setNationalities(options);
       }
-
-      const result: ApiResponse<Nationality> = await response.json();
-
-      const options: SearchableDropdownOption[] = result.data.map(item => ({
-        id: item.id,
-        value: item.id, // Store the ID instead of the string
-        label: item.nationality,
-        subLabel: item.description
-      }));
-
-      setNationalities(options);
     } catch (err) {
       console.error('Error fetching nationalities:', err);
       setNationalities([]);
@@ -209,22 +199,18 @@ export default function CustomerDetailsStep() {
         searchParams.append('search', search);
       }
 
-      const response = await fetch(`/api/customer-configuration/statuses?${searchParams}`);
+      const result = await getRequest(`/api/customer-configuration/statuses?${searchParams}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch statuses');
+      if (result.success && result.data) {
+        const options: SearchableDropdownOption[] = result.data.statuses.map((item: CustomerStatus) => ({
+          id: item.id,
+          value: item.id, // Store the ID instead of the string
+          label: item.name,
+          subLabel: item.description
+        }));
+
+        setStatuses(options);
       }
-
-      const result = await response.json();
-
-      const options: SearchableDropdownOption[] = result.statuses.map((item: CustomerStatus) => ({
-        id: item.id,
-        value: item.id, // Store the ID instead of the string
-        label: item.name,
-        subLabel: item.description
-      }));
-
-      setStatuses(options);
     } catch (err) {
       console.error('Error fetching statuses:', err);
       setStatuses([]);

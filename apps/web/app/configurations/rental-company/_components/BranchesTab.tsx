@@ -11,6 +11,7 @@ import { SearchBar } from '../../../reusableComponents/SearchBar';
 import { SimpleButton } from '../../../reusableComponents/CustomButton';
 import CustomButton from '../../../reusableComponents/CustomButton';
 import { BranchModal } from '../../../reusableComponents/BranchModal';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface Branch {
   id: string;
@@ -42,6 +43,7 @@ interface BranchesTabProps {
 
 export default function BranchesTab({ loading, onDelete }: BranchesTabProps) {
   const router = useRouter();
+  const { getRequest, postRequest, putRequest } = useHttpService();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -92,13 +94,16 @@ export default function BranchesTab({ loading, onDelete }: BranchesTabProps) {
         ...(debouncedSearch && { search: debouncedSearch })
       });
 
-      const response = await fetch(`/api/branches?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch branches');
-      const data = await response.json();
-      setBranches(data.branches || []);
+      const response = await getRequest(`/api/branches?${params}`);
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      setBranches(response.data.branches || []);
       setPagination(prev => ({
         ...prev,
-        total: data.pagination?.total || 0
+        total: response.data.pagination?.total || 0
       }));
     } catch (error) {
       console.error('Error fetching branches:', error);
@@ -110,27 +115,17 @@ export default function BranchesTab({ loading, onDelete }: BranchesTabProps) {
 
   const handleSubmit = async (values: any) => {
     try {
-      if (editingBranch) {
-        const response = await fetch(`/api/branches/${editingBranch.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values)
-        });
+      let response;
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update branch');
+      if (editingBranch) {
+        response = await putRequest(`/api/branches/${editingBranch.id}`, values);
+        if (response.error) {
+          throw new Error(response.error);
         }
       } else {
-        const response = await fetch('/api/branches', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values)
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create branch');
+        response = await postRequest('/api/branches', values);
+        if (response.error) {
+          throw new Error(response.error);
         }
       }
 
@@ -162,13 +157,15 @@ export default function BranchesTab({ loading, onDelete }: BranchesTabProps) {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/branches');
-      if (!response.ok) throw new Error('Failed to export branches');
-      const data = await response.json();
+      const response = await getRequest('/api/branches');
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
 
       const csvContent = [
         ['Code', 'Name', 'City/Region', 'Address', 'Phone', 'Email', 'Manager', 'Status', 'Created At'],
-        ...(data.branches || []).map((branch: any) => [
+        ...(response.data.branches || []).map((branch: any) => [
           branch.code || '',
           branch.name || '',
           branch.city_region || '',

@@ -284,3 +284,4 @@ CREATE TRIGGER update_vehicle_finance_transactions_updated_at BEFORE UPDATE ON p
 CREATE TRIGGER update_finance_summaries_updated_at BEFORE UPDATE ON public.finance_summaries
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+

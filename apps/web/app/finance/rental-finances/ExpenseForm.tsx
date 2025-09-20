@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Formik, Form } from 'formik';
+import { Formik, Form, useFormikContext } from 'formik';
 import * as Yup from 'yup';
 import CustomInput from '../../reusableComponents/CustomInput';
 import CustomSelect from '../../reusableComponents/CustomSelect';
@@ -9,6 +9,7 @@ import CustomTextarea from '../../reusableComponents/CustomTextarea';
 import CustomButton from '../../reusableComponents/CustomButton';
 import CustomModal from '../../reusableComponents/CustomModal';
 import SearchableSelect, { SimpleSearchableSelect } from '../../reusableComponents/SearchableSelect';
+import { useHttpService } from '../../../lib/http-service';
 
 // Validation schema for expense form
 const ExpenseSchema = Yup.object({
@@ -28,6 +29,10 @@ interface ExpenseFormProps {
   vehicles: any[];
   branches: any[];
   loading: boolean;
+  // Edit mode props
+  isEdit?: boolean;
+  initialValues?: any;
+  transactionId?: string;
 }
 
 interface TransactionType {
@@ -38,6 +43,54 @@ interface TransactionType {
   description?: string;
 }
 
+// Component to handle initial values inside Formik context
+const InitialValuesHandler: React.FC<{
+  isEdit: boolean;
+  initialValues: any;
+  transactionTypes: TransactionType[];
+  vehicles: any[];
+  branches: any[];
+}> = ({ isEdit, initialValues, transactionTypes, vehicles, branches }) => {
+  const { setFieldValue } = useFormikContext();
+
+  useEffect(() => {
+    const handleInitialValues = async () => {
+      // Handle transaction type
+      if (initialValues?.transactionType && transactionTypes.length > 0) {
+        const transactionTypeOption = transactionTypes.find(type => type.id === initialValues.transactionType);
+        if (transactionTypeOption && transactionTypeOption.id !== initialValues.transactionType) {
+          console.log('Setting transaction type:', transactionTypeOption.id);
+          setFieldValue('transactionType', transactionTypeOption.id);
+        }
+      }
+
+      // Handle vehicle
+      if (initialValues?.vehicle && vehicles.length > 0) {
+        const vehicleOption = vehicles.find(vehicle => vehicle.id === initialValues.vehicle);
+        if (vehicleOption && vehicleOption.id !== initialValues.vehicle) {
+          console.log('Setting vehicle:', vehicleOption.id);
+          setFieldValue('vehicle', vehicleOption.id);
+        }
+      }
+
+      // Handle branch
+      if (initialValues?.branch && branches.length > 0) {
+        const branchOption = branches.find(branch => branch.id === initialValues.branch);
+        if (branchOption && branchOption.id !== initialValues.branch) {
+          console.log('Setting branch:', branchOption.id);
+          setFieldValue('branch', branchOption.id);
+        }
+      }
+    };
+
+    if (isEdit && initialValues) {
+      handleInitialValues();
+    }
+  }, [isEdit, initialValues, transactionTypes, vehicles, branches, setFieldValue]);
+
+  return null; // This component doesn't render anything
+};
+
 export const ExpenseForm: React.FC<ExpenseFormProps> = ({
   isOpen,
   onClose,
@@ -45,22 +98,33 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
   vehicles,
   branches,
   loading,
+  isEdit = false,
+  initialValues,
+  transactionId,
 }) => {
+  console.log('ExpenseForm props:', { isOpen, isEdit, initialValues, transactionId });
   const [transactionTypes, setTransactionTypes] = useState<TransactionType[]>([]);
   const [loadingTransactionTypes, setLoadingTransactionTypes] = useState(false);
+  const { getRequest, postRequest, putRequest } = useHttpService();
 
   // Fetch transaction types on component mount
   useEffect(() => {
     const fetchTransactionTypes = async () => {
       try {
         setLoadingTransactionTypes(true);
-        const response = await fetch('/api/finance/transaction-types?category=expense');
-        if (response.ok) {
-          const data = await response.json();
-          setTransactionTypes(data.transactionTypes || []);
+        const response = await getRequest('/api/finance/transaction-types?category=expense');
+
+        if (response.success && response.data) {
+          setTransactionTypes(response.data.transactionTypes || []);
+        } else {
+          console.error('Error fetching transaction types:', response.error);
+          if (response.error) {
+            alert(`Error loading transaction types: ${response.error}`);
+          }
         }
       } catch (error) {
         console.error('Error fetching transaction types:', error);
+        alert('Failed to load transaction types');
       } finally {
         setLoadingTransactionTypes(false);
       }
@@ -69,35 +133,39 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
     if (isOpen) {
       fetchTransactionTypes();
     }
-  }, [isOpen]);
+  }, [isOpen, getRequest]);
+
   const handleSubmit = async (values: any, { setSubmitting, resetForm }: any) => {
     try {
       console.log('Expense form submitting with values:', values);
 
-      // Call the API to create expense transaction
-      const response = await fetch('/api/finance/expense', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
+      // Determine API endpoint and method based on edit mode
+      const url = isEdit && transactionId
+        ? `/api/finance/expense/${transactionId}`
+        : '/api/finance/expense';
+      const method = isEdit ? 'PUT' : 'POST';
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create expense transaction');
+      // Call the API to create or update expense transaction
+      let response;
+      if (isEdit) {
+        response = await putRequest(url, values);
+      } else {
+        response = await postRequest(url, values);
       }
 
-      const result = await response.json();
-      console.log('Expense transaction created:', result);
+      if (response.success) {
+        console.log(`Expense transaction ${isEdit ? 'updated' : 'created'}:`, response.data);
 
-      // Call the parent onSubmit callback if provided
-      if (onSubmit) {
-        await onSubmit(values);
+        // Call the parent onSubmit callback if provided
+        if (onSubmit) {
+          await onSubmit(values);
+        }
+
+        resetForm();
+        onClose();
+      } else {
+        throw new Error(response.error || `Failed to ${isEdit ? 'update' : 'create'} expense transaction`);
       }
-
-      resetForm();
-      onClose();
     } catch (error) {
       console.error('Error submitting expense:', error);
       // You might want to show an error message to the user here
@@ -111,11 +179,11 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
     <CustomModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Add new company expense"
+      title={isEdit ? "Edit Expense" : "Add new company expense"}
       maxWidth="max-w-2xl"
     >
       <Formik
-        initialValues={{
+        initialValues={isEdit && initialValues ? initialValues : {
           amount: 0,
           date: '03/14/2022',
           transactionType: '',
@@ -126,8 +194,17 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
         }}
         validationSchema={ExpenseSchema}
         onSubmit={handleSubmit}
+        enableReinitialize={true}
       >
         {({ values, setFieldValue, errors, touched, isSubmitting }) => (
+          <>
+            <InitialValuesHandler
+              isEdit={isEdit}
+              initialValues={initialValues}
+              transactionTypes={transactionTypes}
+              vehicles={vehicles}
+              branches={branches}
+            />
           <Form>
             <div className="px-8 py-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -247,14 +324,15 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
                   variant="primary"
                   disabled={loading}
                   loading={loading}
-                  submittingText="Adding Expense..."
+                  submittingText={isEdit ? "Updating Expense..." : "Adding Expense..."}
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
                 >
-                  Add Expense
+                  {isEdit ? "Update Expense" : "Add Expense"}
                 </CustomButton>
               </div>
             </div>
           </Form>
+          </>
         )}
       </Formik>
     </CustomModal>

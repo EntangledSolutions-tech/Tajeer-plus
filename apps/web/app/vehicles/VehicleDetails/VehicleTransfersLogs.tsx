@@ -12,6 +12,7 @@ import AccidentModal from './AccidentModal';
 import TotalLossModal from './TotalLossModal';
 import BranchTransferModal from './BranchTransferModal';
 import CustomCard from '../../reusableComponents/CustomCard';
+import { useHttpService } from '../../../lib/http-service';
 
 interface TransferLog {
   id: string;
@@ -43,6 +44,7 @@ export default function VehicleTransfersLogs() {
   const [showAccidentModal, setShowAccidentModal] = useState(false);
   const [showTotalLossModal, setShowTotalLossModal] = useState(false);
   const [showBranchTransferModal, setShowBranchTransferModal] = useState(false);
+  const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
 
   // Sample data to demonstrate functionality
   const sampleTransfers: TransferLog[] = [
@@ -90,22 +92,28 @@ export default function VehicleTransfersLogs() {
       setError(null);
 
       // Fetch transfer logs from the API
-      const response = await fetch(`/api/vehicles/${vehicleId}/transfers`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch transfer logs');
+      const response = await getRequest(`/api/vehicles/${vehicleId}/transfers`);
+
+      if (response.success && response.data) {
+        // Sort by created_at in descending order (latest first) to ensure proper ordering
+        const sortedTransfers = response.data.sort((a: TransferLog, b: TransferLog) => {
+          const dateA = new Date(a.created_at || 0);
+          const dateB = new Date(b.created_at || 0);
+          return dateB.getTime() - dateA.getTime(); // Descending order (latest first)
+        });
+
+        setTransfers(sortedTransfers);
+        setFilteredTransfers(sortedTransfers);
+      } else {
+        console.error('Error fetching transfers:', response.error);
+        setError(response.error || 'Failed to fetch transfer logs');
+        if (response.error) {
+          alert(`Error: ${response.error}`);
+        }
+        // Fallback to sample data if API fails (already sorted in descending order)
+        setTransfers(sampleTransfers);
+        setFilteredTransfers(sampleTransfers);
       }
-
-      const transferData = await response.json();
-
-      // Sort by created_at in descending order (latest first) to ensure proper ordering
-      const sortedTransfers = transferData.sort((a: TransferLog, b: TransferLog) => {
-        const dateA = new Date(a.created_at || 0);
-        const dateB = new Date(b.created_at || 0);
-        return dateB.getTime() - dateA.getTime(); // Descending order (latest first)
-      });
-
-      setTransfers(sortedTransfers);
-      setFilteredTransfers(sortedTransfers);
     } catch (error) {
       console.error('Error fetching transfers:', error);
       setError('Failed to load transfer logs');
@@ -172,21 +180,19 @@ export default function VehicleTransfersLogs() {
           throw new Error('Unknown transfer type');
       }
 
-      const response = await fetch(deleteEndpoint, {
-        method: 'DELETE'
-      });
+      const response = await deleteRequest(deleteEndpoint);
 
-      if (!response.ok) {
-        throw new Error('Failed to delete transfer log');
+      if (response.success) {
+        // Remove from local state on successful deletion
+        setTransfers(prev => prev.filter(t => t.id !== deleteItem.id));
+        setFilteredTransfers(prev => prev.filter(t => t.id !== deleteItem.id));
+        setDeleteItem(null);
+
+        // Show success message
+        toast.success('Transfer log deleted successfully');
+      } else {
+        throw new Error(response.error || 'Failed to delete transfer log');
       }
-
-      // Remove from local state on successful deletion
-      setTransfers(prev => prev.filter(t => t.id !== deleteItem.id));
-      setFilteredTransfers(prev => prev.filter(t => t.id !== deleteItem.id));
-      setDeleteItem(null);
-
-      // Show success message
-      toast.success('Transfer log deleted successfully');
     } catch (error) {
       console.error('Error deleting transfer:', error);
       setError('Failed to delete transfer log');

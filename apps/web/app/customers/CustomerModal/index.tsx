@@ -7,6 +7,7 @@ import CustomStepperModal, { StepperModalStep } from '../../reusableComponents/C
 import CustomerDetailsStep from './CustomerStepper/CustomerDetailsStep';
 import CustomerDocumentsStep from './CustomerStepper/CustomerDocumentsStep';
 import * as Yup from 'yup';
+import { useHttpService } from '../../../lib/http-service';
 
 const customerDetailsSchema = Yup.object({
   name: Yup.string().required('Name is required').min(2, 'Name must be at least 2 characters'),
@@ -71,6 +72,7 @@ const steps: StepperModalStep[] = [
 
 export default function CustomerModal({ onCustomerAdded }: { onCustomerAdded?: () => void }) {
   const [documents, setDocuments] = React.useState<{ name: string; file: File }[]>([]);
+  const { postRequest } = useHttpService();
 
   const handleDocumentsChange = (docs: { name: string; file: File }[]) => {
     setDocuments(docs);
@@ -88,27 +90,22 @@ export default function CustomerModal({ onCustomerAdded }: { onCustomerAdded?: (
             formData.append('documentName', doc.name);
             formData.append('documentType', 'customer_document'); // Default type
 
-            const response = await fetch(`/api/customers/temp/documents`, {
-              method: 'POST',
-              body: formData
-            });
+            const uploadResult = await postRequest(`/api/customers/temp/documents`, formData);
 
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(`Failed to upload document ${doc.name}: ${errorData.error}`);
+            if (uploadResult.success && uploadResult.data) {
+              uploadedDocuments.push({
+                id: doc.name + '_' + Date.now(),
+                document_name: doc.name,
+                document_type: 'customer_document',
+                document_url: uploadResult.data.document.document_url,
+                file_name: doc.file.name,
+                file_size: doc.file.size,
+                mime_type: doc.file.type,
+                uploaded_at: new Date().toISOString()
+              });
+            } else {
+              throw new Error(`Failed to upload document ${doc.name}: ${uploadResult.error}`);
             }
-
-            const uploadResult = await response.json();
-            uploadedDocuments.push({
-              id: doc.name + '_' + Date.now(),
-              document_name: doc.name,
-              document_type: 'customer_document',
-              document_url: uploadResult.document.document_url,
-              file_name: doc.file.name,
-              file_size: doc.file.size,
-              mime_type: doc.file.type,
-              uploaded_at: new Date().toISOString()
-            });
           }
         }
       }
@@ -130,52 +127,38 @@ export default function CustomerModal({ onCustomerAdded }: { onCustomerAdded?: (
       };
 
       // Call the API to create customer
-      const response = await fetch('/api/customers', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(customerData),
-      });
+      const result = await postRequest('/api/customers', customerData);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create customer');
-      }
+      if (result.success && result.data) {
+        console.log('Customer created successfully:', result.data);
 
-      const result = await response.json();
-      console.log('Customer created successfully:', result);
-
-      // Move uploaded documents to the final customer location
-      if (uploadedDocuments.length > 0) {
-        for (const doc of uploadedDocuments) {
-          try {
-            const moveResponse = await fetch(`/api/customers/${result.customer.id}/documents`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
+        // Move uploaded documents to the final customer location
+        if (uploadedDocuments.length > 0) {
+          for (const doc of uploadedDocuments) {
+            try {
+              const moveResult = await postRequest(`/api/customers/${result.data.customer.id}/documents`, {
                 document: doc,
                 moveFromTemp: true
-              })
-            });
+              });
 
-            if (!moveResponse.ok) {
-              console.warn(`Failed to move document ${doc.document_name} to final location`);
+              if (!moveResult.success) {
+                console.warn(`Failed to move document ${doc.document_name} to final location`);
+              }
+            } catch (moveError) {
+              console.warn(`Error moving document ${doc.document_name}:`, moveError);
             }
-          } catch (moveError) {
-            console.warn(`Error moving document ${doc.document_name}:`, moveError);
           }
         }
-      }
 
-      if (onCustomerAdded) {
-        onCustomerAdded();
-      }
+        if (onCustomerAdded) {
+          onCustomerAdded();
+        }
 
-      // Show success toast
-      toast.success('Customer added successfully!');
+        // Show success toast
+        toast.success('Customer added successfully!');
+      } else {
+        throw new Error(result.error || 'Failed to create customer');
+      }
     } catch (err: any) {
       throw new Error(err.message || 'Failed to create customer');
     }

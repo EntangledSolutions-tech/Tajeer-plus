@@ -88,7 +88,7 @@ export default function VehicleInventoryReports() {
           vehicles.forEach((vehicle: any) => {
             // Count by status (only predefined summary labels)
             const statusName = vehicle.status?.name || 'Unknown';
-            
+
             // Only count if it matches one of our predefined summary labels
             const predefinedLabels = ['Available', 'Reserved', 'Out for Service', 'Sold'];
             if (predefinedLabels.includes(statusName)) {
@@ -271,7 +271,13 @@ export default function VehicleInventoryReports() {
                     borderRadius: '4px'
                   }}
                 />
-                <Bar dataKey="quantity" fill="#8b0000" />
+                 <defs>
+                  <linearGradient id="customGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#005F8E" />
+                    <stop offset="100%" stopColor="#00A8AB" />
+                  </linearGradient>
+                </defs>
+                <Bar dataKey="quantity" fill="url(#customGradient)" />
               </BarChart>
             </ResponsiveContainer>
           </div>

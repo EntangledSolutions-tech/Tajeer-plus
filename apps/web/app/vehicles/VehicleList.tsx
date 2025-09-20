@@ -10,6 +10,7 @@ import CustomTable, { TableAction, TableColumn } from '../reusableComponents/Cus
 import { SearchBar } from '../reusableComponents/SearchBar';
 import { SummaryCard } from '../reusableComponents/SummaryCard';
 import VehicleModal from './VehicleModal/index';
+import { useHttpService } from '../../lib/http-service';
 
 interface Vehicle {
   id: string;
@@ -39,6 +40,7 @@ export default function VehicleList() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [refetchTrigger, setRefetchTrigger] = useState(0);
+  const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
 
   // Column definitions for CustomTable
   const columns: TableColumn[] = [
@@ -180,36 +182,87 @@ export default function VehicleList() {
   // Fetch vehicle statuses from database
   const fetchVehicleStatuses = useCallback(async () => {
     try {
-      const response = await fetch('/api/vehicle-configuration/statuses?limit=100');
-      const result = await response.json();
+      const response = await getRequest('/api/vehicle-configuration/statuses?limit=100');
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch vehicle statuses');
-      }
+      if (response.success && response.data) {
+        const result = response.data;
+        // Convert statuses to the format expected by CustomTable
+        const statusConfigData: any = { status: {} };
+        const statusOptionsData = [{ label: 'All Status', value: 'all' }];
 
-            // Convert statuses to the format expected by CustomTable
-      const statusConfigData: any = { status: {} };
-      const statusOptionsData = [{ label: 'All Status', value: 'all' }];
-
-      result.statuses.forEach((status: any) => {
-        // Use inline styles instead of dynamic CSS classes to avoid parsing issues
-        statusConfigData.status[status.name] = {
-          className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-          label: status.name,
-          style: {
-            backgroundColor: `${status.color}20`, // 20% opacity
-            color: status.color,
-            border: `1px solid ${status.color}40` // 40% opacity for border
-          }
-        };
-        statusOptionsData.push({
-          label: status.name,
-          value: status.name.toLowerCase().replace(/\s+/g, '_')
+        result.statuses.forEach((status: any) => {
+          // Use inline styles instead of dynamic CSS classes to avoid parsing issues
+          statusConfigData.status[status.name] = {
+            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+            label: status.name,
+            style: {
+              backgroundColor: `${status.color}20`, // 20% opacity
+              color: status.color,
+              border: `1px solid ${status.color}40` // 40% opacity for border
+            }
+          };
+          statusOptionsData.push({
+            label: status.name,
+            value: status.name.toLowerCase().replace(/\s+/g, '_')
+          });
         });
-      });
 
-      setStatusConfig(statusConfigData);
-      setStatusOptions(statusOptionsData);
+        setStatusConfig(statusConfigData);
+        setStatusOptions(statusOptionsData);
+      } else {
+        console.error('Error fetching vehicle statuses:', response.error);
+        if (response.error) {
+          alert(`Error: ${response.error}`);
+        }
+        // Fallback to default status config if API fails
+        setStatusConfig({
+          status: {
+            'Available': {
+              className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+              label: 'Available',
+              style: {
+                backgroundColor: '#10B98120',
+                color: '#10B981',
+                border: '1px solid #10B98140'
+              }
+            },
+            'Rented': {
+              className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+              label: 'Rented',
+              style: {
+                backgroundColor: '#3B82F620',
+                color: '#3B82F6',
+                border: '1px solid #3B82F640'
+              }
+            },
+            'Maintenance': {
+              className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+              label: 'Maintenance',
+              style: {
+                backgroundColor: '#F59E0B20',
+                color: '#F59E0B',
+                border: '1px solid #F59E0B40'
+              }
+            },
+            'Out of Service': {
+              className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+              label: 'Out of Service',
+              style: {
+                backgroundColor: '#EF444420',
+                color: '#EF4444',
+                border: '1px solid #EF444440'
+              }
+            }
+          }
+        });
+        setStatusOptions([
+          { label: 'All Status', value: 'all' },
+          { label: 'Available', value: 'available' },
+          { label: 'Rented', value: 'rented' },
+          { label: 'Maintenance', value: 'maintenance' },
+          { label: 'Out of Service', value: 'out_of_service' }
+        ]);
+      }
     } catch (err: any) {
       console.error('Error fetching vehicle statuses:', err);
       // Fallback to default status config if API fails
@@ -286,37 +339,41 @@ export default function VehicleList() {
         year: year
       });
 
-      const response = await fetch(`/api/vehicles?${params}`);
-      const result = await response.json();
+      const response = await getRequest(`/api/vehicles?${params}`);
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch vehicles');
+      if (response.success && response.data) {
+        const result = response.data;
+        // Add status field to vehicles data and normalize make/color/model
+        const vehiclesWithStatus = (result.vehicles || []).map((vehicle: any) => {
+          // Handle the joined data structure with foreign keys
+          const makeName = vehicle.make?.name || 'Unknown';
+          const modelName = vehicle.model?.name || 'Unknown';
+          const colorName = vehicle.color?.name || 'Unknown';
+          const colorHex = vehicle.color?.hex_code;
+          const statusName = vehicle.status?.name || 'Available';
+          const ownerName = vehicle.owner?.name || 'Unknown';
+          const actualUserName = vehicle.actual_user?.name || 'Unknown';
+
+          return {
+            ...vehicle,
+            make: makeName,
+            model: modelName,
+            color: colorName,
+            colorHex: colorHex,
+            status: statusName,
+            owner: ownerName,
+            actual_user: actualUserName
+          };
+        });
+        setVehicles(vehiclesWithStatus);
+        setPagination(result.pagination || pagination);
+      } else {
+        console.error('Error fetching vehicles:', response.error);
+        if (response.error) {
+          alert(`Error: ${response.error}`);
+        }
+        setVehicles([]);
       }
-
-      // Add status field to vehicles data and normalize make/color/model
-      const vehiclesWithStatus = (result.vehicles || []).map((vehicle: any) => {
-        // Handle the joined data structure with foreign keys
-        const makeName = vehicle.make?.name || 'Unknown';
-        const modelName = vehicle.model?.name || 'Unknown';
-        const colorName = vehicle.color?.name || 'Unknown';
-        const colorHex = vehicle.color?.hex_code;
-        const statusName = vehicle.status?.name || 'Available';
-        const ownerName = vehicle.owner?.name || 'Unknown';
-        const actualUserName = vehicle.actual_user?.name || 'Unknown';
-
-        return {
-          ...vehicle,
-          make: makeName,
-          model: modelName,
-          color: colorName,
-          colorHex: colorHex,
-          status: statusName,
-          owner: ownerName,
-          actual_user: actualUserName
-        };
-      });
-      setVehicles(vehiclesWithStatus);
-      setPagination(result.pagination || pagination);
     } catch (err: any) {
       toast.error('Error fetching vehicles: ' + (err?.message || 'Unknown error'));
     } finally {
@@ -365,22 +422,23 @@ export default function VehicleList() {
         year: year
       });
 
-      const response = await fetch(`/api/vehicles/export?${params}`);
+      const response = await getRequest(`/api/vehicles/export?${params}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to export vehicles');
+      if (response.success && response.data) {
+        // Create blob and download
+        const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `vehicles_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success('Vehicles exported successfully');
+      } else {
+        throw new Error(response.error || 'Failed to export vehicles');
       }
-
-      // Create blob and download
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `vehicles_export_${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
     } catch (error) {
       console.error('Export error:', error);
       toast.error('Failed to export vehicles');

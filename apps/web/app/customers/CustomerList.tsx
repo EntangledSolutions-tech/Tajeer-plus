@@ -12,6 +12,7 @@ import CustomerModal from './CustomerModal/index';
 import CustomTable, { TableColumn, TableAction } from '../reusableComponents/CustomTable';
 import Link from 'next/link';
 import { Badge } from '@kit/ui/badge';
+import { useHttpService } from '../../lib/http-service';
 
 interface Customer {
   id: string;
@@ -37,6 +38,7 @@ interface PaginationInfo {
 
 export default function CustomerList() {
   const router = useRouter();
+  const { getRequest } = useHttpService();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -207,89 +209,86 @@ export default function CustomerList() {
   const fetchCustomerStatuses = useCallback(async () => {
     try {
       // Fetch customer classifications
-      const classificationResponse = await fetch('/api/customer-configurations/classifications?limit=100');
-      const classificationResult = await classificationResponse.json();
+      const classificationResult = await getRequest('/api/customer-configurations/classifications?limit=100');
 
-      if (!classificationResponse.ok) {
-        throw new Error(classificationResult.error || 'Failed to fetch customer classifications');
-      }
-
-      // Convert statuses to the format expected by CustomTable
-      const statusConfigData: any = {
-        status: {
-          // Use static status config for now since customer_statuses table has issues
-          'Active': {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: 'Active',
-            style: {
-              backgroundColor: '#10B98120',
-              color: '#10B981',
-              border: '1px solid #10B98140'
+      if (classificationResult.success && classificationResult.data) {
+        // Convert statuses to the format expected by CustomTable
+        const statusConfigData: any = {
+          status: {
+            // Use static status config for now since customer_statuses table has issues
+            'Active': {
+              className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+              label: 'Active',
+              style: {
+                backgroundColor: '#10B98120',
+                color: '#10B981',
+                border: '1px solid #10B98140'
+              }
+            },
+            'Inactive': {
+              className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+              label: 'Inactive',
+              style: {
+                backgroundColor: '#6B728020',
+                color: '#6B7280',
+                border: '1px solid #6B728040'
+              }
+            },
+            'Blacklisted': {
+              className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+              label: 'Blacklisted',
+              style: {
+                backgroundColor: '#EF444420',
+                color: '#EF4444',
+                border: '1px solid #EF444440'
+              }
+            },
+            'Suspended': {
+              className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+              label: 'Suspended',
+              style: {
+                backgroundColor: '#F59E0B20',
+                color: '#F59E0B',
+                border: '1px solid #F59E0B40'
+              }
+            },
+            'VIP': {
+              className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+              label: 'VIP',
+              style: {
+                backgroundColor: '#8B5CF620',
+                color: '#8B5CF6',
+                border: '1px solid #8B5CF640'
+              }
+            },
+            'Corporate': {
+              className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+              label: 'Corporate',
+              style: {
+                backgroundColor: '#3B82F620',
+                color: '#3B82F6',
+                border: '1px solid #3B82F640'
+              }
             }
           },
-          'Inactive': {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: 'Inactive',
-            style: {
-              backgroundColor: '#6B728020',
-              color: '#6B7280',
-              border: '1px solid #6B728040'
-            }
-          },
-          'Blacklisted': {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: 'Blacklisted',
-            style: {
-              backgroundColor: '#EF444420',
-              color: '#EF4444',
-              border: '1px solid #EF444440'
-            }
-          },
-          'Suspended': {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: 'Suspended',
-            style: {
-              backgroundColor: '#F59E0B20',
-              color: '#F59E0B',
-              border: '1px solid #F59E0B40'
-            }
-          },
-          'VIP': {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: 'VIP',
-            style: {
-              backgroundColor: '#8B5CF620',
-              color: '#8B5CF6',
-              border: '1px solid #8B5CF640'
-            }
-          },
-          'Corporate': {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: 'Corporate',
-            style: {
-              backgroundColor: '#3B82F620',
-              color: '#3B82F6',
-              border: '1px solid #3B82F640'
-            }
-          }
-        },
-        classification: {}
-      };
-
-      // Process classifications from API
-      classificationResult.data?.forEach((classification: any) => {
-        statusConfigData.classification[classification.classification] = {
-          className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-          label: classification.classification,
-          style: {
-            backgroundColor: `${classification.color || '#6B7280'}20`, // 20% opacity
-            color: classification.color || '#6B7280',
-            border: `1px solid ${classification.color || '#6B7280'}40` // 40% opacity for border
-          }
+          classification: {}
         };
-      });
 
-      setStatusConfig(statusConfigData);
+        // Process classifications from API
+        classificationResult.data.data?.forEach((classification: any) => {
+          statusConfigData.classification[classification.classification] = {
+            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+            label: classification.classification,
+            style: {
+              backgroundColor: `${classification.color || '#6B7280'}20`, // 20% opacity
+              color: classification.color || '#6B7280',
+              border: `1px solid ${classification.color || '#6B7280'}40` // 40% opacity for border
+            }
+          };
+        });
+
+        setStatusConfig(statusConfigData);
+      }
     } catch (err: any) {
       console.error('Error fetching customer statuses:', err);
       // Fallback to default status config if API fails
@@ -336,7 +335,7 @@ export default function CustomerList() {
         }
       });
     }
-  }, []);
+  }, [getRequest]);
 
   // Debounce search input
   useEffect(() => {
@@ -363,28 +362,28 @@ export default function CustomerList() {
         myOfficeOnly: myOfficeOnly.toString()
       });
 
-      const response = await fetch(`/api/customers?${params}`);
-      const result = await response.json();
+      const result = await getRequest(`/api/customers?${params}`);
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch customers');
+      if (result.success && result.data) {
+        setCustomers(result.data.customers || []);
+        setPagination(result.data.pagination || pagination);
+        setSummaryStats(result.data.summaryStats || {
+          total: 0,
+          active: 0,
+          blacklisted: 0,
+          withDues: 0
+        });
+      } else {
+        setError(result.error || 'Failed to fetch customers');
+        setTimeout(() => setError(null), 5000);
       }
-
-      setCustomers(result.customers || []);
-      setPagination(result.pagination || pagination);
-      setSummaryStats(result.summaryStats || {
-        total: 0,
-        active: 0,
-        blacklisted: 0,
-        withDues: 0
-      });
     } catch (err: any) {
       setError('Error fetching customers: ' + (err?.message || 'Unknown error'));
       setTimeout(() => setError(null), 5000);
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, pagination.page, currentLimit, classification, status, blacklisted, withDues, myOfficeOnly]);
+  }, [debouncedSearch, pagination.page, currentLimit, classification, status, blacklisted, withDues, myOfficeOnly, getRequest]);
 
   useEffect(() => {
     fetchCustomerStatuses();
@@ -419,22 +418,22 @@ export default function CustomerList() {
       if (classification !== 'all') params.append('classification', classification);
       if (blacklisted) params.append('blacklisted', 'true');
 
-      const response = await fetch(`/api/customers/export?${params.toString()}`);
+      const result = await getRequest(`/api/customers/export?${params.toString()}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to export customers');
+      if (result.success && result.data) {
+        // Create blob and download
+        const blob = new Blob([result.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'customers.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        throw new Error(result.error || 'Failed to export customers');
       }
-
-      // Create blob and download
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'customers.xlsx';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
     } catch (error) {
       console.error('Export error:', error);
       setError('Failed to export customers');

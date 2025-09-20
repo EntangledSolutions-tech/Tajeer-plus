@@ -8,6 +8,7 @@ import { toast } from '@kit/ui/sonner';
 import CustomButton from '../../reusableComponents/CustomButton';
 import CustomTextarea from '../../reusableComponents/CustomTextarea';
 import { SimpleSearchableSelect } from '../../reusableComponents/SearchableSelect';
+import { useHttpService } from '../../../lib/http-service';
 
 interface VehicleDetails {
   id: string;
@@ -68,6 +69,7 @@ export default function BranchTransferModal({ isOpen, onClose, vehicleId, onSucc
     submitLoading: false
   });
   const [error, setError] = useState<string | null>(null);
+  const { getRequest, postRequest, putRequest } = useHttpService();
 
   // Initial form values
   const initialValues: BranchTransferFormValues = {
@@ -82,13 +84,17 @@ export default function BranchTransferModal({ isOpen, onClose, vehicleId, onSucc
       setLoading(prev => ({ ...prev, vehicleLoading: true }));
       setError(null);
 
-      const response = await fetch(`/api/vehicles/${vehicleId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch vehicle details');
-      }
+      const response = await getRequest(`/api/vehicles/${vehicleId}`);
 
-      const vehicleData = await response.json();
-      setCurrentVehicle(vehicleData);
+      if (response.success && response.data) {
+        setCurrentVehicle(response.data);
+      } else {
+        console.error('Error fetching vehicle:', response.error);
+        setError('Failed to load vehicle details');
+        if (response.error) {
+          alert(`Error: ${response.error}`);
+        }
+      }
     } catch (error) {
       console.error('Error fetching vehicle:', error);
       setError('Failed to load vehicle details');
@@ -102,15 +108,18 @@ export default function BranchTransferModal({ isOpen, onClose, vehicleId, onSucc
     try {
       setLoading(prev => ({ ...prev, branchLoading: true }));
 
-      const response = await fetch('/api/branches');
-      if (!response.ok) {
-        throw new Error('Failed to fetch branches');
+      const response = await getRequest('/api/branches');
+
+      if (response.success && response.data) {
+        setBranches(response.data.branches || []);
+      } else {
+        console.error('Error fetching branches:', response.error);
+        setError('Failed to load branches');
+        setBranches([]);
+        if (response.error) {
+          alert(`Error: ${response.error}`);
+        }
       }
-
-            const data = await response.json();
-      // Filter out the current vehicle's branch and only show active branches
-
-      setBranches(data.branches);
     } catch (error) {
       console.error('Error fetching branches:', error);
       setError('Failed to load branches');
@@ -153,32 +162,24 @@ console.log({currentVehicle})
         transferDate: new Date().toISOString().split('T')[0]
       };
 
-      const response = await fetch(`/api/vehicles/${vehicleId}/branch-transfer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(transferData),
-      });
+      const response = await postRequest(`/api/vehicles/${vehicleId}/branch-transfer`, transferData);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to transfer vehicle');
+      if (response.success && response.data) {
+        console.log('Branch transfer completed:', response.data);
+
+        // Show success toast
+        toast.success('Vehicle transferred successfully!');
+
+        // Call onSuccess callback to refresh data
+        if (onSuccess) {
+          onSuccess();
+        }
+
+        // Close modal on success
+        onClose();
+      } else {
+        throw new Error(response.error || 'Failed to transfer vehicle');
       }
-
-      const result = await response.json();
-      console.log('Branch transfer completed:', result);
-
-      // Show success toast
-      toast.success('Vehicle transferred successfully!');
-
-      // Call onSuccess callback to refresh data
-      if (onSuccess) {
-        onSuccess();
-      }
-
-      // Close modal on success
-      onClose();
 
     } catch (error) {
       console.error('Error transferring vehicle:', error);

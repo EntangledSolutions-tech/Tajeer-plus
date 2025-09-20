@@ -8,6 +8,7 @@ import CustomButton from '../../reusableComponents/CustomButton';
 import CustomTable, { TableColumn, TableAction } from '../../reusableComponents/CustomTable';
 import { Filter, FileSpreadsheet, Loader2, Eye, ArrowRight, FileText, CheckCircle, Calendar } from 'lucide-react';
 import CustomCard from '../../reusableComponents/CustomCard';
+import { useHttpService } from '../../../lib/http-service';
 
 interface Contract {
   id: string;
@@ -69,6 +70,7 @@ export default function VehicleContract() {
     hasNextPage: false,
     hasPrevPage: false
   });
+  const { getRequest, postRequest, putRequest } = useHttpService();
 
   // Fetch contracts for this vehicle
   const fetchContracts = async () => {
@@ -85,21 +87,20 @@ export default function VehicleContract() {
         ...(statusFilter !== 'all' && { status: statusFilter })
       });
 
-      const response = await fetch(`/api/vehicles/${vehicleId}/contracts?${params}`);
+      const response = await getRequest(`/api/vehicles/${vehicleId}/contracts?${params}`);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch contracts`);
-      }
-
-      const data: ApiResponse = await response.json();
-
-      if (data.success) {
+      if (response.success && response.data) {
+        const data: ApiResponse = response.data;
         setContracts(data.contracts);
         setSummary(data.summary);
         setPagination(data.pagination);
       } else {
-        throw new Error('API returned error');
+        console.error('Error fetching contracts:', response.error);
+        setError(response.error || 'Failed to fetch contracts');
+        setContracts([]);
+        if (response.error) {
+          alert(`Error: ${response.error}`);
+        }
       }
     } catch (err) {
       console.error('Error fetching vehicle contracts:', err);

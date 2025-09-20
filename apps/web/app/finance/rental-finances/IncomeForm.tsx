@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Formik, Form } from 'formik';
+import { Formik, Form, useFormikContext } from 'formik';
 import * as Yup from 'yup';
 import CustomInput from '../../reusableComponents/CustomInput';
 import CustomSelect from '../../reusableComponents/CustomSelect';
@@ -9,6 +9,7 @@ import CustomTextarea from '../../reusableComponents/CustomTextarea';
 import CustomButton from '../../reusableComponents/CustomButton';
 import CustomModal from '../../reusableComponents/CustomModal';
 import SearchableSelect, { SimpleSearchableSelect } from '../../reusableComponents/SearchableSelect';
+import { useHttpService } from '../../../lib/http-service';
 
 // Validation schema for income form
 const IncomeSchema = Yup.object({
@@ -30,6 +31,10 @@ interface IncomeFormProps {
   branches: any[];
   contracts: any[];
   loading: boolean;
+  // Edit mode props
+  isEdit?: boolean;
+  initialValues?: any;
+  transactionId?: string;
 }
 
 interface TransactionType {
@@ -40,6 +45,64 @@ interface TransactionType {
   description?: string;
 }
 
+// Component to handle initial values inside Formik context
+const InitialValuesHandler: React.FC<{
+  isEdit: boolean;
+  initialValues: any;
+  transactionTypes: TransactionType[];
+  vehicles: any[];
+  branches: any[];
+  contracts: any[];
+}> = ({ isEdit, initialValues, transactionTypes, vehicles, branches, contracts }) => {
+  const { setFieldValue } = useFormikContext();
+
+  useEffect(() => {
+    const handleInitialValues = async () => {
+      // Handle transaction type
+      if (initialValues?.transactionType && transactionTypes.length > 0) {
+        const transactionTypeOption = transactionTypes.find(type => type.id === initialValues.transactionType);
+        if (transactionTypeOption && transactionTypeOption.id !== initialValues.transactionType) {
+          console.log('Setting transaction type:', transactionTypeOption.id);
+          setFieldValue('transactionType', transactionTypeOption.id);
+        }
+      }
+
+      // Handle vehicle
+      if (initialValues?.vehicle && vehicles.length > 0) {
+        const vehicleOption = vehicles.find(vehicle => vehicle.id === initialValues.vehicle);
+        if (vehicleOption && vehicleOption.id !== initialValues.vehicle) {
+          console.log('Setting vehicle:', vehicleOption.id);
+          setFieldValue('vehicle', vehicleOption.id);
+        }
+      }
+
+      // Handle branch
+      if (initialValues?.branch && branches.length > 0) {
+        const branchOption = branches.find(branch => branch.id === initialValues.branch);
+        if (branchOption && branchOption.id !== initialValues.branch) {
+          console.log('Setting branch:', branchOption.id);
+          setFieldValue('branch', branchOption.id);
+        }
+      }
+
+      // Handle contract
+      if (initialValues?.contract && contracts.length > 0) {
+        const contractOption = contracts.find(contract => contract.id === initialValues.contract);
+        if (contractOption && contractOption.id !== initialValues.contract) {
+          console.log('Setting contract:', contractOption.id);
+          setFieldValue('contract', contractOption.id);
+        }
+      }
+    };
+
+    if (isEdit && initialValues) {
+      handleInitialValues();
+    }
+  }, [isEdit, initialValues, transactionTypes, vehicles, branches, contracts, setFieldValue]);
+
+  return null; // This component doesn't render anything
+};
+
 export const IncomeForm: React.FC<IncomeFormProps> = ({
   isOpen,
   onClose,
@@ -48,22 +111,41 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
   branches,
   contracts,
   loading,
+  isEdit = false,
+  initialValues,
+  transactionId,
 }) => {
+  console.log('IncomeForm props:', { isOpen, isEdit, initialValues, transactionId });
+  console.log('IncomeForm initialValues details:', {
+    transactionType: initialValues?.transactionType,
+    contract: initialValues?.contract,
+    branch: initialValues?.branch,
+    vehicle: initialValues?.vehicle,
+    employee: initialValues?.employee,
+  });
+  console.log('IncomeForm isOpen:', isOpen, 'isEdit:', isEdit);
   const [transactionTypes, setTransactionTypes] = useState<TransactionType[]>([]);
   const [loadingTransactionTypes, setLoadingTransactionTypes] = useState(false);
+  const { getRequest, postRequest, putRequest } = useHttpService();
 
   // Fetch transaction types on component mount
   useEffect(() => {
     const fetchTransactionTypes = async () => {
       try {
         setLoadingTransactionTypes(true);
-        const response = await fetch('/api/finance/transaction-types?category=income');
-        if (response.ok) {
-          const data = await response.json();
-          setTransactionTypes(data.transactionTypes || []);
+        const response = await getRequest('/api/finance/transaction-types?category=income');
+
+        if (response.success && response.data) {
+          setTransactionTypes(response.data.transactionTypes || []);
+        } else {
+          console.error('Error fetching transaction types:', response.error);
+          if (response.error) {
+            alert(`Error loading transaction types: ${response.error}`);
+          }
         }
       } catch (error) {
         console.error('Error fetching transaction types:', error);
+        alert('Failed to load transaction types');
       } finally {
         setLoadingTransactionTypes(false);
       }
@@ -72,35 +154,39 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
     if (isOpen) {
       fetchTransactionTypes();
     }
-  }, [isOpen]);
+  }, [isOpen, getRequest]);
+
   const handleSubmit = async (values: any, { setSubmitting, resetForm }: any) => {
     try {
       console.log('Income form submitting with values:', values);
 
-      // Call the API to create income transaction
-      const response = await fetch('/api/finance/income', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
+      // Determine API endpoint and method based on edit mode
+      const url = isEdit && transactionId
+        ? `/api/finance/income/${transactionId}`
+        : '/api/finance/income';
+      const method = isEdit ? 'PUT' : 'POST';
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create income transaction');
+      // Call the API to create or update income transaction
+      let response;
+      if (isEdit) {
+        response = await putRequest(url, values);
+      } else {
+        response = await postRequest(url, values);
       }
 
-      const result = await response.json();
-      console.log('Income transaction created:', result);
+      if (response.success) {
+        console.log(`Income transaction ${isEdit ? 'updated' : 'created'}:`, response.data);
 
-      // Call the parent onSubmit callback if provided
-      if (onSubmit) {
-        await onSubmit(values);
+        // Call the parent onSubmit callback if provided
+        if (onSubmit) {
+          await onSubmit(values);
+        }
+
+        resetForm();
+        onClose();
+      } else {
+        throw new Error(response.error || `Failed to ${isEdit ? 'update' : 'create'} income transaction`);
       }
-
-      resetForm();
-      onClose();
     } catch (error) {
       console.error('Error submitting income:', error);
       // You might want to show an error message to the user here
@@ -114,11 +200,11 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
     <CustomModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Add new company income"
+      title={isEdit ? "Edit Income" : "Add new company income"}
       maxWidth="max-w-2xl"
     >
       <Formik
-        initialValues={{
+        initialValues={isEdit && initialValues ? initialValues : {
           amount: 0,
           date: '03/14/2022',
           transactionType: '',
@@ -130,8 +216,20 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
         }}
         validationSchema={IncomeSchema}
         onSubmit={handleSubmit}
+        enableReinitialize={true}
       >
-        {({ values, setFieldValue, errors, touched, isSubmitting }) => (
+        {({ values, setFieldValue, errors, touched, isSubmitting }) => {
+          console.log('Formik values:', values);
+          return (
+          <>
+            <InitialValuesHandler
+              isEdit={isEdit}
+              initialValues={initialValues}
+              transactionTypes={transactionTypes}
+              vehicles={vehicles}
+              branches={branches}
+              contracts={contracts}
+            />
           <Form>
             <div className="px-8 py-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -268,15 +366,17 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
                   variant="primary"
                   disabled={loading}
                   loading={loading}
-                  submittingText="Adding Income..."
+                  submittingText={isEdit ? "Updating Income..." : "Adding Income..."}
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
                 >
-                  Add Income
+                  {isEdit ? "Update Income" : "Add Income"}
                 </CustomButton>
               </div>
             </div>
           </Form>
-        )}
+          </>
+          );
+        }}
       </Formik>
     </CustomModal>
   );

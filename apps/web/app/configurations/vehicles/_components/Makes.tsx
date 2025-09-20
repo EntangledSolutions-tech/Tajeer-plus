@@ -14,6 +14,7 @@ import CustomInput from '../../../reusableComponents/CustomInput';
 import CustomTextarea from '../../../reusableComponents/CustomTextarea';
 import CustomSwitch from '../../../reusableComponents/CustomSwitch';
 import CustomModal from '../../../reusableComponents/CustomModal';
+import { useHttpService } from '../../../../lib/http-service';
 
 type VehicleMake = Database['public']['Tables']['vehicle_makes']['Row'];
 
@@ -23,6 +24,7 @@ interface MakesProps {
 }
 
 export default function Makes({ loading, onDelete }: MakesProps) {
+  const { getRequest, postRequest, putRequest } = useHttpService();
   const [makes, setMakes] = useState<VehicleMake[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -105,13 +107,16 @@ export default function Makes({ loading, onDelete }: MakesProps) {
         ...(debouncedSearch && { search: debouncedSearch })
       });
 
-      const response = await fetch(`/api/vehicle-configuration/makes?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch makes');
-      const data = await response.json();
-      setMakes(data.makes || []);
+      const response = await getRequest(`/api/vehicle-configuration/makes?${params}`);
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      setMakes(response.data.makes || []);
       setPagination(prev => ({
         ...prev,
-        total: data.pagination?.total || 0
+        total: response.data.pagination?.total || 0
       }));
     } catch (error) {
       console.error('Error fetching makes:', error);
@@ -123,27 +128,17 @@ export default function Makes({ loading, onDelete }: MakesProps) {
 
   const handleSubmit = async (values: any, { setSubmitting, resetForm }: any) => {
     try {
-      if (editingMake) {
-        const response = await fetch('/api/vehicle-configuration/makes', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...values, id: editingMake.id })
-        });
+      let response;
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update make');
+      if (editingMake) {
+        response = await putRequest('/api/vehicle-configuration/makes', { ...values, id: editingMake.id });
+        if (response.error) {
+          throw new Error(response.error);
         }
       } else {
-        const response = await fetch('/api/vehicle-configuration/makes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values)
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create make');
+        response = await postRequest('/api/vehicle-configuration/makes', values);
+        if (response.error) {
+          throw new Error(response.error);
         }
       }
 
@@ -176,13 +171,15 @@ export default function Makes({ loading, onDelete }: MakesProps) {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/vehicle-configuration/makes');
-      if (!response.ok) throw new Error('Failed to export makes');
-      const data = await response.json();
+      const response = await getRequest('/api/vehicle-configuration/makes');
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
 
       const csvContent = [
         ['Code', 'Name', 'Description', 'Status', 'Created At'],
-        ...(data.makes || []).map((make: any) => [
+        ...(response.data.makes || []).map((make: any) => [
           make.code || '',
           make.name || '',
           make.description || '',

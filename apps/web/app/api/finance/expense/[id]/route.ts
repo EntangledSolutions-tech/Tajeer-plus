@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = getSupabaseServerClient();
 
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const expenseId = params.id;
+    const { id: expenseId } = await params;
 
     // Fetch expense details with related data
     const { data: expense, error } = await (supabase as any)
@@ -37,9 +37,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           name,
           id_type,
           id_number,
-          classification,
+          classification_id,
           mobile_number,
-          nationality,
+          nationality_id,
           date_of_birth,
           address,
           membership_tier
@@ -68,6 +68,54 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
   } catch (error) {
     console.error('Error in expense detail API:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const supabase = getSupabaseServerClient();
+
+    // Check authentication
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { id: expenseId } = await params;
+
+    // First, verify this is an expense transaction
+    const { data: transaction, error: fetchError } = await (supabase as any)
+      .from('finance_transactions')
+      .select('id, transaction_type:finance_transaction_types(category)')
+      .eq('id', expenseId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (fetchError || !transaction) {
+      return NextResponse.json({ error: 'Expense transaction not found' }, { status: 404 });
+    }
+
+    if (transaction.transaction_type.category !== 'expense') {
+      return NextResponse.json({ error: 'Transaction is not an expense' }, { status: 400 });
+    }
+
+    // Delete the expense transaction
+    const { error } = await (supabase as any)
+      .from('finance_transactions')
+      .delete()
+      .eq('id', expenseId)
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error deleting expense:', error);
+      return NextResponse.json({ error: 'Failed to delete expense' }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: 'Expense deleted successfully' });
+
+  } catch (error) {
+    console.error('Error in expense delete API:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
