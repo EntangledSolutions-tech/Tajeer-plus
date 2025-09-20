@@ -254,12 +254,13 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limitParam = searchParams.get('limit') || '10';
+    const limit = limitParam === '-1' ? -1 : parseInt(limitParam);
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';
 
-    // Calculate offset
-    const offset = (page - 1) * limit;
+    // Calculate offset - only apply pagination if limit is not -1
+    const offset = limit === -1 ? 0 : (page - 1) * limit;
 
     let query = supabase
       .from('contracts')
@@ -297,9 +298,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const { data: contracts, error, count } = await query
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    let queryResult = query.order('created_at', { ascending: false });
+
+    // Apply pagination - only if limit is not -1
+    if (limit !== -1) {
+      queryResult = queryResult.range(offset, offset + limit - 1);
+    }
+
+    const { data: contracts, error, count } = await queryResult;
 
     if (error) {
       console.error('Database error:', error);
@@ -309,9 +315,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const totalPages = Math.ceil((count || 0) / limit);
-    const hasNextPage = page < totalPages;
-    const hasPrevPage = page > 1;
+    const totalPages = limit === -1 ? 1 : Math.ceil((count || 0) / limit);
+    const hasNextPage = limit === -1 ? false : page < totalPages;
+    const hasPrevPage = limit === -1 ? false : page > 1;
 
     // Format contracts to include status object
     const formattedContracts = await Promise.all((contracts || []).map(async (contract: any) => {
@@ -342,8 +348,8 @@ export async function GET(request: NextRequest) {
       success: true,
       contracts: formattedContracts,
       pagination: {
-        page,
-        limit,
+        page: limit === -1 ? 1 : page,
+        limit: limit === -1 ? count || 0 : limit,
         total: count || 0,
         totalPages,
         hasNextPage,

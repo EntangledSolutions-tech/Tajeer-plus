@@ -13,15 +13,16 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limitParam = searchParams.get('limit') || '10';
+    const limit = limitParam === '-1' ? -1 : parseInt(limitParam);
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';
     const classification = searchParams.get('classification') || '';
     const blacklisted = searchParams.get('blacklisted') === 'true';
     const withDues = searchParams.get('withDues') === 'true';
 
-    // Calculate offset
-    const offset = (page - 1) * limit;
+    // Calculate offset - only apply pagination if limit is not -1
+    const offset = limit === -1 ? 0 : (page - 1) * limit;
 
     // Build query with joins to get related data
     let query = supabase
@@ -39,20 +40,34 @@ export async function GET(request: NextRequest) {
       query = query.or(`name.ilike.%${search}%,id_number.ilike.%${search}%,mobile_number.ilike.%${search}%`);
     }
     if (status && status !== 'all') {
-      query = query.eq('status_id', status);
+      if (status === 'active') {
+        // Get the Active status ID
+        const { data: activeStatus } = await (supabase as any)
+          .from('customer_statuses')
+          .select('id')
+          .eq('name', 'Active')
+          .single();
+        if (activeStatus) {
+          query = query.eq('status_id', activeStatus.id);
+        }
+      } else {
+        query = query.eq('status_id', status);
+      }
     }
     if (classification && classification !== 'all') {
       query = query.eq('classification_id', classification);
     }
     if (blacklisted) {
-      query = query.eq('status_id', (await supabase.from('customer_statuses').select('id').eq('name', 'Blacklisted').single()).data?.id);
+      query = query.eq('status_id', (await (supabase as any).from('customer_statuses').select('id').eq('name', 'Blacklisted').single()).data?.id);
     }
 
     // Order by created_at descending (latest first)
     query = query.order('created_at', { ascending: false });
 
-    // Apply pagination
-    query = query.range(offset, offset + limit - 1);
+    // Apply pagination - only if limit is not -1
+    if (limit !== -1) {
+      query = query.range(offset, offset + limit - 1);
+    }
 
     const { data: customers, error, count } = await query;
 
@@ -62,7 +77,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get summary statistics
-    const { data: summaryData, error: summaryError } = await supabase
+    const { data: summaryData, error: summaryError } = await (supabase as any)
       .from('customers')
       .select('status_id, customer_statuses(name)');
 
@@ -72,13 +87,13 @@ export async function GET(request: NextRequest) {
 
     const summary = {
       total: count || 0,
-      active: summaryData?.filter(c => c.customer_statuses?.name === 'Active').length || 0,
-      blacklisted: summaryData?.filter(c => c.customer_statuses?.name === 'Blacklisted').length || 0,
+      active: summaryData?.filter((c: any) => c.customer_statuses?.name === 'Active').length || 0,
+      blacklisted: summaryData?.filter((c: any) => c.customer_statuses?.name === 'Blacklisted').length || 0,
       withDues: 0 // This field doesn't exist in the current schema
     };
 
     // Transform the data to match frontend expectations
-    const transformedCustomers = customers?.map(customer => {
+    const transformedCustomers = customers?.map((customer: any) => {
       // Map status to frontend expectations
       let mappedStatus = 'Active';
       if (customer.status?.name === 'Blacklisted') {
@@ -106,12 +121,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       customers: transformedCustomers,
       pagination: {
-        page,
-        limit,
+        page: limit === -1 ? 1 : page,
+        limit: limit === -1 ? count || 0 : limit,
         total: count || 0,
-        totalPages: Math.ceil((count || 0) / limit),
-        hasNextPage: page < Math.ceil((count || 0) / limit),
-        hasPrevPage: page > 1
+        totalPages: limit === -1 ? 1 : Math.ceil((count || 0) / limit),
+        hasNextPage: limit === -1 ? false : page < Math.ceil((count || 0) / limit),
+        hasPrevPage: limit === -1 ? false : page > 1
       },
       summaryStats: summary
     });
@@ -168,7 +183,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert new customer with foreign key relationships
-    const { data: newCustomer, error: insertError } = await supabase
+    const { data: newCustomer, error: insertError } = await (supabase as any)
       .from('customers')
       .insert({
         name: name,
@@ -180,7 +195,7 @@ export async function POST(request: NextRequest) {
         address: address,
         mobile_number: mobile_number,
         nationality_id: nationality,
-        status_id: status || (await supabase.from('customer_statuses').select('id').eq('name', 'Active').single()).data?.id
+        status_id: status || (await (supabase as any).from('customer_statuses').select('id').eq('name', 'Active').single()).data?.id
       })
       .select(`
         *,

@@ -64,7 +64,7 @@ export default function DashboardMain() {
   // Fetch vehicle data
   const fetchVehicles = async () => {
     try {
-      const response = await fetch('/api/vehicles?limit=1000');
+      const response = await fetch('/api/vehicles?limit=-1');
       const data = await response.json();
 
       if (data.vehicles) {
@@ -113,7 +113,7 @@ export default function DashboardMain() {
   // Fetch customer data
   const fetchCustomers = async () => {
     try {
-      const response = await fetch('/api/customers?limit=1000');
+      const response = await fetch('/api/customers?limit=-1');
       const data = await response.json();
 
       if (data.customers) {
@@ -125,6 +125,9 @@ export default function DashboardMain() {
           ...prev,
           customers: { total: totalCustomers, blacklisted, active }
         }));
+
+        // Generate customer chart data based on real data
+        generateCustomerChartData(data.customers);
       }
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -134,7 +137,7 @@ export default function DashboardMain() {
   // Fetch contract data
   const fetchContracts = async () => {
     try {
-      const response = await fetch('/api/contracts?limit=1000');
+      const response = await fetch('/api/contracts?limit=-1');
       const data = await response.json();
 
       if (data.contracts) {
@@ -152,13 +155,47 @@ export default function DashboardMain() {
     }
   };
 
-  // Generate dummy customer chart data
-  const generateCustomerChartData = () => {
+  // Generate customer chart data based on real customer data
+  const generateCustomerChartData = (customers: any[]) => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return months.map(month => ({
-      month,
-      customers: Math.floor(Math.random() * 800) + 200 // Random between 200-1000
-    }));
+
+    // Group customers by creation month-year
+    const customersByMonthYear: Record<string, number> = {};
+
+    customers.forEach(customer => {
+      if (customer.created_at) {
+        const date = new Date(customer.created_at);
+        const monthIndex = date.getMonth();
+        const year = date.getFullYear();
+
+        if (monthIndex >= 0 && monthIndex < months.length) {
+          const month = months[monthIndex];
+          const monthYear = `${month}-${year}`;
+          customersByMonthYear[monthYear] = (customersByMonthYear[monthYear] || 0) + 1;
+        }
+      }
+    });
+
+    // Create chart data sorted by date
+    const chartData = Object.entries(customersByMonthYear)
+      .map(([monthYear, count]) => ({
+        month: monthYear,
+        customers: count
+      }))
+      .sort((a, b) => {
+        // Sort by year and month
+        const [monthA, yearA] = a.month.split('-');
+        const [monthB, yearB] = b.month.split('-');
+        const monthIndexA = months.indexOf(monthA);
+        const monthIndexB = months.indexOf(monthB);
+
+        if (yearA !== yearB) {
+          return parseInt(yearA) - parseInt(yearB);
+        }
+        return monthIndexA - monthIndexB;
+      });
+
+    setCustomerData(chartData);
   };
 
   useEffect(() => {
@@ -169,9 +206,6 @@ export default function DashboardMain() {
         fetchCustomers(),
         fetchContracts()
       ]);
-
-      // Generate dummy customer chart data
-      setCustomerData(generateCustomerChartData());
 
       // Set placeholder finance and inspection data
       setStats(prev => ({
@@ -270,11 +304,19 @@ export default function DashboardMain() {
                 <YAxis
                   tick={{ fontSize: 12 }}
                   stroke="#6b7280"
-                  domain={[0, 1000]}
+                  domain={[0, 'dataMax']}
+                  tickCount={6}
+                  allowDecimals={false}
                 />
+                <defs>
+                  <linearGradient id="customerGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#005F8E" />
+                    <stop offset="100%" stopColor="#00A8AB" />
+                  </linearGradient>
+                </defs>
                 <Bar
                   dataKey="customers"
-                  fill="#10B981"
+                  fill="url(#customerGradient)"
                   radius={[2, 2, 0, 0]}
                 />
               </BarChart>
