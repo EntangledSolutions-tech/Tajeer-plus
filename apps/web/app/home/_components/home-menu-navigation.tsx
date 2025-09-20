@@ -47,7 +47,7 @@ export function HomeMenuNavigation() {
   };
 
   return (
-    <div className="flex w-full items-center justify-between gap-4 px-6 py-4 relative z-[100] min-h-[64px]">
+    <div className="flex w-full items-center justify-between gap-4 px-6 py-4 relative z-[100] min-h-[64px] overflow-visible">
       {/* Center: Search bar */}
       <div className="flex-1 flex justify-left">
         <div ref={searchRef} className="relative z-[200]">
@@ -69,7 +69,7 @@ export function HomeMenuNavigation() {
       </div>
 
       {/* Right: Branch, New, Notification, Profile */}
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center gap-3 min-w-0 overflow-visible">
         {/* Branch Dropdown */}
         <BranchSelector variant="transparent" />
 

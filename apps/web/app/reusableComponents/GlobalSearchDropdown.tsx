@@ -208,7 +208,7 @@ export function GlobalSearchDropdown({ query, onClose, searchInputRef }: GlobalS
             <div className="border-t border-gray-100 mt-2 pt-2">
               <button
                 onClick={handleViewAllClick}
-                className="w-full text-left px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors"
               >
                 View all results
               </button>
