@@ -3,6 +3,7 @@
 import { Form, Formik, useFormikContext } from 'formik';
 import React, { useEffect, useState } from 'react';
 import * as Yup from 'yup';
+import { toast } from '@kit/ui/sonner';
 import { useHttpService } from '../../../lib/http-service';
 import CustomButton from '../../reusableComponents/CustomButton';
 import CustomInput from '../../reusableComponents/CustomInput';
@@ -54,28 +55,48 @@ const InitialValuesHandler: React.FC<{
 
   useEffect(() => {
     const handleInitialValues = async () => {
+      console.log('ExpenseForm InitialValuesHandler - handleInitialValues called', {
+        isEdit,
+        initialValues,
+        transactionTypesLength: transactionTypes.length,
+        vehiclesLength: vehicles.length,
+        branchesLength: branches.length
+      });
+
       // Handle transaction type
-      if (initialValues?.transactionType && transactionTypes.length > 0) {
+      if (isEdit && initialValues?.transactionType && transactionTypes.length > 0) {
         const transactionTypeOption = transactionTypes.find(type => type.id === initialValues.transactionType);
-        if (transactionTypeOption && transactionTypeOption.id !== initialValues.transactionType) {
+        console.log('Expense Transaction type lookup:', {
+          lookingFor: initialValues.transactionType,
+          found: transactionTypeOption
+        });
+        if (transactionTypeOption) {
           console.log('Setting transaction type:', transactionTypeOption.id);
           setFieldValue('transactionType', transactionTypeOption.id);
         }
       }
 
       // Handle vehicle
-      if (initialValues?.vehicle && vehicles.length > 0) {
+      if (isEdit && initialValues?.vehicle && vehicles.length > 0) {
         const vehicleOption = vehicles.find(vehicle => vehicle.id === initialValues.vehicle);
-        if (vehicleOption && vehicleOption.id !== initialValues.vehicle) {
+        console.log('Expense Vehicle lookup:', {
+          lookingFor: initialValues.vehicle,
+          found: vehicleOption
+        });
+        if (vehicleOption) {
           console.log('Setting vehicle:', vehicleOption.id);
           setFieldValue('vehicle', vehicleOption.id);
         }
       }
 
       // Handle branch
-      if (initialValues?.branch && branches.length > 0) {
+      if (isEdit && initialValues?.branch && branches.length > 0) {
         const branchOption = branches.find(branch => branch.id === initialValues.branch);
-        if (branchOption && branchOption.id !== initialValues.branch) {
+        console.log('Expense Branch lookup:', {
+          lookingFor: initialValues.branch,
+          found: branchOption
+        });
+        if (branchOption) {
           console.log('Setting branch:', branchOption.id);
           setFieldValue('branch', branchOption.id);
         }
@@ -155,6 +176,9 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
       if (response.success) {
         console.log(`Expense transaction ${isEdit ? 'updated' : 'created'}:`, response.data);
 
+        // Show success toast
+        toast.success(`Expense ${isEdit ? 'updated' : 'created'} successfully!`);
+
         // Call the parent onSubmit callback if provided
         if (onSubmit) {
           await onSubmit(values);
@@ -167,8 +191,10 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
       }
     } catch (error) {
       console.error('Error submitting expense:', error);
-      // You might want to show an error message to the user here
-      alert(`Error: ${error instanceof Error ? error.message : 'An unexpected error occurred'}`);
+
+      // Show error toast
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      toast.error(`Failed to ${isEdit ? 'update' : 'create'} expense: ${errorMessage}`);
     } finally {
       setSubmitting(false);
     }

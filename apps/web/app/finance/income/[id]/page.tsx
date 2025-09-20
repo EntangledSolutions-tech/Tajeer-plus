@@ -21,19 +21,23 @@ interface Income {
   employee_name: string;
   status: string;
   transaction_type: {
+    id: string;
     name: string;
     category: string;
   };
   branch?: {
+    id: string;
     name: string;
   };
   vehicle?: {
+    id: string;
     plate_number: string;
     make: { name: string };
     model: { name: string };
     make_year: string;
   };
   contract?: {
+    id: string;
     contract_number: string;
     customer_name: string;
     start_date: string;
@@ -41,6 +45,7 @@ interface Income {
     created_at: string;
   };
   customer?: {
+    id: string;
     name: string;
     id_type: string;
     id_number: string;
@@ -143,10 +148,10 @@ export default function IncomeDetailPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleEditSuccess = () => {
+  const handleEditSuccess = async () => {
     setIsEditModalOpen(false);
     // Refresh the income data
-    fetchIncome();
+    await fetchIncome();
     toast.success('Income updated successfully!', {
       description: 'The income transaction has been updated.',
       duration: 4000,
@@ -229,7 +234,7 @@ export default function IncomeDetailPage() {
               <div>
                 <div className="text-3xl font-bold text-white">Income</div>
                 <div className="text-lg text-white/80 font-medium">
-                  {income.transaction_number}
+                  {income.transaction_type.name}
                 </div>
               </div>
               <div className="ml-4">
@@ -556,7 +561,7 @@ export default function IncomeDetailPage() {
             contract: income.contract?.id || '',
             branch: income.branch?.id || '',
             vehicle: income.vehicle?.id || '',
-            employee: income.employee?.id || '',
+            employee: income.employee_name || '',
             description: income.description || '',
           }}
           transactionId={income.id}

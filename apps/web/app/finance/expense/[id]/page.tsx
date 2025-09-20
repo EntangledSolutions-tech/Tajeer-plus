@@ -21,19 +21,23 @@ interface Expense {
   employee_name: string;
   status: string;
   transaction_type: {
+    id: string;
     name: string;
     category: string;
   };
   branch?: {
+    id: string;
     name: string;
   };
   vehicle?: {
+    id: string;
     plate_number: string;
     make: { name: string };
     model: { name: string };
     make_year: string;
   };
   contract?: {
+    id: string;
     contract_number: string;
     customer_name: string;
     start_date: string;
@@ -41,6 +45,7 @@ interface Expense {
     created_at: string;
   };
   customer?: {
+    id: string;
     name: string;
     id_type: string;
     id_number: string;
@@ -141,10 +146,10 @@ export default function ExpenseDetailPage() {
     setIsEditModalOpen(true);
   };
 
-  const handleEditSuccess = () => {
+  const handleEditSuccess = async () => {
     setIsEditModalOpen(false);
     // Refresh the expense data
-    fetchExpense();
+    await fetchExpense();
     toast.success('Expense updated successfully!', {
       description: 'The expense transaction has been updated.',
       duration: 4000,
@@ -227,7 +232,7 @@ export default function ExpenseDetailPage() {
               <div>
                 <div className="text-3xl font-bold text-white">Expense</div>
                 <div className="text-lg text-white/80 font-medium">
-                  {expense.transaction_number}
+                  {expense.transaction_type.name}
                 </div>
               </div>
               <div className="ml-4">
@@ -582,7 +587,6 @@ export default function ExpenseDetailPage() {
           onSubmit={handleEditSuccess}
           vehicles={vehicles}
           branches={branches}
-          contracts={contracts}
           loading={false}
           isEdit={true}
           initialValues={{
@@ -591,7 +595,7 @@ export default function ExpenseDetailPage() {
             transactionType: expense.transaction_type?.id || '',
             vehicle: expense.vehicle?.id || '',
             branch: expense.branch?.id || '',
-            employee: expense.employee?.id || '',
+            employee: expense.employee_name || '',
             description: expense.description || '',
           }}
           transactionId={expense.id}
