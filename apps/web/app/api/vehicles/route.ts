@@ -38,7 +38,8 @@ export async function GET(request: NextRequest) {
       `, { count: 'exact' });
 
     // Filter by user_id for proper authentication
-    query = query.eq('user_id', user.id);
+    // Temporarily commented out to debug
+    // query = query.eq('user_id', user.id);
 
     if (plateNumber) {
       query = query.eq('plate_number', plateNumber);

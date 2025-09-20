@@ -2,294 +2,53 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Filter, FileSpreadsheet, MoreHorizontal, ChevronDown, DollarSign, Wrench, Fuel, TrendingUp } from 'lucide-react';
-import { Formik, Form } from 'formik';
-import * as Yup from 'yup';
 import CustomButton from '../../reusableComponents/CustomButton';
 import CustomCard from '../../reusableComponents/CustomCard';
 import CustomTable, { TableColumn, TableAction } from '../../reusableComponents/CustomTable';
-import CustomModal from '../../reusableComponents/CustomModal';
-import CustomInput from '../../reusableComponents/CustomInput';
-import CustomSelect, { SimpleSelect } from '../../reusableComponents/CustomSelect';
-import CustomTextarea from '../../reusableComponents/CustomTextarea';
-import { SimpleSearchableSelect } from '../../reusableComponents/SearchableSelect';
+import { SimpleSelect } from '../../reusableComponents/CustomSelect';
 import { SearchBar } from '../../reusableComponents/SearchBar';
-import { RadioButtonGroup } from '../../reusableComponents/RadioButtonGroup';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
+import { useHttpService } from '../../../lib/http-service';
+
+// Import modal components
+import AddTransactionModal from './AddTransactionModal';
+import SellVehicleModal from './SellVehicleModal';
+import ReturnVehicleModal from './ReturnVehicleModal';
+import DeprecationModal from './DeprecationModal';
+import PenaltyModal from './PenaltyModal';
+import InsuranceModal from './InsuranceModal';
+import MaintenanceModal from './MaintenanceModal';
+import AccidentModal from './AccidentModal';
 
 // Interfaces
 interface Vehicle {
   id: string;
   plate_number: string;
-  make: string;
-  model: string;
-  year: number;
-  is_active: boolean;
+  make: {
+    name: string;
+  };
+  model: {
+    name: string;
+  };
+  make_year?: number;
+  year?: number;
+  status: {
+    name: string;
+    color: string;
+  };
 }
-
-interface VehicleFinanceFormValues {
-  amount: string;
-  date: string;
-  transactionType: string;
-  vehicle: string;
-  description: string;
-  invoiceNumber: string;
-}
-
-interface SellVehicleFormValues {
-  vehicle: string;
-  invoiceNumber: string;
-  invoiceDate: string;
-  paymentType: string;
-  vatIncluded: boolean;
-  customerName: string;
-  totalAmount: string;
-  statementType: string;
-  totalDiscount: string;
-  vat: string;
-  netInvoice: string;
-  totalPaid: string;
-  remaining: string;
-}
-
-interface ReturnVehicleFormValues {
-  vehicle: string;
-  invoiceNumber: string;
-  invoiceDate: string;
-  paymentType: string;
-  vatIncluded: boolean;
-  customerName: string;
-  totalAmount: string;
-  statementType: string;
-  totalDiscount: string;
-  vat: string;
-  netInvoice: string;
-  totalPaid: string;
-  remaining: string;
-}
-
-interface DeprecationFormValues {
-  vehicle: string;
-  expectedSalePrice: string;
-  leaseAmountIncrease: string;
-}
-
-interface PenaltyFormValues {
-  vehicle: string;
-  reason: string;
-  date: string;
-  notes: string;
-  totalAmount: string;
-  totalDiscount: string;
-  vat: string;
-  netInvoice: string;
-  totalPaid: string;
-  remaining: string;
-}
-
-interface InsuranceFormValues {
-  vehicle: string;
-  company: string;
-  policyNumber: string;
-  totalAmount: string;
-  totalDiscount: string;
-  vat: string;
-  netInvoice: string;
-  totalPaid: string;
-  remaining: string;
-}
-
-interface MaintenanceFormValues {
-  vehicle: string;
-  maintenanceType: string;
-  date: string;
-  supplier: string;
-  notes: string;
-  totalAmount: string;
-  vatIncluded: boolean;
-  statementType: string;
-  totalDiscount: string;
-  netInvoice: string;
-  totalPaid: string;
-  remaining: string;
-}
-
-// Validation schema
-const VehicleFinanceSchema = Yup.object().shape({
-  amount: Yup.string()
-    .required('Amount is required')
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  date: Yup.date()
-    .required('Date is required')
-    .max(new Date(), 'Date cannot be in the future'),
-  transactionType: Yup.string()
-    .required('Transaction type is required'),
-  vehicle: Yup.string()
-    .required('Vehicle is required'),
-  description: Yup.string()
-    .required('Description is required')
-    .min(10, 'Description must be at least 10 characters'),
-  invoiceNumber: Yup.string()
-    .required('Invoice number is required')
-});
-
-// Validation schema for sell vehicle
-const SellVehicleSchema = Yup.object().shape({
-  vehicle: Yup.string()
-    .required('Vehicle is required'),
-  invoiceNumber: Yup.string()
-    .required('Invoice number is required'),
-  invoiceDate: Yup.date()
-    .required('Invoice date is required')
-    .max(new Date(), 'Date cannot be in the future'),
-  paymentType: Yup.string()
-    .required('Payment type is required'),
-  customerName: Yup.string()
-    .required('Customer name is required'),
-  totalAmount: Yup.string()
-    .required('Total amount is required')
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  statementType: Yup.string()
-    .required('Statement type is required'),
-  totalDiscount: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  vat: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  netInvoice: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  totalPaid: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  remaining: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount')
-});
-
-// Validation schema for return vehicle
-const ReturnVehicleSchema = Yup.object().shape({
-  vehicle: Yup.string()
-    .required('Vehicle is required'),
-  invoiceNumber: Yup.string()
-    .required('Invoice number is required'),
-  invoiceDate: Yup.date()
-    .required('Invoice date is required')
-    .max(new Date(), 'Date cannot be in the future'),
-  paymentType: Yup.string()
-    .required('Payment type is required'),
-  customerName: Yup.string()
-    .required('Customer name is required'),
-  totalAmount: Yup.string()
-    .required('Total amount is required')
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  statementType: Yup.string()
-    .required('Statement type is required'),
-  totalDiscount: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  vat: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  netInvoice: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  totalPaid: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  remaining: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount')
-});
-
-// Validation schema for deprecation
-const DeprecationSchema = Yup.object().shape({
-  vehicle: Yup.string()
-    .required('Vehicle is required'),
-  expectedSalePrice: Yup.string()
-    .required('Expected sale price is required')
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  leaseAmountIncrease: Yup.string()
-    .required('Lease amount increase is required')
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount')
-});
-
-// Validation schema for penalty
-const PenaltySchema = Yup.object().shape({
-  vehicle: Yup.string()
-    .required('Vehicle is required'),
-  reason: Yup.string()
-    .required('Penalty reason is required'),
-  date: Yup.date()
-    .required('Date is required')
-    .max(new Date(), 'Date cannot be in the future'),
-  notes: Yup.string(),
-  totalAmount: Yup.string()
-    .required('Total amount is required')
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  totalDiscount: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  vat: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  netInvoice: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  totalPaid: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  remaining: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount')
-});
-
-// Validation schema for insurance
-const InsuranceSchema = Yup.object().shape({
-  vehicle: Yup.string()
-    .required('Vehicle is required'),
-  company: Yup.string()
-    .required('Insurance company is required'),
-  policyNumber: Yup.string()
-    .required('Policy number is required'),
-  totalAmount: Yup.string()
-    .required('Total amount is required')
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  totalDiscount: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  vat: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  netInvoice: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  totalPaid: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  remaining: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount')
-});
-
-// Validation schema for maintenance
-const MaintenanceSchema = Yup.object().shape({
-  vehicle: Yup.string()
-    .required('Vehicle is required'),
-  maintenanceType: Yup.string()
-    .required('Maintenance type is required'),
-  date: Yup.date()
-    .required('Date is required')
-    .max(new Date(), 'Date cannot be in the future'),
-  supplier: Yup.string()
-    .required('Supplier is required'),
-  notes: Yup.string(),
-  totalAmount: Yup.string()
-    .required('Total amount is required')
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  statementType: Yup.string()
-    .required('Statement type is required'),
-  totalDiscount: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  netInvoice: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  totalPaid: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  remaining: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount')
-});
 
 interface Customer {
   id: string;
   name: string;
-  email: string;
-  phone: string;
-  is_active: boolean;
+  mobile: string;
+  id_number: string;
+  status: string;
 }
 
 export default function VehicleFinancesLayout() {
@@ -301,6 +60,7 @@ export default function VehicleFinancesLayout() {
   const [isPenaltyModalOpen, setIsPenaltyModalOpen] = useState(false);
   const [isInsuranceModalOpen, setIsInsuranceModalOpen] = useState(false);
   const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
+  const [isAccidentModalOpen, setIsAccidentModalOpen] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState({
@@ -435,10 +195,16 @@ export default function VehicleFinancesLayout() {
   const fetchVehicles = async () => {
     try {
       setLoading(prev => ({ ...prev, vehicles: true }));
+      console.log('Fetching vehicles...');
       const response = await fetch('/api/vehicles?limit=100');
+      console.log('Vehicles response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('Vehicles API response:', data);
         setVehicles(data.vehicles || []);
+      } else {
+        const errorData = await response.json();
+        console.error('Vehicles API error:', errorData);
       }
     } catch (error) {
       console.error('Error fetching vehicles:', error);
@@ -463,7 +229,7 @@ export default function VehicleFinancesLayout() {
   };
 
   // Form handlers
-  const handleSubmit = async (values: VehicleFinanceFormValues) => {
+  const handleSubmit = async (values: any) => {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
@@ -488,7 +254,7 @@ export default function VehicleFinancesLayout() {
     }
   };
 
-  const handleSellSubmit = async (values: SellVehicleFormValues) => {
+  const handleSellSubmit = async (values: any) => {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
@@ -513,7 +279,7 @@ export default function VehicleFinancesLayout() {
     }
   };
 
-  const handleReturnSubmit = async (values: ReturnVehicleFormValues) => {
+  const handleReturnSubmit = async (values: any) => {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
@@ -538,7 +304,7 @@ export default function VehicleFinancesLayout() {
     }
   };
 
-  const handleDeprecationSubmit = async (values: DeprecationFormValues) => {
+  const handleDeprecationSubmit = async (values: any) => {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
@@ -563,7 +329,7 @@ export default function VehicleFinancesLayout() {
     }
   };
 
-  const handlePenaltySubmit = async (values: PenaltyFormValues) => {
+  const handlePenaltySubmit = async (values: any) => {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
@@ -588,7 +354,7 @@ export default function VehicleFinancesLayout() {
     }
   };
 
-  const handleInsuranceSubmit = async (values: InsuranceFormValues) => {
+  const handleInsuranceSubmit = async (values: any) => {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
@@ -613,7 +379,7 @@ export default function VehicleFinancesLayout() {
     }
   };
 
-  const handleMaintenanceSubmit = async (values: MaintenanceFormValues) => {
+  const handleMaintenanceSubmit = async (values: any) => {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
@@ -633,6 +399,31 @@ export default function VehicleFinancesLayout() {
       console.log('Maintenance log created successfully');
     } catch (error) {
       console.error('Error creating maintenance log:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, submit: false }));
+    }
+  };
+
+  const handleAccidentSubmit = async (values: any) => {
+    try {
+      setLoading(prev => ({ ...prev, submit: true }));
+
+      const response = await fetch('/api/finance/accident', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create accident record');
+      }
+
+      setIsAccidentModalOpen(false);
+      console.log('Accident record created successfully');
+    } catch (error) {
+      console.error('Error creating accident record:', error);
     } finally {
       setLoading(prev => ({ ...prev, submit: false }));
     }
@@ -789,7 +580,7 @@ export default function VehicleFinancesLayout() {
               <DropdownMenuItem onClick={() => setIsInsuranceModalOpen(true)}>
                 Insurance
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsAddModalOpen(true)}>
+              <DropdownMenuItem onClick={() => setIsAccidentModalOpen(true)}>
                 Accident
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -890,1261 +681,71 @@ export default function VehicleFinancesLayout() {
         />
       </CustomCard>
 
-      {/* Add Transaction Modal */}
-      <CustomModal
+      {/* Modal Components */}
+      <AddTransactionModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        title="Add new vehicle transaction"
-        maxWidth="max-w-2xl"
-      >
-        <Formik
-          initialValues={{
-            amount: 'SAR 1,200.00',
-            date: '03/10/2022',
-            transactionType: '',
-            vehicle: '',
-            description: 'Vehicle maintenance and repair services',
-            invoiceNumber: 'INV-V001'
-          }}
-          validationSchema={VehicleFinanceSchema}
-          onSubmit={handleSubmit}
-        >
-          {({ values, setFieldValue, errors, touched, isSubmitting }) => (
-            <Form>
-              <div className="px-8 py-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Amount */}
-                  <CustomInput
-                    name="amount"
-                    label="Amount"
-                    type="text"
-                    value={values.amount}
-                    onChange={(value: string) => setFieldValue('amount', value)}
-                    error={errors.amount && touched.amount ? errors.amount : undefined}
-                    className="w-full"
-                  />
+        onSubmit={handleSubmit}
+        vehicles={vehicles}
+        loading={loading.submit}
+      />
 
-                  {/* Date */}
-                  <CustomInput
-                    name="date"
-                    label="Date"
-                    type="date"
-                    value={values.date}
-                    onChange={(value: string) => setFieldValue('date', value)}
-                    error={errors.date && touched.date ? errors.date : undefined}
-                    className="w-full"
-                  />
-
-                  {/* Transaction Type */}
-                  <CustomSelect
-                    name="transactionType"
-                    label="Transaction type"
-                    value={values.transactionType}
-                    onChange={(value: string) => setFieldValue('transactionType', value)}
-                    options={[
-                      { value: '', label: 'Select type' },
-                      { value: 'Sale', label: 'Sale' },
-                      { value: 'Return', label: 'Return' },
-                      { value: 'Deprecation', label: 'Deprecation' },
-                      { value: 'Penalty', label: 'Penalty' },
-                      { value: 'Maintenance', label: 'Maintenance' },
-                      { value: 'Service', label: 'Service' },
-                      { value: 'Insurance', label: 'Insurance' },
-                      { value: 'Accident', label: 'Accident' }
-                    ]}
-                    error={errors.transactionType && touched.transactionType ? errors.transactionType : undefined}
-                    className="w-full"
-                  />
-
-                  {/* Vehicle */}
-                  <div>
-                    <label className="block text-sm font-medium text-primary mb-2">Vehicle</label>
-                    <SimpleSearchableSelect
-                      options={vehicles.filter(vehicle => vehicle.is_active).map(vehicle => ({
-                        key: vehicle.id,
-                        id: vehicle.id,
-                        value: vehicle.plate_number,
-                        subValue: `${vehicle.make} ${vehicle.model} ${vehicle.year}`
-                      }))}
-                      value={values.vehicle}
-                      onChange={(value) => setFieldValue('vehicle', value)}
-                      placeholder="Select vehicle"
-                      className="w-full"
-                      error={errors.vehicle && touched.vehicle ? errors.vehicle : undefined}
-                    />
-                  </div>
-
-                  {/* Invoice Number */}
-                  <CustomInput
-                    name="invoiceNumber"
-                    label="Invoice Number"
-                    type="text"
-                    value={values.invoiceNumber}
-                    onChange={(value: string) => setFieldValue('invoiceNumber', value)}
-                    placeholder="INV-V001"
-                    error={errors.invoiceNumber && touched.invoiceNumber ? errors.invoiceNumber : undefined}
-                    className="w-full"
-                  />
-                </div>
-
-                {/* Description */}
-                <div className="mt-6">
-                  <CustomTextarea
-                    name="description"
-                    label="Description"
-                    value={values.description}
-                    onChange={(value: string) => setFieldValue('description', value)}
-                    placeholder="Vehicle maintenance and repair services"
-                    rows={4}
-                    error={errors.description && touched.description ? errors.description : undefined}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-
-              {/* Form Actions */}
-              <div className="bg-white px-8 py-6 border-t border-primary/20 flex-shrink-0">
-                <div className="flex justify-end gap-4">
-                  <CustomButton
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsAddModalOpen(false)}
-                    disabled={loading.submit}
-                    className="border-primary text-primary hover:bg-primary/5"
-                  >
-                    Cancel
-                  </CustomButton>
-                  <CustomButton
-                    type="submit"
-                    variant="primary"
-                    disabled={loading.submit}
-                    loading={loading.submit}
-                    submittingText="Adding Transaction..."
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    Add Transaction
-                  </CustomButton>
-                </div>
-              </div>
-            </Form>
-          )}
-        </Formik>
-      </CustomModal>
-
-      {/* Sell Vehicle Modal */}
-      <CustomModal
+      <SellVehicleModal
         isOpen={isSellModalOpen}
         onClose={() => setIsSellModalOpen(false)}
-        title="Add details to sell vehicle"
-        maxWidth="max-w-4xl"
-      >
-        <Formik
-          initialValues={{
-            vehicle: '',
-            invoiceNumber: 'INV-9876',
-            invoiceDate: '06/04/2022',
-            paymentType: 'Cash',
-            vatIncluded: true,
-            customerName: '',
-            totalAmount: 'SAR 1.00',
-            statementType: 'Sale',
-            totalDiscount: 'SAR 0.00',
-            vat: 'SAR 15%',
-            netInvoice: 'SAR 1.15',
-            totalPaid: 'SAR 0.00',
-            remaining: 'SAR 0.00'
-          }}
-          validationSchema={SellVehicleSchema}
-          onSubmit={handleSellSubmit}
-        >
-          {({ values, setFieldValue, errors, touched, isSubmitting }) => (
-            <Form>
-              <div className="px-8 py-6">
-                <div className="space-y-8">
-                  {/* Vehicle Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Vehicle details</h3>
-                    <div>
-                      <label className="block text-sm font-medium text-primary mb-2">Vehicle</label>
-                      <SimpleSearchableSelect
-                        options={vehicles.filter(vehicle => vehicle.is_active).map(vehicle => ({
-                          key: vehicle.id,
-                          id: vehicle.id,
-                          value: vehicle.plate_number,
-                          subValue: `${vehicle.make} ${vehicle.model} ${vehicle.year}`
-                        }))}
-                        value={values.vehicle}
-                        onChange={(value) => setFieldValue('vehicle', value)}
-                        placeholder="Select vehicle"
-                        className="w-full"
-                        error={errors.vehicle && touched.vehicle ? errors.vehicle : undefined}
-                      />
-                    </div>
-                  </div>
+        onSubmit={handleSellSubmit}
+        vehicles={vehicles}
+        customers={customers}
+        loading={loading.submit}
+      />
 
-                  {/* Invoice Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Invoice details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <CustomInput
-                        name="invoiceNumber"
-                        label="Invoice Number"
-                        type="text"
-                        value={values.invoiceNumber}
-                        onChange={(value: string) => setFieldValue('invoiceNumber', value)}
-                        error={errors.invoiceNumber && touched.invoiceNumber ? errors.invoiceNumber : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="invoiceDate"
-                        label="Invoice Date"
-                        type="date"
-                        value={values.invoiceDate}
-                        onChange={(value: string) => setFieldValue('invoiceDate', value)}
-                        error={errors.invoiceDate && touched.invoiceDate ? errors.invoiceDate : undefined}
-                        className="w-full"
-                      />
-                      <CustomSelect
-                        name="paymentType"
-                        label="Payment type"
-                        value={values.paymentType}
-                        onChange={(value: string) => setFieldValue('paymentType', value)}
-                        options={[
-                          { value: 'Cash', label: 'Cash' },
-                          { value: 'Credit Card', label: 'Credit Card' },
-                          { value: 'Bank Transfer', label: 'Bank Transfer' },
-                          { value: 'Check', label: 'Check' }
-                        ]}
-                        error={errors.paymentType && touched.paymentType ? errors.paymentType : undefined}
-                        className="w-full"
-                      />
-                      <div>
-                        <label className="block text-sm font-medium text-primary mb-2">VAT</label>
-                        <RadioButtonGroup
-                          name="vatIncluded"
-                          value={values.vatIncluded ? 'included' : 'notIncluded'}
-                          onChange={(value) => setFieldValue('vatIncluded', value === 'included')}
-                          options={[
-                            { value: 'included', label: 'VAT included' },
-                            { value: 'notIncluded', label: 'VAT not included' }
-                          ]}
-                          className="mt-2"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-primary mb-2">Customer Name</label>
-                        <SimpleSearchableSelect
-                          options={customers.filter(customer => customer.is_active).map(customer => ({
-                            key: customer.id,
-                            id: customer.id,
-                            value: customer.name,
-                            subValue: `${customer.email} - ${customer.phone}`
-                          }))}
-                          value={values.customerName}
-                          onChange={(value) => setFieldValue('customerName', value)}
-                          placeholder="Select Customer"
-                          className="w-full"
-                          error={errors.customerName && touched.customerName ? errors.customerName : undefined}
-                        />
-                      </div>
-                      <div className="flex items-end">
-                        <CustomButton variant="outline" className="border-primary text-primary hover:bg-primary/5">
-                          + Add New
-                        </CustomButton>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Amount Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Amount details</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      <CustomInput
-                        name="totalAmount"
-                        label="Total Amount"
-                        type="text"
-                        value={values.totalAmount}
-                        onChange={(value: string) => setFieldValue('totalAmount', value)}
-                        error={errors.totalAmount && touched.totalAmount ? errors.totalAmount : undefined}
-                        className="w-full"
-                      />
-                      <CustomSelect
-                        name="statementType"
-                        label="Statement type"
-                        value={values.statementType}
-                        onChange={(value: string) => setFieldValue('statementType', value)}
-                        options={[
-                          { value: 'Sale', label: 'Sale' },
-                          { value: 'Return', label: 'Return' },
-                          { value: 'Deprecation', label: 'Deprecation' }
-                        ]}
-                        error={errors.statementType && touched.statementType ? errors.statementType : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="totalDiscount"
-                        label="Total Discount"
-                        type="text"
-                        value={values.totalDiscount}
-                        onChange={(value: string) => setFieldValue('totalDiscount', value)}
-                        error={errors.totalDiscount && touched.totalDiscount ? errors.totalDiscount : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="vat"
-                        label="VAT"
-                        type="text"
-                        value={values.vat}
-                        onChange={(value: string) => setFieldValue('vat', value)}
-                        error={errors.vat && touched.vat ? errors.vat : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="netInvoice"
-                        label="Net Invoice"
-                        type="text"
-                        value={values.netInvoice}
-                        onChange={(value: string) => setFieldValue('netInvoice', value)}
-                        error={errors.netInvoice && touched.netInvoice ? errors.netInvoice : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="totalPaid"
-                        label="Total Paid"
-                        type="text"
-                        value={values.totalPaid}
-                        onChange={(value: string) => setFieldValue('totalPaid', value)}
-                        error={errors.totalPaid && touched.totalPaid ? errors.totalPaid : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="remaining"
-                        label="Remaining"
-                        type="text"
-                        value={values.remaining}
-                        onChange={(value: string) => setFieldValue('remaining', value)}
-                        error={errors.remaining && touched.remaining ? errors.remaining : undefined}
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Form Actions */}
-              <div className="bg-white px-8 py-6 border-t border-primary/20 flex-shrink-0">
-                <div className="flex justify-end gap-4">
-                  <CustomButton
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsSellModalOpen(false)}
-                    disabled={loading.submit}
-                    className="border-primary text-primary hover:bg-primary/5"
-                  >
-                    Cancel
-                  </CustomButton>
-                  <CustomButton
-                    type="submit"
-                    variant="primary"
-                    disabled={loading.submit}
-                    loading={loading.submit}
-                    submittingText="Adding Sales Invoice..."
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    Add Sales Invoice
-                  </CustomButton>
-                </div>
-              </div>
-            </Form>
-          )}
-        </Formik>
-      </CustomModal>
-
-      {/* Return Vehicle Modal */}
-      <CustomModal
+      <ReturnVehicleModal
         isOpen={isReturnModalOpen}
         onClose={() => setIsReturnModalOpen(false)}
-        title="Add details to return vehicle"
-        maxWidth="max-w-4xl"
-      >
-        <Formik
-          initialValues={{
-            vehicle: '',
-            invoiceNumber: 'INV-4876',
-            invoiceDate: '06/04/2022',
-            paymentType: 'Cash',
-            vatIncluded: true,
-            customerName: 'Alex Perrera',
-            totalAmount: 'SAR 1.00',
-            statementType: 'Sale',
-            totalDiscount: 'SAR 0.00',
-            vat: 'SAR 15%',
-            netInvoice: 'SAR 1.15',
-            totalPaid: 'SAR 0.00',
-            remaining: 'SAR 0.00'
-          }}
-          validationSchema={ReturnVehicleSchema}
-          onSubmit={handleReturnSubmit}
-        >
-          {({ values, setFieldValue, errors, touched, isSubmitting }) => (
-            <Form>
-              <div className="px-8 py-6">
-                <div className="space-y-8">
-                  {/* Vehicle Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Vehicle details</h3>
-                    <div>
-                      <label className="block text-sm font-medium text-primary mb-2">Vehicle</label>
-                      <SimpleSearchableSelect
-                        options={vehicles.filter(vehicle => vehicle.is_active).map(vehicle => ({
-                          key: vehicle.id,
-                          id: vehicle.id,
-                          value: vehicle.plate_number,
-                          subValue: `${vehicle.make} ${vehicle.model} ${vehicle.year}`
-                        }))}
-                        value={values.vehicle}
-                        onChange={(value) => setFieldValue('vehicle', value)}
-                        placeholder="Select vehicle"
-                        className="w-full"
-                        error={errors.vehicle && touched.vehicle ? errors.vehicle : undefined}
-                      />
-                    </div>
-                  </div>
+        onSubmit={handleReturnSubmit}
+        vehicles={vehicles}
+        loading={loading.submit}
+      />
 
-                  {/* Invoice Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Invoice details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <CustomInput
-                        name="invoiceNumber"
-                        label="Invoice Number"
-                        type="text"
-                        value={values.invoiceNumber}
-                        onChange={(value: string) => setFieldValue('invoiceNumber', value)}
-                        error={errors.invoiceNumber && touched.invoiceNumber ? errors.invoiceNumber : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="invoiceDate"
-                        label="Invoice Date"
-                        type="date"
-                        value={values.invoiceDate}
-                        onChange={(value: string) => setFieldValue('invoiceDate', value)}
-                        error={errors.invoiceDate && touched.invoiceDate ? errors.invoiceDate : undefined}
-                        className="w-full"
-                      />
-                      <CustomSelect
-                        name="paymentType"
-                        label="Payment type"
-                        value={values.paymentType}
-                        onChange={(value: string) => setFieldValue('paymentType', value)}
-                        options={[
-                          { value: 'Cash', label: 'Cash' },
-                          { value: 'Credit Card', label: 'Credit Card' },
-                          { value: 'Bank Transfer', label: 'Bank Transfer' },
-                          { value: 'Check', label: 'Check' }
-                        ]}
-                        error={errors.paymentType && touched.paymentType ? errors.paymentType : undefined}
-                        className="w-full"
-                      />
-                      <div>
-                        <label className="block text-sm font-medium text-primary mb-2">VAT</label>
-                        <RadioButtonGroup
-                          name="vatIncluded"
-                          value={values.vatIncluded ? 'included' : 'notIncluded'}
-                          onChange={(value) => setFieldValue('vatIncluded', value === 'included')}
-                          options={[
-                            { value: 'included', label: 'VAT included' },
-                            { value: 'notIncluded', label: 'VAT not included' }
-                          ]}
-                          className="mt-2"
-                        />
-                      </div>
-                      <CustomInput
-                        name="customerName"
-                        label="Customer Name"
-                        type="text"
-                        value={values.customerName}
-                        onChange={(value: string) => setFieldValue('customerName', value)}
-                        error={errors.customerName && touched.customerName ? errors.customerName : undefined}
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Amount Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Amount details</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      <CustomInput
-                        name="totalAmount"
-                        label="Total Amount"
-                        type="text"
-                        value={values.totalAmount}
-                        onChange={(value: string) => setFieldValue('totalAmount', value)}
-                        error={errors.totalAmount && touched.totalAmount ? errors.totalAmount : undefined}
-                        className="w-full"
-                      />
-                      <CustomSelect
-                        name="statementType"
-                        label="Statement type"
-                        value={values.statementType}
-                        onChange={(value: string) => setFieldValue('statementType', value)}
-                        options={[
-                          { value: 'Sale', label: 'Sale' },
-                          { value: 'Return', label: 'Return' },
-                          { value: 'Deprecation', label: 'Deprecation' }
-                        ]}
-                        error={errors.statementType && touched.statementType ? errors.statementType : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="totalDiscount"
-                        label="Total Discount"
-                        type="text"
-                        value={values.totalDiscount}
-                        onChange={(value: string) => setFieldValue('totalDiscount', value)}
-                        error={errors.totalDiscount && touched.totalDiscount ? errors.totalDiscount : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="vat"
-                        label="VAT"
-                        type="text"
-                        value={values.vat}
-                        onChange={(value: string) => setFieldValue('vat', value)}
-                        error={errors.vat && touched.vat ? errors.vat : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="netInvoice"
-                        label="Net Invoice"
-                        type="text"
-                        value={values.netInvoice}
-                        onChange={(value: string) => setFieldValue('netInvoice', value)}
-                        error={errors.netInvoice && touched.netInvoice ? errors.netInvoice : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="totalPaid"
-                        label="Total Paid"
-                        type="text"
-                        value={values.totalPaid}
-                        onChange={(value: string) => setFieldValue('totalPaid', value)}
-                        error={errors.totalPaid && touched.totalPaid ? errors.totalPaid : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="remaining"
-                        label="Remaining"
-                        type="text"
-                        value={values.remaining}
-                        onChange={(value: string) => setFieldValue('remaining', value)}
-                        error={errors.remaining && touched.remaining ? errors.remaining : undefined}
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Form Actions */}
-              <div className="bg-white px-8 py-6 border-t border-primary/20 flex-shrink-0">
-                <div className="flex justify-end gap-4">
-                  <CustomButton
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsReturnModalOpen(false)}
-                    disabled={loading.submit}
-                    className="border-primary text-primary hover:bg-primary/5"
-                  >
-                    Cancel
-                  </CustomButton>
-                  <CustomButton
-                    type="submit"
-                    variant="primary"
-                    disabled={loading.submit}
-                    loading={loading.submit}
-                    submittingText="Adding Sales Invoice..."
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    Add Sales Invoice
-                  </CustomButton>
-                </div>
-              </div>
-            </Form>
-          )}
-        </Formik>
-      </CustomModal>
-
-      {/* Deprecation Modal */}
-      <CustomModal
+      <DeprecationModal
         isOpen={isDeprecationModalOpen}
         onClose={() => setIsDeprecationModalOpen(false)}
-        title="Add Vehicle Pricing & Depreciation"
-        maxWidth="max-w-2xl"
-      >
-        <Formik
-          initialValues={{
-            vehicle: '',
-            expectedSalePrice: '',
-            leaseAmountIncrease: ''
-          }}
-          validationSchema={DeprecationSchema}
-          onSubmit={handleDeprecationSubmit}
-        >
-          {({ values, setFieldValue, errors, touched, isSubmitting }) => (
-            <Form>
-              <div className="px-8 py-6">
-                <div className="space-y-6">
-                  {/* Vehicle Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Vehicle details</h3>
-                    <div>
-                      <label className="block text-sm font-medium text-primary mb-2">Vehicle</label>
-                      <SimpleSearchableSelect
-                        options={vehicles.filter(vehicle => vehicle.is_active).map(vehicle => ({
-                          key: vehicle.id,
-                          id: vehicle.id,
-                          value: vehicle.plate_number,
-                          subValue: `${vehicle.make} ${vehicle.model} ${vehicle.year}`
-                        }))}
-                        value={values.vehicle}
-                        onChange={(value) => setFieldValue('vehicle', value)}
-                        placeholder="Select vehicle"
-                        className="w-full"
-                        error={errors.vehicle && touched.vehicle ? errors.vehicle : undefined}
-                      />
-                    </div>
-                  </div>
+        onSubmit={handleDeprecationSubmit}
+        vehicles={vehicles}
+        loading={loading.submit}
+      />
 
-                  {/* Pricing Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Pricing details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <CustomInput
-                        name="expectedSalePrice"
-                        label="Expected Sale Price"
-                        type="text"
-                        value={values.expectedSalePrice}
-                        onChange={(value: string) => setFieldValue('expectedSalePrice', value)}
-                        placeholder="Amount"
-                        error={errors.expectedSalePrice && touched.expectedSalePrice ? errors.expectedSalePrice : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="leaseAmountIncrease"
-                        label="Lease Amount increase in case of insurance"
-                        type="text"
-                        value={values.leaseAmountIncrease}
-                        onChange={(value: string) => setFieldValue('leaseAmountIncrease', value)}
-                        placeholder="Amount"
-                        error={errors.leaseAmountIncrease && touched.leaseAmountIncrease ? errors.leaseAmountIncrease : undefined}
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Form Actions */}
-              <div className="bg-white px-8 py-6 border-t border-primary/20 flex-shrink-0">
-                <div className="flex justify-end gap-4">
-                  <CustomButton
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsDeprecationModalOpen(false)}
-                    disabled={loading.submit}
-                    className="border-primary text-primary hover:bg-primary/5"
-                  >
-                    Cancel
-                  </CustomButton>
-                  <CustomButton
-                    type="submit"
-                    variant="primary"
-                    disabled={loading.submit}
-                    loading={loading.submit}
-                    submittingText="Updating Pricing..."
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    Update Pricing
-                  </CustomButton>
-                </div>
-              </div>
-            </Form>
-          )}
-        </Formik>
-      </CustomModal>
-
-      {/* Maintenance Modal */}
-      <CustomModal
-        isOpen={isMaintenanceModalOpen}
-        onClose={() => setIsMaintenanceModalOpen(false)}
-        title="Add Maintenance Log"
-        maxWidth="max-w-4xl"
-      >
-        <Formik
-          initialValues={{
-            vehicle: '',
-            maintenanceType: '',
-            date: '',
-            supplier: '',
-            notes: '',
-            totalAmount: 'SAR 1.00',
-            vatIncluded: true,
-            statementType: 'Sale',
-            totalDiscount: 'SAR 0.00',
-            netInvoice: 'SAR 1.15',
-            totalPaid: 'SAR 0.00',
-            remaining: 'SAR 0.00'
-          }}
-          validationSchema={MaintenanceSchema}
-          onSubmit={handleMaintenanceSubmit}
-        >
-          {({ values, setFieldValue, errors, touched, isSubmitting }) => (
-            <Form>
-              <div className="px-8 py-6">
-                <div className="space-y-8">
-                  {/* Vehicle Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Vehicle details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-primary mb-2">Vehicle</label>
-                        <SimpleSearchableSelect
-                          options={vehicles.filter(vehicle => vehicle.is_active).map(vehicle => ({
-                            key: vehicle.id,
-                            id: vehicle.id,
-                            value: vehicle.plate_number,
-                            subValue: `${vehicle.make} ${vehicle.model} ${vehicle.year}`
-                          }))}
-                          value={values.vehicle}
-                          onChange={(value) => setFieldValue('vehicle', value)}
-                          placeholder="Select vehicle"
-                          className="w-full"
-                          error={errors.vehicle && touched.vehicle ? errors.vehicle : undefined}
-                        />
-                      </div>
-                      <CustomSelect
-                        name="maintenanceType"
-                        label="Maintenance type"
-                        value={values.maintenanceType}
-                        onChange={(value: string) => setFieldValue('maintenanceType', value)}
-                        options={[
-                          { value: '', label: 'Select type' },
-                          { value: 'Oil Change', label: 'Oil Change' },
-                          { value: 'Brake Service', label: 'Brake Service' },
-                          { value: 'Engine Repair', label: 'Engine Repair' },
-                          { value: 'Transmission Service', label: 'Transmission Service' },
-                          { value: 'Tire Replacement', label: 'Tire Replacement' },
-                          { value: 'General Maintenance', label: 'General Maintenance' }
-                        ]}
-                        error={errors.maintenanceType && touched.maintenanceType ? errors.maintenanceType : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="date"
-                        label="Date"
-                        type="date"
-                        value={values.date}
-                        onChange={(value: string) => setFieldValue('date', value)}
-                        error={errors.date && touched.date ? errors.date : undefined}
-                        className="w-full"
-                      />
-                      <CustomSelect
-                        name="supplier"
-                        label="Supplier"
-                        value={values.supplier}
-                        onChange={(value: string) => setFieldValue('supplier', value)}
-                        options={[
-                          { value: '', label: 'Select supplier' },
-                          { value: 'Auto Parts Co.', label: 'Auto Parts Co.' },
-                          { value: 'Service Center', label: 'Service Center' },
-                          { value: 'Dealership', label: 'Dealership' },
-                          { value: 'Independent Mechanic', label: 'Independent Mechanic' }
-                        ]}
-                        error={errors.supplier && touched.supplier ? errors.supplier : undefined}
-                        className="w-full"
-                      />
-                      <div className="md:col-span-2">
-                        <CustomTextarea
-                          name="notes"
-                          label="Notes"
-                          value={values.notes}
-                          onChange={(value: string) => setFieldValue('notes', value)}
-                          placeholder="Enter note"
-                          rows={3}
-                          error={errors.notes && touched.notes ? errors.notes : undefined}
-                          className="w-full"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Amount Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Amount details</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      <CustomInput
-                        name="totalAmount"
-                        label="Total Amount"
-                        type="text"
-                        value={values.totalAmount}
-                        onChange={(value: string) => setFieldValue('totalAmount', value)}
-                        error={errors.totalAmount && touched.totalAmount ? errors.totalAmount : undefined}
-                        className="w-full"
-                      />
-                      <div>
-                        <label className="block text-sm font-medium text-primary mb-2">VAT</label>
-                        <RadioButtonGroup
-                          name="vatIncluded"
-                          value={values.vatIncluded ? 'included' : 'notIncluded'}
-                          onChange={(value) => setFieldValue('vatIncluded', value === 'included')}
-                          options={[
-                            { value: 'included', label: 'VAT included' },
-                            { value: 'notIncluded', label: 'VAT not included' }
-                          ]}
-                          className="mt-2"
-                        />
-                      </div>
-                      <CustomSelect
-                        name="statementType"
-                        label="Statement type"
-                        value={values.statementType}
-                        onChange={(value: string) => setFieldValue('statementType', value)}
-                        options={[
-                          { value: 'Sale', label: 'Sale' },
-                          { value: 'Return', label: 'Return' },
-                          { value: 'Deprecation', label: 'Deprecation' }
-                        ]}
-                        error={errors.statementType && touched.statementType ? errors.statementType : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="totalDiscount"
-                        label="Total Discount"
-                        type="text"
-                        value={values.totalDiscount}
-                        onChange={(value: string) => setFieldValue('totalDiscount', value)}
-                        error={errors.totalDiscount && touched.totalDiscount ? errors.totalDiscount : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="netInvoice"
-                        label="Net Invoice"
-                        type="text"
-                        value={values.netInvoice}
-                        onChange={(value: string) => setFieldValue('netInvoice', value)}
-                        error={errors.netInvoice && touched.netInvoice ? errors.netInvoice : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="totalPaid"
-                        label="Total Paid"
-                        type="text"
-                        value={values.totalPaid}
-                        onChange={(value: string) => setFieldValue('totalPaid', value)}
-                        error={errors.totalPaid && touched.totalPaid ? errors.totalPaid : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="remaining"
-                        label="Remaining"
-                        type="text"
-                        value={values.remaining}
-                        onChange={(value: string) => setFieldValue('remaining', value)}
-                        error={errors.remaining && touched.remaining ? errors.remaining : undefined}
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Form Actions */}
-              <div className="bg-white px-8 py-6 border-t border-primary/20 flex-shrink-0">
-                <div className="flex justify-end gap-4">
-                  <CustomButton
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsMaintenanceModalOpen(false)}
-                    disabled={loading.submit}
-                    className="border-primary text-primary hover:bg-primary/5"
-                  >
-                    Cancel
-                  </CustomButton>
-                  <CustomButton
-                    type="submit"
-                    variant="primary"
-                    disabled={loading.submit}
-                    loading={loading.submit}
-                    submittingText="Adding Maintenance Log..."
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    Add Maintenance Log
-                  </CustomButton>
-                </div>
-              </div>
-            </Form>
-          )}
-        </Formik>
-      </CustomModal>
-
-      {/* Penalty Modal */}
-      <CustomModal
+      <PenaltyModal
         isOpen={isPenaltyModalOpen}
         onClose={() => setIsPenaltyModalOpen(false)}
-        title="Add penalty"
-        maxWidth="max-w-4xl"
-      >
-        <Formik
-          initialValues={{
-            vehicle: '',
-            reason: '',
-            date: '',
-            notes: '',
-            totalAmount: 'SAR 1.00',
-            totalDiscount: 'SAR 0.00',
-            vat: 'SAR 15%',
-            netInvoice: 'SAR 1.15',
-            totalPaid: 'SAR 0.00',
-            remaining: 'SAR 0.00'
-          }}
-          validationSchema={PenaltySchema}
-          onSubmit={handlePenaltySubmit}
-        >
-          {({ values, setFieldValue, errors, touched, isSubmitting }) => (
-            <Form>
-              <div className="px-8 py-6">
-                <div className="space-y-8">
-                  {/* Vehicle Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Vehicle details</h3>
-                    <div>
-                      <label className="block text-sm font-medium text-primary mb-2">Vehicle</label>
-                      <SimpleSearchableSelect
-                        options={vehicles.filter(vehicle => vehicle.is_active).map(vehicle => ({
-                          key: vehicle.id,
-                          id: vehicle.id,
-                          value: vehicle.plate_number,
-                          subValue: `${vehicle.make} ${vehicle.model} ${vehicle.year}`
-                        }))}
-                        value={values.vehicle}
-                        onChange={(value) => setFieldValue('vehicle', value)}
-                        placeholder="Select vehicle"
-                        className="w-full"
-                        error={errors.vehicle && touched.vehicle ? errors.vehicle : undefined}
-                      />
-                    </div>
-                  </div>
+        onSubmit={handlePenaltySubmit}
+        vehicles={vehicles}
+        loading={loading.submit}
+      />
 
-                  {/* Penalty Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Penalty details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <CustomSelect
-                        name="reason"
-                        label="Reason"
-                        value={values.reason}
-                        onChange={(value: string) => setFieldValue('reason', value)}
-                        options={[
-                          { value: '', label: 'Select penalty reason' },
-                          { value: 'Late Return', label: 'Late Return' },
-                          { value: 'Damage', label: 'Damage' },
-                          { value: 'Traffic Violation', label: 'Traffic Violation' },
-                          { value: 'Overdue Payment', label: 'Overdue Payment' },
-                          { value: 'Contract Violation', label: 'Contract Violation' }
-                        ]}
-                        error={errors.reason && touched.reason ? errors.reason : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="date"
-                        label="Date"
-                        type="date"
-                        value={values.date}
-                        onChange={(value: string) => setFieldValue('date', value)}
-                        error={errors.date && touched.date ? errors.date : undefined}
-                        className="w-full"
-                      />
-                      <div className="md:col-span-2">
-                        <CustomTextarea
-                          name="notes"
-                          label="Notes (optional)"
-                          value={values.notes}
-                          onChange={(value: string) => setFieldValue('notes', value)}
-                          placeholder="Enter notes"
-                          rows={3}
-                          error={errors.notes && touched.notes ? errors.notes : undefined}
-                          className="w-full"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Amount Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Amount details</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      <CustomInput
-                        name="totalAmount"
-                        label="Total Amount"
-                        type="text"
-                        value={values.totalAmount}
-                        onChange={(value: string) => setFieldValue('totalAmount', value)}
-                        error={errors.totalAmount && touched.totalAmount ? errors.totalAmount : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="totalDiscount"
-                        label="Total Discount"
-                        type="text"
-                        value={values.totalDiscount}
-                        onChange={(value: string) => setFieldValue('totalDiscount', value)}
-                        error={errors.totalDiscount && touched.totalDiscount ? errors.totalDiscount : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="vat"
-                        label="VAT"
-                        type="text"
-                        value={values.vat}
-                        onChange={(value: string) => setFieldValue('vat', value)}
-                        error={errors.vat && touched.vat ? errors.vat : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="netInvoice"
-                        label="Net Invoice"
-                        type="text"
-                        value={values.netInvoice}
-                        onChange={(value: string) => setFieldValue('netInvoice', value)}
-                        error={errors.netInvoice && touched.netInvoice ? errors.netInvoice : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="totalPaid"
-                        label="Total Paid"
-                        type="text"
-                        value={values.totalPaid}
-                        onChange={(value: string) => setFieldValue('totalPaid', value)}
-                        error={errors.totalPaid && touched.totalPaid ? errors.totalPaid : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="remaining"
-                        label="Remaining"
-                        type="text"
-                        value={values.remaining}
-                        onChange={(value: string) => setFieldValue('remaining', value)}
-                        error={errors.remaining && touched.remaining ? errors.remaining : undefined}
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Form Actions */}
-              <div className="bg-white px-8 py-6 border-t border-primary/20 flex-shrink-0">
-                <div className="flex justify-end gap-4">
-                  <CustomButton
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsPenaltyModalOpen(false)}
-                    disabled={loading.submit}
-                    className="border-primary text-primary hover:bg-primary/5"
-                  >
-                    Cancel
-                  </CustomButton>
-                  <CustomButton
-                    type="submit"
-                    variant="primary"
-                    disabled={loading.submit}
-                    loading={loading.submit}
-                    submittingText="Adding Penalty..."
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    Add Penalty
-                  </CustomButton>
-                </div>
-              </div>
-            </Form>
-          )}
-        </Formik>
-      </CustomModal>
-
-      {/* Insurance Modal */}
-      <CustomModal
+      <InsuranceModal
         isOpen={isInsuranceModalOpen}
         onClose={() => setIsInsuranceModalOpen(false)}
-        title="Add insurance payment"
-        maxWidth="max-w-4xl"
-      >
-        <Formik
-          initialValues={{
-            vehicle: '',
-            company: '',
-            policyNumber: '',
-            totalAmount: 'SAR 1.00',
-            totalDiscount: 'SAR 0.00',
-            vat: 'SAR 15%',
-            netInvoice: 'SAR 1.15',
-            totalPaid: 'SAR 0.00',
-            remaining: 'SAR 0.00'
-          }}
-          validationSchema={InsuranceSchema}
-          onSubmit={handleInsuranceSubmit}
-        >
-          {({ values, setFieldValue, errors, touched, isSubmitting }) => (
-            <Form>
-              <div className="px-8 py-6">
-                <div className="space-y-8">
-                  {/* Vehicle Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Vehicle details</h3>
-                    <div>
-                      <label className="block text-sm font-medium text-primary mb-2">Vehicle</label>
-                      <SimpleSearchableSelect
-                        options={vehicles.filter(vehicle => vehicle.is_active).map(vehicle => ({
-                          key: vehicle.id,
-                          id: vehicle.id,
-                          value: vehicle.plate_number,
-                          subValue: `${vehicle.make} ${vehicle.model} ${vehicle.year}`
-                        }))}
-                        value={values.vehicle}
-                        onChange={(value) => setFieldValue('vehicle', value)}
-                        placeholder="Select vehicle"
-                        className="w-full"
-                        error={errors.vehicle && touched.vehicle ? errors.vehicle : undefined}
-                      />
-                    </div>
-                  </div>
+        onSubmit={handleInsuranceSubmit}
+        vehicles={vehicles}
+        loading={loading.submit}
+      />
 
-                  {/* Amount Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Amount details</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      <CustomInput
-                        name="totalAmount"
-                        label="Total Amount"
-                        type="text"
-                        value={values.totalAmount}
-                        onChange={(value: string) => setFieldValue('totalAmount', value)}
-                        error={errors.totalAmount && touched.totalAmount ? errors.totalAmount : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="totalDiscount"
-                        label="Total Discount"
-                        type="text"
-                        value={values.totalDiscount}
-                        onChange={(value: string) => setFieldValue('totalDiscount', value)}
-                        error={errors.totalDiscount && touched.totalDiscount ? errors.totalDiscount : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="vat"
-                        label="VAT"
-                        type="text"
-                        value={values.vat}
-                        onChange={(value: string) => setFieldValue('vat', value)}
-                        error={errors.vat && touched.vat ? errors.vat : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="netInvoice"
-                        label="Net Invoice"
-                        type="text"
-                        value={values.netInvoice}
-                        onChange={(value: string) => setFieldValue('netInvoice', value)}
-                        error={errors.netInvoice && touched.netInvoice ? errors.netInvoice : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="totalPaid"
-                        label="Total Paid"
-                        type="text"
-                        value={values.totalPaid}
-                        onChange={(value: string) => setFieldValue('totalPaid', value)}
-                        error={errors.totalPaid && touched.totalPaid ? errors.totalPaid : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="remaining"
-                        label="Remaining"
-                        type="text"
-                        value={values.remaining}
-                        onChange={(value: string) => setFieldValue('remaining', value)}
-                        error={errors.remaining && touched.remaining ? errors.remaining : undefined}
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
+      <MaintenanceModal
+        isOpen={isMaintenanceModalOpen}
+        onClose={() => setIsMaintenanceModalOpen(false)}
+        onSubmit={handleMaintenanceSubmit}
+        vehicles={vehicles}
+        loading={loading.submit}
+      />
 
-                  {/* Insurance Details */}
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Insurance details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <CustomSelect
-                        name="company"
-                        label="Company"
-                        value={values.company}
-                        onChange={(value: string) => setFieldValue('company', value)}
-                        options={[
-                          { value: '', label: 'Select company' },
-                          { value: 'Tawuniya', label: 'Tawuniya' },
-                          { value: 'SABB Takaful', label: 'SABB Takaful' },
-                          { value: 'Malath Insurance', label: 'Malath Insurance' },
-                          { value: 'AXA Cooperative', label: 'AXA Cooperative' },
-                          { value: 'Allianz', label: 'Allianz' }
-                        ]}
-                        error={errors.company && touched.company ? errors.company : undefined}
-                        className="w-full"
-                      />
-                      <CustomInput
-                        name="policyNumber"
-                        label="Policy Number"
-                        type="text"
-                        value={values.policyNumber}
-                        onChange={(value: string) => setFieldValue('policyNumber', value)}
-                        placeholder="Enter number"
-                        error={errors.policyNumber && touched.policyNumber ? errors.policyNumber : undefined}
-                        className="w-full"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Form Actions */}
-              <div className="bg-white px-8 py-6 border-t border-primary/20 flex-shrink-0">
-                <div className="flex justify-end gap-4">
-                  <CustomButton
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsInsuranceModalOpen(false)}
-                    disabled={loading.submit}
-                    className="border-primary text-primary hover:bg-primary/5"
-                  >
-                    Cancel
-                  </CustomButton>
-                  <CustomButton
-                    type="submit"
-                    variant="primary"
-                    disabled={loading.submit}
-                    loading={loading.submit}
-                    submittingText="Adding Insurance Payment..."
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    Add Insurance Payment
-                  </CustomButton>
-                </div>
-              </div>
-            </Form>
-          )}
-        </Formik>
-      </CustomModal>
+      <AccidentModal
+        isOpen={isAccidentModalOpen}
+        onClose={() => setIsAccidentModalOpen(false)}
+        onSubmit={handleAccidentSubmit}
+        vehicles={vehicles}
+        loading={loading.submit}
+      />
     </div>
   );
 }

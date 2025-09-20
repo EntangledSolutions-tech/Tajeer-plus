@@ -93,37 +93,66 @@ export default function RentalFinancesLayout() {
     contracts: false,
     transactions: false,
     expenseSubmit: false,
-    incomeSubmit: false
+    incomeSubmit: false,
+    summary: false
   });
 
-  // Dummy data for demonstration
+  // Summary data state
+  const [summaryData, setSummaryData] = useState({
+    totalRevenue: 0,
+    totalExpenses: 0,
+    netBalance: 0
+  });
+
+  // Calculate summary cards dynamically
   const summaryCards = [
     {
       title: 'Revenue',
-      value: 'SAR 12,450.00',
+      value: `SAR ${summaryData.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
         <span className="text-gray-600 font-bold">$</span>
       </div>
     },
     {
       title: 'Expenses',
-      value: 'SAR 10,000.00',
+      value: `SAR ${summaryData.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
         <span className="text-gray-600 font-bold">↗</span>
       </div>
     },
     {
       title: 'Net Balance',
-      value: 'SAR 2,450.00',
+      value: `SAR ${summaryData.netBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       icon: <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">
         <span className="text-gray-600 font-bold">~</span>
       </div>
     }
   ];
 
+  // Fetch summary data from API
+  const fetchSummaryData = async (period: string = 'all') => {
+    try {
+      setLoading(prev => ({ ...prev, summary: true }));
+
+      const response = await fetch(`/api/finance/summary?period=${period}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSummaryData({
+          totalRevenue: data.summary.totalRevenue,
+          totalExpenses: data.summary.totalExpenses,
+          netBalance: data.summary.netBalance
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching summary data:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, summary: false }));
+    }
+  };
+
   const fetchTransactions = async () => {
     try {
-      setLoading(prev => ({ ...prev, transactions: true }));
+      setLoading(prev => ({ ...prev, transactions: true, summary: true }));
 
       // Fetch both income and expense transactions
       const [incomeResponse, expenseResponse] = await Promise.all([
@@ -152,6 +181,9 @@ export default function RentalFinancesLayout() {
       allTransactions.sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime());
 
       setTransactions(allTransactions);
+
+      // Fetch summary data from API (not from paginated transactions)
+      await fetchSummaryData();
     } catch (error) {
       console.error('Error fetching transactions:', error);
     } finally {
@@ -218,8 +250,9 @@ export default function RentalFinancesLayout() {
       // The actual API call is now handled in ExpenseForm
       console.log('Expense submitted:', values);
 
-      // Refresh transactions after successful submission
+      // Refresh transactions and summary data after successful submission
       await fetchTransactions();
+      await fetchSummaryData();
     } catch (error) {
       console.error('Error submitting expense:', error);
     } finally {
@@ -234,8 +267,9 @@ export default function RentalFinancesLayout() {
       // The actual API call is now handled in IncomeForm
       console.log('Income submitted:', values);
 
-      // Refresh transactions after successful submission
+      // Refresh transactions and summary data after successful submission
       await fetchTransactions();
+      await fetchSummaryData();
     } catch (error) {
       console.error('Error submitting income:', error);
     } finally {
@@ -392,7 +426,11 @@ export default function RentalFinancesLayout() {
               </div>
               <div className="flex flex-col">
                 <div className="text-xl font-bold text-gray-800">
-                  {card.value}
+                  {loading.summary ? (
+                    <div className="animate-pulse bg-gray-200 h-6 w-24 rounded"></div>
+                  ) : (
+                    card.value
+                  )}
                 </div>
                 <div className="text-sm text-primary font-medium">
                   {card.title}
