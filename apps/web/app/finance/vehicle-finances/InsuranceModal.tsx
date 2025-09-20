@@ -6,7 +6,7 @@ import CustomButton from '../../reusableComponents/CustomButton';
 import CustomModal from '../../reusableComponents/CustomModal';
 import CustomInput from '../../reusableComponents/CustomInput';
 import CustomSelect from '../../reusableComponents/CustomSelect';
-import { SimpleSearchableSelect } from '../../reusableComponents/SearchableSelect';
+import SearchableSelect from '../../reusableComponents/SearchableSelect';
 
 // Interfaces
 interface Vehicle {
@@ -99,18 +99,18 @@ export default function InsuranceModal({
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Vehicle details</h3>
                   <div>
                     <label className="block text-sm font-medium text-primary mb-2">Vehicle</label>
-                    <SimpleSearchableSelect
+                    <SearchableSelect
+                      name="vehicle"
+                      label="Vehicle"
+                      required
                       options={vehicles.filter(vehicle => vehicle.is_active).map(vehicle => ({
                         key: vehicle.id,
                         id: vehicle.id,
                         value: vehicle.plate_number,
                         subValue: `${vehicle.make} ${vehicle.model} ${vehicle.year}`
                       }))}
-                      value={values.vehicle}
-                      onChange={(value) => setFieldValue('vehicle', value)}
                       placeholder="Select vehicle"
                       className="w-full"
-                      error={errors.vehicle && touched.vehicle ? errors.vehicle : undefined}
                     />
                   </div>
                 </div>

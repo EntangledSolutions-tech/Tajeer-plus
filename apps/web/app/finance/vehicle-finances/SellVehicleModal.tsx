@@ -6,7 +6,7 @@ import CustomButton from '../../reusableComponents/CustomButton';
 import CustomModal from '../../reusableComponents/CustomModal';
 import CustomInput from '../../reusableComponents/CustomInput';
 import CustomSelect from '../../reusableComponents/CustomSelect';
-import { SimpleSearchableSelect } from '../../reusableComponents/SearchableSelect';
+import SearchableSelect from '../../reusableComponents/SearchableSelect';
 import { RadioButtonGroup } from '../../reusableComponents/RadioButtonGroup';
 
 // Interfaces
@@ -132,23 +132,18 @@ export default function SellVehicleModal({
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Vehicle details</h3>
                   <div>
-                    <label className="block text-sm font-medium text-primary mb-2">Vehicle</label>
-                    {console.log('Vehicles in SellVehicleModal:', vehicles)}
-                    <SimpleSearchableSelect
-                      options={vehicles.map(vehicle => {
-                        console.log('Individual vehicle:', vehicle);
-                        return {
-                          key: vehicle.id,
-                          id: vehicle.id,
-                          value: vehicle.plate_number,
-                          subValue: `${vehicle.make?.name || 'N/A'} ${vehicle.model?.name || 'N/A'} ${vehicle.make_year || vehicle.year || 'N/A'}`
-                        };
-                      })}
-                      value={values.vehicle}
-                      onChange={(value) => setFieldValue('vehicle', value)}
+                    <SearchableSelect
+                      name="vehicle"
+                      label="Vehicle"
+                      required
+                      options={vehicles.map(vehicle => ({
+                        key: vehicle.id,
+                        id: vehicle.id,
+                        value: vehicle.plate_number,
+                        subValue: `${vehicle.make?.name || 'N/A'} ${vehicle.model?.name || 'N/A'} ${vehicle.make_year || vehicle.year || 'N/A'}`
+                      }))}
                       placeholder="Select vehicle"
                       className="w-full"
-                      error={errors.vehicle && touched.vehicle ? errors.vehicle : undefined}
                     />
                   </div>
                 </div>
@@ -203,19 +198,18 @@ export default function SellVehicleModal({
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-primary mb-2">Customer Name</label>
-                      <SimpleSearchableSelect
+                      <SearchableSelect
+                        name="customerName"
+                        label="Customer Name"
+                        required
                         options={customers.filter(customer => customer.status === 'Active').map(customer => ({
                           key: customer.id,
                           id: customer.id,
                           value: customer.name,
                           subValue: `${customer.mobile} - ${customer.id_number}`
                         }))}
-                        value={values.customerName}
-                        onChange={(value) => setFieldValue('customerName', value)}
                         placeholder="Select Customer"
                         className="w-full"
-                        error={errors.customerName && touched.customerName ? errors.customerName : undefined}
                       />
                     </div>
                   </div>

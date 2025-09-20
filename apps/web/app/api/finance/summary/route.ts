@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
       dateFilter = yearAgo.toISOString().split('T')[0];
     }
 
-    // Fetch all transactions (temporarily remove user_id filter for debugging)
-    let incomeQuery = supabase
+    // Fetch all transactions for the current user
+    let incomeQuery = (supabase as any)
       .from('finance_transactions')
       .select(`
         id,
@@ -49,7 +49,8 @@ export async function GET(request: NextRequest) {
         transaction_date,
         transaction_type_id,
         user_id
-      `);
+      `)
+      .eq('user_id', user.id);
 
     // Apply date filter if specified
     if (dateFilter) {
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get transaction types to filter by category
-    const { data: transactionTypes, error: typesError } = await supabase
+    const { data: transactionTypes, error: typesError } = await (supabase as any)
       .from('finance_transaction_types')
       .select('id, category');
 
@@ -100,14 +101,12 @@ export async function GET(request: NextRequest) {
       typeCategoryMap.set(type.id, type.category);
     });
 
-    // Filter transactions by category and user
+    // Filter transactions by category
     const incomeTransactions = allTransactions?.filter(transaction =>
-      transaction.user_id === user.id &&
       typeCategoryMap.get(transaction.transaction_type_id) === 'income'
     ) || [];
 
     const expenseTransactions = allTransactions?.filter(transaction =>
-      transaction.user_id === user.id &&
       typeCategoryMap.get(transaction.transaction_type_id) === 'expense'
     ) || [];
 

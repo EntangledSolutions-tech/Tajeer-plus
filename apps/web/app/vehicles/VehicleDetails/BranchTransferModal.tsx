@@ -7,7 +7,7 @@ import { X } from 'lucide-react';
 import { toast } from '@kit/ui/sonner';
 import CustomButton from '../../reusableComponents/CustomButton';
 import CustomTextarea from '../../reusableComponents/CustomTextarea';
-import { SimpleSearchableSelect } from '../../reusableComponents/SearchableSelect';
+import SearchableSelect from '../../reusableComponents/SearchableSelect';
 import { useHttpService } from '../../../lib/http-service';
 
 interface VehicleDetails {
@@ -321,10 +321,10 @@ console.log({currentVehicle})
 
                   {/* Branch Dropdown */}
                   <div className="mb-6">
-                    <label className="block text-sm font-medium text-primary mb-2">
-                      Recipient Branch
-                    </label>
-                    <SimpleSearchableSelect
+                    <SearchableSelect
+                      name="recipientBranch"
+                      label="Recipient Branch"
+                      required
                       options={branches.filter(branch => {
                         // Use branch_id as primary source, fall back to branch object/string
                         const currentBranchId = currentVehicle?.branch_id ||
@@ -338,11 +338,8 @@ console.log({currentVehicle})
                         value: branch.name,
                         subValue: `${branch.name} (${branch.code})${branch.address ? ` - ${branch.address}` : ''}`
                       }))}
-                      value={values.recipientBranch}
-                      onChange={(value) => setFieldValue('recipientBranch', value)}
                       placeholder="Select branch"
                       className="w-full"
-                      error={errors.recipientBranch && touched.recipientBranch ? errors.recipientBranch : undefined}
                     />
                   </div>
 

@@ -8,7 +8,7 @@ import CustomButton from '../../reusableComponents/CustomButton';
 import CustomInput from '../../reusableComponents/CustomInput';
 import CustomTextarea from '../../reusableComponents/CustomTextarea';
 import CustomSelect from '../../reusableComponents/CustomSelect';
-import { SimpleSearchableSelect } from '../../reusableComponents/SearchableSelect';
+import SearchableSelect from '../../reusableComponents/SearchableSelect';
 import { toast } from '@kit/ui/sonner';
 import { useHttpService } from '../../../lib/http-service';
 
@@ -377,21 +377,18 @@ export default function TotalLossModal({ isOpen, onClose, vehicleId, onSuccess }
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     {/* Insurance Company */}
                     <div>
-                      <label className="block text-sm font-medium text-primary mb-2">
-                        Insurance Company
-                      </label>
-                      <SimpleSearchableSelect
+                      <SearchableSelect
+                        name="insuranceCompany"
+                        label="Insurance Company"
+                        required
                         options={(insuranceOptions || []).map(option => ({
                           key: option.id,
                           id: option.id,
                           value: option.name,
                           subValue: option.description
                         }))}
-                        value={values.insuranceCompany}
-                        onChange={(value) => setFieldValue('insuranceCompany', value)}
                         placeholder="Select insurance"
                         className="w-full"
-                        error={errors.insuranceCompany && touched.insuranceCompany ? errors.insuranceCompany : undefined}
                       />
                     </div>
 

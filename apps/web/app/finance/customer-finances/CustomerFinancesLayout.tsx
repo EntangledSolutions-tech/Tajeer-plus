@@ -11,7 +11,7 @@ import CustomModal from '../../reusableComponents/CustomModal';
 import CustomInput from '../../reusableComponents/CustomInput';
 import CustomSelect, { SimpleSelect } from '../../reusableComponents/CustomSelect';
 import CustomTextarea from '../../reusableComponents/CustomTextarea';
-import { SimpleSearchableSelect } from '../../reusableComponents/SearchableSelect';
+import SearchableSelect from '../../reusableComponents/SearchableSelect';
 import { SearchBar } from '../../reusableComponents/SearchBar';
 import { RadioButtonGroup } from '../../reusableComponents/RadioButtonGroup';
 import {
@@ -505,22 +505,19 @@ export default function CustomerFinancesLayout() {
                   />
 
                   {/* Customer */}
-                  <div>
-                    <label className="block text-sm font-medium text-primary mb-2">Customer</label>
-                    <SimpleSearchableSelect
-                      options={customers.filter(customer => customer.is_active).map(customer => ({
-                        key: customer.id,
-                        id: customer.id,
-                        value: customer.name,
-                        subValue: `${customer.email} - ${customer.phone}`
-                      }))}
-                      value={values.customer}
-                      onChange={(value) => setFieldValue('customer', value)}
-                      placeholder="Select customer"
-                      className="w-full"
-                      error={errors.customer && touched.customer ? errors.customer : undefined}
-                    />
-                  </div>
+                  <SearchableSelect
+                    name="customer"
+                    label="Customer"
+                    required
+                    options={customers.filter(customer => customer.is_active).map(customer => ({
+                      key: customer.id,
+                      id: customer.id,
+                      value: customer.name,
+                      subValue: `${customer.email} - ${customer.phone}`
+                    }))}
+                    placeholder="Select customer"
+                    className="w-full"
+                  />
 
                   {/* Invoice Number */}
                   <CustomInput

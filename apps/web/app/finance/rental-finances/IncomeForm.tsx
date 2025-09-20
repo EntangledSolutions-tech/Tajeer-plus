@@ -1,15 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Formik, Form, useFormikContext } from 'formik';
+import { Form, Formik, useFormikContext } from 'formik';
+import React, { useEffect, useState } from 'react';
 import * as Yup from 'yup';
-import CustomInput from '../../reusableComponents/CustomInput';
-import CustomSelect from '../../reusableComponents/CustomSelect';
-import CustomTextarea from '../../reusableComponents/CustomTextarea';
-import CustomButton from '../../reusableComponents/CustomButton';
-import CustomModal from '../../reusableComponents/CustomModal';
-import SearchableSelect, { SimpleSearchableSelect } from '../../reusableComponents/SearchableSelect';
 import { useHttpService } from '../../../lib/http-service';
+import CustomButton from '../../reusableComponents/CustomButton';
+import CustomInput from '../../reusableComponents/CustomInput';
+import CustomModal from '../../reusableComponents/CustomModal';
+import CustomTextarea from '../../reusableComponents/CustomTextarea';
+import SearchableSelect from '../../reusableComponents/SearchableSelect';
 
 // Validation schema for income form
 const IncomeSchema = Yup.object({
@@ -221,7 +220,7 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
         {({ values, setFieldValue, errors, touched, isSubmitting }) => {
           console.log('Formik values:', values);
           return (
-          <>
+          <Form>
             <InitialValuesHandler
               isEdit={isEdit}
               initialValues={initialValues}
@@ -230,7 +229,6 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
               branches={branches}
               contracts={contracts}
             />
-          <Form>
             <div className="px-8 py-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Amount */}
@@ -274,51 +272,48 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
                 />
 
                 {/* Contract */}
-                <SimpleSearchableSelect
+                <SearchableSelect
+                  name="contract"
+                  label="Contract"
+                  required
                   options={contracts.map(contract => ({
                     key: contract.id,
                     id: contract.id,
                     value: contract.contract_number,
                     subValue: `${contract.customer_name} - ${contract.start_date} to ${contract.end_date}`
                   }))}
-                  label="Contract"
-                  value={values.contract}
-                  onChange={(value: string | string[]) => setFieldValue('contract', value as string)}
                   placeholder="Select contract"
                   className="w-full"
-                  error={errors.contract && touched.contract ? errors.contract : undefined}
                 />
 
                 {/* Branch */}
-                <SimpleSearchableSelect
+                <SearchableSelect
+                  name="branch"
+                  label="Branch"
+                  required
                   options={branches.filter(branch => branch.is_active).map(branch => ({
                     key: branch.id,
                     id: branch.id,
                     value: branch.name,
                     subValue: `${branch.code}${branch.address ? ` - ${branch.address}` : ''}`
                   }))}
-                  label="Branch"
-                  value={values.branch}
-                  onChange={(value: string | string[]) => setFieldValue('branch', value as string)}
                   placeholder="Select branch"
                   className="w-full"
-                  error={errors.branch && touched.branch ? errors.branch : undefined}
                 />
 
                 {/* Vehicle */}
-                <SimpleSearchableSelect
+                <SearchableSelect
+                  name="vehicle"
+                  label="Vehicle"
+                  required
                   options={vehicles.map(vehicle => ({
                     key: vehicle.id,
                     id: vehicle.id,
                     value: vehicle.plate_number,
-                    subValue: `${vehicle.make.name} ${vehicle.model.name} ${vehicle.make_year}`
+                    subValue: `${vehicle.make?.name || 'N/A'} ${vehicle.model?.name || 'N/A'} ${vehicle.make_year || 'N/A'}`
                   }))}
-                  label="Vehicle"
-                  value={values.vehicle}
-                  onChange={(value: string | string[]) => setFieldValue('vehicle', value as string)}
                   placeholder="Select vehicle"
                   className="w-full"
-                  error={errors.vehicle && touched.vehicle ? errors.vehicle : undefined}
                 />
 
                 {/* Employee */}
@@ -374,7 +369,6 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
               </div>
             </div>
           </Form>
-          </>
           );
         }}
       </Formik>
