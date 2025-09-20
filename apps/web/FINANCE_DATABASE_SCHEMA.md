@@ -305,3 +305,4 @@ INSERT INTO public.finance_transactions (
 ```
 
 This comprehensive finance database schema provides a solid foundation for all financial operations in the Tajeer-Plus system, supporting the existing finance pages and enabling future financial features and reporting capabilities.
+

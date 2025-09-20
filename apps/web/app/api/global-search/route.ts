@@ -119,15 +119,7 @@ export async function GET(request: NextRequest) {
 
       const { data: customers, error: customerError } = await supabase
         .from('customers')
-        .select(`
-          id,
-          name,
-          mobile_number,
-          id_number,
-          address,
-          classification:customer_classifications(classification),
-          status:customer_statuses(name)
-        `)
+        .select('*')
         .or(`name.ilike.${searchTerm},mobile_number.ilike.${searchTerm},id_number.ilike.${searchTerm},address.ilike.${searchTerm}`)
         .limit(limit);
 
@@ -144,10 +136,10 @@ export async function GET(request: NextRequest) {
           id: customer.id,
           type: 'customer',
           title: customer.name,
-          subtitle: `${customer.mobile_number || 'N/A'} • ${customer.classification?.classification || 'N/A'}`,
+          subtitle: `${customer.id_number || 'N/A'} • Individual`,
           badge: 'Customer',
-          badgeColor: 'bg-green-100 text-green-800',
-          status: customer.status,
+          badgeColor: 'bg-blue-100 text-blue-800',
+          status: { name: 'Active' },
           data: customer
         }));
       }
@@ -158,14 +150,7 @@ export async function GET(request: NextRequest) {
     if (type === 'all' || type === 'contracts') {
       const { data: contracts, error: contractError } = await supabase
         .from('contracts')
-        .select(`
-          id,
-          contract_number,
-          tajeer_number,
-          customer_name,
-          vehicle_plate,
-          vehicle_serial_number
-        `)
+        .select('*')
         .or(`contract_number.ilike.${searchTerm},tajeer_number.ilike.${searchTerm},customer_name.ilike.${searchTerm},vehicle_plate.ilike.${searchTerm},vehicle_serial_number.ilike.${searchTerm}`)
         .limit(limit);
 
@@ -177,7 +162,7 @@ export async function GET(request: NextRequest) {
           subtitle: `${contract.customer_name} • ${contract.vehicle_plate || 'N/A'}`,
           badge: 'Contract',
           badgeColor: 'bg-purple-100 text-purple-800',
-          status: { name: contract.status, color: '#6B7280' },
+          status: { name: 'Open' },
           data: contract
         }));
       }

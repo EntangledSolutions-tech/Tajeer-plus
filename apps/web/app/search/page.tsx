@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, ChevronRight, Filter } from 'lucide-react';
-import { SimpleInput } from '../reusableComponents/CustomInput';
+import { ChevronRight } from 'lucide-react';
+import CustomCard from '../reusableComponents/CustomCard';
 
 interface SearchResult {
   id: string;
@@ -77,12 +77,6 @@ export default function SearchPage() {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
-    }
-  };
 
   const handleResultClick = (result: SearchResult) => {
     switch (result.type) {
@@ -109,134 +103,98 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="w-full">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-6">
-            <h1 className="text-2xl font-bold text-gray-900">Search Results</h1>
-            {query && (
-              <p className="text-gray-600 mt-1">
-                {totalResults} results for "{query}"
-              </p>
-            )}
-          </div>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white mb-1">{totalResults} Search Results</h1>
+        {query && (
+          <p className="text-sm text-gray-300">
+            Search Results for "{query}"
+          </p>
+        )}
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search Bar */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <form onSubmit={handleSearch} className="flex gap-4">
-            <div className="flex-1">
-            <SimpleInput
-              placeholder="Search vehicles, customers, contracts..."
-              value={searchQuery}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-              className="w-full"
-            />
-            </div>
-            <button
-              type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <Search className="w-4 h-4" />
-              Search
-            </button>
-          </form>
-        </div>
-
-        {/* Filters */}
-        {results.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <Filter className="w-4 h-4 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700">Filter by type:</span>
-            </div>
-            <div className="flex gap-2">
-              {(['all', 'vehicles', 'customers', 'contracts'] as FilterType[]).map((filterType) => (
-                <button
-                  key={filterType}
-                  onClick={() => setFilter(filterType)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-                    filter === filterType
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {filterType} ({getFilterCount(filterType)})
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Results */}
-        {loading ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">Searching...</span>
-            </div>
-          </div>
-        ) : filteredResults.length === 0 && query ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
-            <div className="text-center">
-              <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No results found</h3>
-              <p className="text-gray-600">
-                No results found for "{query}". Try adjusting your search terms.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredResults.map((result) => (
-              <div
-                key={`${result.type}-${result.id}`}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => handleResultClick(result)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-medium text-gray-900 truncate">
-                        {result.title}
-                      </h3>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${result.badgeColor}`}>
-                        {result.badge}
-                      </span>
-                      {result.status && (
-                        <span
-                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                          style={{ backgroundColor: result.status.color + '20', color: result.status.color }}
-                        >
-                          {result.status.name}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-gray-600">{result.subtitle}</p>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0 ml-4" />
-                </div>
-              </div>
+      {/* Radio Button Filters */}
+      {results.length > 0 && (
+        <div className="mb-6">
+          <div className="flex gap-6">
+            {(['all', 'vehicles', 'customers', 'contracts'] as FilterType[]).map((filterType) => (
+              <label key={filterType} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="filter"
+                  value={filterType}
+                  checked={filter === filterType}
+                  onChange={() => setFilter(filterType)}
+                  className="w-4 h-4 text-primary border-gray-300 focus:ring-primary accent-primary"
+                />
+                <span className="text-sm font-medium text-white capitalize">
+                  {filterType === 'all' ? 'All' : filterType} ({getFilterCount(filterType)})
+                </span>
+              </label>
             ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {/* No search query state */}
-        {!query && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
-            <div className="text-center">
-              <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Start searching</h3>
-              <p className="text-gray-600">
-                Enter a search term above to find vehicles, customers, and contracts.
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Results */}
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <span className="ml-3 text-gray-300">Searching...</span>
+        </div>
+      ) : filteredResults.length === 0 && query ? (
+        <div className="text-center py-12">
+          <h3 className="text-lg font-medium text-white mb-2">No results found</h3>
+          <p className="text-gray-300">
+            No results found for "{query}". Try adjusting your search terms.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4 mt-5">
+          {filteredResults.map((result) => (
+            <CustomCard
+              key={`${result.type}-${result.id}`}
+              className="cursor-pointer"
+              padding="sm"
+              radius="lg"
+              shadow="sm"
+              hover={true}
+              onClick={() => handleResultClick(result)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 mb-1">
+                    <h3 className="text-base font-semibold text-gray-900 truncate">
+                      {result.title}
+                    </h3>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${result.badgeColor}`}>
+                      {result.badge}
+                    </span>
+                    {result.status && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {result.status.name}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-600">{result.subtitle}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 ml-4" />
+              </div>
+            </CustomCard>
+          ))}
+        </div>
+      )}
+
+      {/* No search query state */}
+      {!query && (
+        <div className="text-center py-12">
+          <h3 className="text-lg font-medium text-white mb-2">Start searching</h3>
+          <p className="text-gray-300">
+            Use the search bar in the header to find vehicles, customers, and contracts.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

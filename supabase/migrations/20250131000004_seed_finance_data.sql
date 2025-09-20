@@ -154,3 +154,4 @@ BEGIN
     RETURN GREATEST(net_invoice - total_paid, 0.00);
 END;
 $$ LANGUAGE plpgsql;
+
