@@ -19,6 +19,7 @@ import {
   Legend
 } from 'recharts';
 import { toast } from '@kit/ui/sonner';
+import { useHttpService } from '../../../lib/http-service';
 
 interface VehicleData {
   [key: string]: number; // Dynamic status counts
@@ -37,6 +38,7 @@ interface VehicleStatus {
 }
 
 export default function VehicleInventoryReports() {
+  const { getRequest } = useHttpService();
   const [loading, setLoading] = useState({
     inventory: true,
     vehicleTypes: true,
@@ -57,14 +59,10 @@ export default function VehicleInventoryReports() {
         setError(null);
 
         // Fetch all vehicles from the existing API
-        const response = await fetch('/api/vehicles?limit=1000'); // Get all vehicles
-        const result = await response.json();
+        const response = await getRequest('/api/vehicles?limit=1000'); // Get all vehicles
 
-        if (!response.ok) {
-          throw new Error(result.error || 'Failed to fetch vehicles');
-        }
-
-        if (result.success && result.vehicles) {
+        if (response.success && response.data) {
+          const result = response.data;
           console.log('Received vehicles:', result.vehicles);
 
           // Process vehicles data to create reports

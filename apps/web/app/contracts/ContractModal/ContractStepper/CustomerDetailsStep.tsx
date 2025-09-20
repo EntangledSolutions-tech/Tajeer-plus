@@ -6,6 +6,7 @@ import CustomSearchableDropdown, { SearchableDropdownOption } from '../../../reu
 import { SearchBar } from '../../../reusableComponents/SearchBar';
 import { User, Phone, MapPin } from 'lucide-react';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface Customer {
   id: string;
@@ -58,6 +59,7 @@ interface ApiResponse<T> {
 export default function CustomerDetailsStep() {
   const formik = useFormikContext<any>();
   const supabase = useSupabase();
+  const { getRequest } = useHttpService();
   const [customerType, setCustomerType] = useState('existing');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -90,22 +92,17 @@ export default function CustomerDetailsStep() {
         searchParams.append('search', search);
       }
 
-      const response = await fetch(`/api/customer-configurations/classifications?${searchParams}`);
+      const response = await getRequest(`/api/customer-configurations/classifications?${searchParams}`);
+      if (response.success && response.data) {
+        const options: SearchableDropdownOption[] = response.data.data.map((item: Classification) => ({
+          id: item.id,
+          value: item.classification,
+          label: item.classification,
+          subLabel: item.description
+        }));
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch classifications');
+        setClassifications(options);
       }
-
-      const result: ApiResponse<Classification> = await response.json();
-
-      const options: SearchableDropdownOption[] = result.data.map(item => ({
-        id: item.id,
-        value: item.classification,
-        label: item.classification,
-        subLabel: item.description
-      }));
-
-      setClassifications(options);
     } catch (err) {
       console.error('Error fetching classifications:', err);
       setClassifications([]);
@@ -129,22 +126,17 @@ export default function CustomerDetailsStep() {
         searchParams.append('search', search);
       }
 
-      const response = await fetch(`/api/customer-configurations/license-types?${searchParams}`);
+      const response = await getRequest(`/api/customer-configurations/license-types?${searchParams}`);
+      if (response.success && response.data) {
+        const options: SearchableDropdownOption[] = response.data.data.map((item: LicenseType) => ({
+          id: item.id,
+          value: item.license_type,
+          label: item.license_type,
+          subLabel: item.description
+        }));
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch license types');
+        setLicenseTypes(options);
       }
-
-      const result: ApiResponse<LicenseType> = await response.json();
-
-      const options: SearchableDropdownOption[] = result.data.map(item => ({
-        id: item.id,
-        value: item.license_type,
-        label: item.license_type,
-        subLabel: item.description
-      }));
-
-      setLicenseTypes(options);
     } catch (err) {
       console.error('Error fetching license types:', err);
       setLicenseTypes([]);
@@ -171,14 +163,10 @@ export default function CustomerDetailsStep() {
         limit: '20' // Limit results for performance
       });
 
-      const response = await fetch(`/api/customers?${params}`);
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch customers');
+      const response = await getRequest(`/api/customers?${params}`);
+      if (response.success && response.data) {
+        setCustomers(response.data.customers || []);
       }
-
-      setCustomers(result.customers || []);
     } catch (error) {
       console.error('Error fetching customers:', error);
       setCustomers([]);
@@ -191,13 +179,9 @@ export default function CustomerDetailsStep() {
   const fetchCustomerStatuses = async () => {
     setLoading(prev => ({ ...prev, statusesLoading: true }));
     try {
-      const response = await fetch('/api/customer-configuration/statuses?limit=100');
-      if (!response.ok) {
-        throw new Error('Failed to fetch customer statuses');
-      }
-      const result = await response.json();
-      if (result.success && Array.isArray(result.statuses)) {
-        setCustomerStatuses(result.statuses);
+      const response = await getRequest('/api/customer-configuration/statuses?limit=100');
+      if (response.success && response.data && Array.isArray(response.data.statuses)) {
+        setCustomerStatuses(response.data.statuses);
       }
     } catch (err) {
       console.error('Error fetching customer statuses:', err);

@@ -5,6 +5,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import Link from 'next/link';
 import ContractStatusTab from './_components/ContractStatusTab';
 import CustomTabs from '../../reusableComponents/CustomTabs';
+import { useHttpService } from '../../lib/http-service';
 
 const tabs = [
   { key: 'templates', label: 'Templates', disabled: true, disabledReason: 'Templates module is under maintenance. Please try again later.' },
@@ -22,6 +23,8 @@ export default function ContractConfigurationsPage() {
   // Delete confirmation state
   const [deleteItem, setDeleteItem] = useState<{ type: 'status', id: string, name: string } | null>(null);
 
+  const { deleteRequest } = useHttpService();
+
   useEffect(() => {
     // Simulate loading for initial data fetch
     const timer = setTimeout(() => {
@@ -35,19 +38,13 @@ export default function ContractConfigurationsPage() {
     if (!deleteItem) return;
 
     try {
-      const response = await fetch('/api/contract-configuration/statuses', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: deleteItem.id })
-      });
+      const response = await deleteRequest('/api/contract-configuration/statuses', { id: deleteItem.id });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete status');
+      if (response.success) {
+        console.log(`${deleteItem.name} deleted successfully`);
+      } else {
+        throw new Error(response.error || 'Failed to delete status');
       }
-
-      // Refresh the data or update the UI as needed
-      console.log(`${deleteItem.name} deleted successfully`);
     } catch (error) {
       console.error('Error deleting status:', error);
       if (error instanceof Error) {

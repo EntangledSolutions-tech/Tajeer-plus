@@ -11,6 +11,7 @@ import PricingTermsStep from './ContractStepper/PricingTermsStep';
 import VehicleInspectionStep from './ContractStepper/VehicleInspectionStep';
 import DocumentsStep from './ContractStepper/DocumentsStep';
 import * as Yup from 'yup';
+import { useHttpService } from '../../../lib/http-service';
 
 const steps: StepperModalStep[] = [
   {
@@ -229,6 +230,7 @@ export default function ContractModal({
   initialContract
 }: ContractModalProps) {
   const supabase = useSupabase();
+  const { postRequest } = useHttpService();
 
   // Get initial values for edit mode
   const getEditInitialValues = () => {
@@ -293,27 +295,21 @@ export default function ContractModal({
             formData.append('file', doc.file);
             formData.append('documentName', doc.name);
 
-            const response = await fetch(`/api/contracts/temp/documents`, {
-              method: 'POST',
-              body: formData
-            });
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(`Failed to upload document ${doc.name}: ${errorData.error}`);
+            const response = await postRequest(`/api/contracts/temp/documents`, formData);
+            if (response.success && response.data) {
+              uploadedDocuments.push({
+                id: doc.id,
+                name: doc.name,
+                fileName: doc.file.name,
+                fileUrl: response.data.document.fileUrl,
+                fileSize: doc.file.size,
+                mimeType: doc.file.type,
+                uploaded: true,
+                uploadedAt: new Date().toISOString()
+              });
+            } else {
+              throw new Error(`Failed to upload document ${doc.name}: ${response.error}`);
             }
-
-            const uploadResult = await response.json();
-            uploadedDocuments.push({
-              id: doc.id,
-              name: doc.name,
-              fileName: doc.file.name,
-              fileUrl: uploadResult.document.fileUrl,
-              fileSize: doc.file.size,
-              mimeType: doc.file.type,
-              uploaded: true,
-              uploadedAt: new Date().toISOString()
-            });
           }
         }
       }
@@ -374,51 +370,31 @@ export default function ContractModal({
       let response;
       if (isEdit && contractId) {
         // Update existing contract
-        response = await fetch('/api/contracts', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            id: contractId,
-            ...contractData
-          })
+        response = await postRequest('/api/contracts', {
+          id: contractId,
+          ...contractData
         });
       } else {
         // Create new contract
-        response = await fetch('/api/contracts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(contractData)
-        });
+        response = await postRequest('/api/contracts', contractData);
       }
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to ${isEdit ? 'update' : 'create'} contract`);
+      if (!response.success) {
+        throw new Error(response.error || `Failed to ${isEdit ? 'update' : 'create'} contract`);
       }
 
-      const result = await response.json();
-      const createdContract = result.contract;
+      const createdContract = response.data.contract;
 
       // Move uploaded documents to the final contract location (only for new contracts)
       if (!isEdit && uploadedDocuments.length > 0) {
         for (const doc of uploadedDocuments) {
           try {
-            const moveResponse = await fetch(`/api/contracts/${createdContract.id}/documents`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                document: doc,
-                moveFromTemp: true
-              })
+            const moveResponse = await postRequest(`/api/contracts/${createdContract.id}/documents`, {
+              document: doc,
+              moveFromTemp: true
             });
 
-            if (!moveResponse.ok) {
+            if (!moveResponse.success) {
               console.warn(`Failed to move document ${doc.name} to final location`);
             }
           } catch (moveError) {

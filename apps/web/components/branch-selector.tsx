@@ -6,6 +6,7 @@ import { useBranch } from '../contexts/branch-context';
 import CustomButton from '../app/reusableComponents/CustomButton';
 import { BranchModal } from '../app/reusableComponents/BranchModal';
 import { Plus } from 'lucide-react';
+import { useHttpService } from '../lib/http-service';
 
 interface BranchSelectorProps {
   variant?: 'transparent' | 'default';
@@ -13,6 +14,7 @@ interface BranchSelectorProps {
 }
 
 export function BranchSelector({ variant = 'default', onCreateBranch }: BranchSelectorProps) {
+  const { postRequest } = useHttpService();
   const { data: branches, isLoading, error, refetch } = useBranches();
   const { selectedBranch, setSelectedBranch } = useBranch();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -54,15 +56,10 @@ export function BranchSelector({ variant = 'default', onCreateBranch }: BranchSe
         await onCreateBranch();
       } else {
         // Default API implementation
-        const response = await fetch('/api/branches', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values)
-        });
+        const response = await postRequest('/api/branches', values);
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create branch');
+        if (!response.success) {
+          throw new Error(response.error || 'Failed to create branch');
         }
       }
       setIsCreateModalOpen(false);

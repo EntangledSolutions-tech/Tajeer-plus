@@ -258,10 +258,9 @@ export default function VehicleDetailsLayout() {
   // Fetch existing documents
   const fetchExistingDocuments = async () => {
     try {
-      const response = await fetch(`/api/vehicles/${vehicleId}/documents`);
-      if (response.ok) {
-        const data = await response.json();
-        const formattedDocs = data.map((doc: any) => ({
+      const response = await getRequest(`/api/vehicles/${vehicleId}/documents`);
+      if (response.success && response.data) {
+        const formattedDocs = response.data.map((doc: any) => ({
           name: doc.document_name,
           document_url: doc.document_url
         }));
@@ -295,30 +294,23 @@ export default function VehicleDetailsLayout() {
         })
       );
 
-      const response = await fetch(`/api/vehicles/${vehicleId}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          vehicle: values,
-          pricing: values,
-          expirations: values,
-          depreciation: values,
-          additional_details: values,
-          documents: uploadedDocs
-        }),
-        headers: { 'Content-Type': 'application/json' }
+      const response = await putRequest(`/api/vehicles/${vehicleId}`, {
+        vehicle: values,
+        pricing: values,
+        expirations: values,
+        depreciation: values,
+        additional_details: values,
+        documents: uploadedDocs
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to update vehicle');
-      }
-
-      // Refresh vehicle data
-      const vehicleResponse = await fetch(`/api/vehicles/${vehicleId}`);
-      if (vehicleResponse.ok) {
-        const updatedVehicle = await vehicleResponse.json();
-        setVehicle(updatedVehicle);
+      if (response.success && response.data) {
+        // Refresh vehicle data
+        const vehicleResponse = await getRequest(`/api/vehicles/${vehicleId}`);
+        if (vehicleResponse.success && vehicleResponse.data) {
+          setVehicle(vehicleResponse.data);
+        }
+      } else {
+        throw new Error(response.error || 'Failed to update vehicle');
       }
     } catch (err: any) {
       throw new Error(err.message || 'Failed to update vehicle');
@@ -335,18 +327,15 @@ export default function VehicleDetailsLayout() {
     try {
       setLoading(prev => ({ ...prev, deleteVehicle: true }));
 
-      const response = await fetch(`/api/vehicles/${vehicleId}`, {
-        method: 'DELETE',
-      });
+      const response = await deleteRequest(`/api/vehicles/${vehicleId}`);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete vehicle');
+      if (response.success) {
+        // Close modal and redirect to vehicles list
+        setIsDeleteModalOpen(false);
+        router.push('/vehicles');
+      } else {
+        throw new Error(response.error || 'Failed to delete vehicle');
       }
-
-      // Close modal and redirect to vehicles list
-      setIsDeleteModalOpen(false);
-      router.push('/vehicles');
     } catch (err: any) {
       console.error('Error deleting vehicle:', err);
       setError(err.message || 'Failed to delete vehicle');

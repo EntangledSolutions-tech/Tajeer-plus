@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import CustomCard from '../reusableComponents/CustomCard';
+import { useHttpService } from '../../lib/http-service';
 
 interface SearchResult {
   id: string;
@@ -19,6 +20,7 @@ interface SearchResult {
 type FilterType = 'all' | 'vehicles' | 'customers' | 'contracts';
 
 export default function SearchPage() {
+  const { getRequest } = useHttpService();
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
@@ -60,12 +62,11 @@ export default function SearchPage() {
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/global-search?q=${encodeURIComponent(searchTerm)}&limit=50`);
-      const data = await response.json();
+      const response = await getRequest(`/api/global-search?q=${encodeURIComponent(searchTerm)}&limit=50`);
 
-      if (data.success) {
-        setResults(data.allResults || []);
-        setTotalResults(data.totalResults || 0);
+      if (response.success && response.data) {
+        setResults(response.data.allResults || []);
+        setTotalResults(response.data.totalResults || 0);
       }
     } catch (error) {
       console.error('Search error:', error);

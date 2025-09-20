@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
+import { useHttpService } from '../../../lib/http-service';
 
 // Interfaces
 interface Branch {
@@ -79,6 +80,7 @@ interface Transaction {
 
 export default function RentalFinancesLayout() {
   const router = useRouter();
+  const { getRequest } = useHttpService();
 
   // State management
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -134,13 +136,12 @@ export default function RentalFinancesLayout() {
     try {
       setLoading(prev => ({ ...prev, summary: true }));
 
-      const response = await fetch(`/api/finance/summary?period=${period}`);
-      if (response.ok) {
-        const data = await response.json();
+      const response = await getRequest(`/api/finance/summary?period=${period}`);
+      if (response.success && response.data) {
         setSummaryData({
-          totalRevenue: data.summary.totalRevenue,
-          totalExpenses: data.summary.totalExpenses,
-          netBalance: data.summary.netBalance
+          totalRevenue: response.data.summary.totalRevenue,
+          totalExpenses: response.data.summary.totalExpenses,
+          netBalance: response.data.summary.netBalance
         });
       }
     } catch (error) {
@@ -156,12 +157,12 @@ export default function RentalFinancesLayout() {
 
       // Fetch both income and expense transactions
       const [incomeResponse, expenseResponse] = await Promise.all([
-        fetch('/api/finance/income?limit=-1'),
-        fetch('/api/finance/expense?limit=-1')
+        getRequest('/api/finance/income?limit=-1'),
+        getRequest('/api/finance/expense?limit=-1')
       ]);
 
-      const incomeData = incomeResponse.ok ? await incomeResponse.json() : { transactions: [] };
-      const expenseData = expenseResponse.ok ? await expenseResponse.json() : { transactions: [] };
+      const incomeData = incomeResponse.success ? incomeResponse.data : { transactions: [] };
+      const expenseData = expenseResponse.success ? expenseResponse.data : { transactions: [] };
 
       // Combine and format transactions
       const allTransactions: Transaction[] = [
@@ -200,10 +201,9 @@ export default function RentalFinancesLayout() {
   const fetchBranches = async () => {
     try {
       setLoading(prev => ({ ...prev, branches: true }));
-      const response = await fetch('/api/branches');
-      if (response.ok) {
-        const data = await response.json();
-        setBranches(data.branches || []);
+      const response = await getRequest('/api/branches');
+      if (response.success && response.data) {
+        setBranches(response.data.branches || []);
       }
     } catch (error) {
       console.error('Error fetching branches:', error);
@@ -215,10 +215,9 @@ export default function RentalFinancesLayout() {
   const fetchVehicles = async () => {
     try {
       setLoading(prev => ({ ...prev, vehicles: true }));
-      const response = await fetch('/api/vehicles?limit=100');
-      if (response.ok) {
-        const data = await response.json();
-        setVehicles(data.vehicles || []);
+      const response = await getRequest('/api/vehicles?limit=100');
+      if (response.success && response.data) {
+        setVehicles(response.data.vehicles || []);
       }
     } catch (error) {
       console.error('Error fetching vehicles:', error);
@@ -230,10 +229,9 @@ export default function RentalFinancesLayout() {
   const fetchContracts = async () => {
     try {
       setLoading(prev => ({ ...prev, contracts: true }));
-      const response = await fetch('/api/contracts?limit=100');
-      if (response.ok) {
-        const data = await response.json();
-        setContracts(data.contracts || []);
+      const response = await getRequest('/api/contracts?limit=100');
+      if (response.success && response.data) {
+        setContracts(response.data.contracts || []);
       }
     } catch (error) {
       console.error('Error fetching contracts:', error);

@@ -18,6 +18,7 @@ import ContractOverview from './ContractDetailsComponents/ContractOverview';
 import ContractPenalties from './ContractDetailsComponents/ContractPenalties';
 import ContractStatusChangeModal from './ContractStatusChangeModal';
 import ContractModal from '../ContractModal';
+import { useHttpService } from '../../../lib/http-service';
 
 interface Customer {
   id: string;
@@ -83,6 +84,7 @@ export default function ContractDetails() {
   const params = useParams();
   const contractId = params?.id as string;
   const router = useRouter();
+  const { getRequest, putRequest, deleteRequest } = useHttpService();
 
   // Contract data state
   const [contract, setContract] = useState<Contract | null>(null);
@@ -114,14 +116,10 @@ export default function ContractDetails() {
   const fetchContractStatuses = async () => {
     try {
       setStatusLoading(prev => ({ ...prev, statuses: true }));
-      const response = await fetch('/api/contract-statuses?limit=100');
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch contract statuses');
+      const response = await getRequest('/api/contract-statuses?limit=100');
+      if (response.success && response.data) {
+        setContractStatuses(response.data.statuses || []);
       }
-
-      setContractStatuses(result.statuses || []);
     } catch (err: any) {
       console.error('Error fetching contract statuses:', err);
     } finally {
@@ -134,25 +132,15 @@ export default function ContractDetails() {
     try {
       setStatusLoading(prev => ({ ...prev, update: true }));
 
-      const response = await fetch(`/api/contracts/${contractId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status_id: statusId
-        }),
+      const response = await putRequest(`/api/contracts/${contractId}`, {
+        status_id: statusId
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update contract status');
-      }
-
-      // Update the contract status in local state
-      const updatedContract = await response.json();
-      if (updatedContract.success && updatedContract.contract) {
-        setContract(updatedContract.contract);
+      if (response.success && response.data) {
+        // Update the contract status in local state
+        setContract(response.data.contract);
+      } else {
+        throw new Error(response.error || 'Failed to update contract status');
       }
     } catch (err: any) {
       console.error('Error updating contract status:', err);
@@ -176,19 +164,11 @@ export default function ContractDetails() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`/api/contracts/${contractId}`);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch contract details`);
-        }
-
-        const data = await response.json();
-
-        if (data.success && data.contract) {
-          setContract(data.contract);
+        const response = await getRequest(`/api/contracts/${contractId}`);
+        if (response.success && response.data) {
+          setContract(response.data.contract);
         } else {
-          throw new Error('Invalid response format');
+          throw new Error(response.error || 'Invalid response format');
         }
       } catch (err) {
         console.error('Error fetching contract data:', err);
@@ -204,17 +184,13 @@ export default function ContractDetails() {
   // Handle contract deletion
   const handleContractDelete = async () => {
     try {
-      const response = await fetch(`/api/contracts/${contractId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete contract');
+      const response = await deleteRequest(`/api/contracts/${contractId}`);
+      if (response.success) {
+        // Redirect to contracts list
+        router.push('/contracts');
+      } else {
+        throw new Error(response.error || 'Failed to delete contract');
       }
-
-      // Redirect to contracts list
-      router.push('/contracts');
     } catch (err: any) {
       console.error('Error deleting contract:', err);
       // You might want to show a toast error here
@@ -233,19 +209,11 @@ export default function ContractDetails() {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`/api/contracts/${contractId}`);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch contract details`);
-        }
-
-        const data = await response.json();
-
-        if (data.success && data.contract) {
-          setContract(data.contract);
+        const response = await getRequest(`/api/contracts/${contractId}`);
+        if (response.success && response.data) {
+          setContract(response.data.contract);
         } else {
-          throw new Error('Invalid response format');
+          throw new Error(response.error || 'Invalid response format');
         }
       } catch (err) {
         console.error('Error fetching contract data:', err);

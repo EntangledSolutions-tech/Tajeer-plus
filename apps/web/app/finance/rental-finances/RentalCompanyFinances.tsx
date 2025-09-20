@@ -8,6 +8,7 @@ import CustomButton from '../../reusableComponents/CustomButton';
 import CustomCard from '../../reusableComponents/CustomCard';
 import CustomTable, { TableAction, TableColumn } from '../../reusableComponents/CustomTable';
 import { SearchBar } from '../../reusableComponents/SearchBar';
+import { useHttpService } from '../../../lib/http-service';
 
 interface Transaction {
   id: string;
@@ -45,6 +46,7 @@ interface PaginationInfo {
 
 export default function RentalCompanyFinances() {
   const router = useRouter();
+  const { getRequest } = useHttpService();
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -97,12 +99,12 @@ export default function RentalCompanyFinances() {
 
       // Fetch both income and expense transactions with pagination
       const [incomeResponse, expenseResponse] = await Promise.all([
-        fetch(`/api/finance/income?${params}`),
-        fetch(`/api/finance/expense?${params}`)
+        getRequest(`/api/finance/income?${params}`),
+        getRequest(`/api/finance/expense?${params}`)
       ]);
 
-      const incomeData = incomeResponse.ok ? await incomeResponse.json() : { transactions: [], pagination: pagination };
-      const expenseData = expenseResponse.ok ? await expenseResponse.json() : { transactions: [], pagination: pagination };
+      const incomeData = incomeResponse.success ? incomeResponse.data : { transactions: [], pagination: pagination };
+      const expenseData = expenseResponse.success ? expenseResponse.data : { transactions: [], pagination: pagination };
 
       // Combine and format transactions
       const allTransactions: Transaction[] = [
@@ -155,7 +157,7 @@ export default function RentalCompanyFinances() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, pagination.page, currentLimit, transactionType, period]);
+  }, [debouncedSearch, pagination.page, currentLimit, transactionType, period, getRequest]);
 
   useEffect(() => {
     fetchTransactions();

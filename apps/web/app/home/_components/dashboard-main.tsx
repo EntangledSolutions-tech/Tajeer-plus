@@ -6,6 +6,7 @@ import { Car, Calendar, FileText, Users, AlertCircle, CheckCircle, Wrench, Dolla
 import CustomCard from '../../reusableComponents/CustomCard';
 import { SummaryCard } from '../../reusableComponents/SummaryCard';
 import Link from 'next/link';
+import { useHttpService } from '../../../lib/http-service';
 
 // Types for our data
 interface VehicleStatus {
@@ -50,6 +51,7 @@ interface DashboardStats {
 }
 
 export default function DashboardMain() {
+  const { getRequest } = useHttpService();
   const [vehicleStatuses, setVehicleStatuses] = useState<VehicleStatus[]>([]);
   const [customerData, setCustomerData] = useState<CustomerData[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
@@ -64,42 +66,44 @@ export default function DashboardMain() {
   // Fetch vehicle data
   const fetchVehicles = async () => {
     try {
-      const response = await fetch('/api/vehicles?limit=-1');
-      const data = await response.json();
+      const response = await getRequest('/api/vehicles?limit=-1');
+      if (response.success && response.data) {
+        const data = response.data;
 
-      if (data.vehicles) {
-        // Count vehicles by status and get their colors
-        const statusCounts: Record<string, { count: number; color: string }> = {};
-        data.vehicles.forEach((vehicle: any) => {
-          debugger
-          const status = vehicle.status?.name || 'Unknown';
-          const color = vehicle.status?.color || '#6B7280';
+        if (data.vehicles) {
+          // Count vehicles by status and get their colors
+          const statusCounts: Record<string, { count: number; color: string }> = {};
+          data.vehicles.forEach((vehicle: any) => {
+            debugger
+            const status = vehicle.status?.name || 'Unknown';
+            const color = vehicle.status?.color || '#6B7280';
 
-          if (!statusCounts[status]) {
-            statusCounts[status] = { count: 0, color };
-          }
-          statusCounts[status].count += 1;
-        });
+            if (!statusCounts[status]) {
+              statusCounts[status] = { count: 0, color };
+            }
+            statusCounts[status].count += 1;
+          });
 
-        // Map to our chart format using the actual status colors
-        const vehicleStatusData: VehicleStatus[] = Object.entries(statusCounts).map(([name, data]) => ({
-          name,
-          value: data.count,
-          color: data.color
-        }));
+          // Map to our chart format using the actual status colors
+          const vehicleStatusData: VehicleStatus[] = Object.entries(statusCounts).map(([name, data]) => ({
+            name,
+            value: data.count,
+            color: data.color
+          }));
 
-        setVehicleStatuses(vehicleStatusData);
+          setVehicleStatuses(vehicleStatusData);
 
-        // Calculate vehicle stats
-        const totalVehicles = data.vehicles.length;
-        const reserved = statusCounts['Reserved']?.count || 0;
-        const available = statusCounts['Available']?.count || 0;
-        const oilChange = statusCounts['Needs Maintenance']?.count || 0;
+          // Calculate vehicle stats
+          const totalVehicles = data.vehicles.length;
+          const reserved = statusCounts['Reserved']?.count || 0;
+          const available = statusCounts['Available']?.count || 0;
+          const oilChange = statusCounts['Needs Maintenance']?.count || 0;
 
-        setStats(prev => ({
-          ...prev,
-          vehicles: { total: totalVehicles, reserved, available, oilChange }
-        }));
+          setStats(prev => ({
+            ...prev,
+            vehicles: { total: totalVehicles, reserved, available, oilChange }
+          }));
+        }
       }
     } catch (error) {
       console.error('Error fetching vehicles:', error);
@@ -109,21 +113,23 @@ export default function DashboardMain() {
   // Fetch customer data
   const fetchCustomers = async () => {
     try {
-      const response = await fetch('/api/customers?limit=-1');
-      const data = await response.json();
+      const response = await getRequest('/api/customers?limit=-1');
+      if (response.success && response.data) {
+        const data = response.data;
 
-      if (data.customers) {
-        const totalCustomers = data.customers.length;
-        const blacklisted = data.customers.filter((c: any) => c.status === 'Blacklisted').length;
-        const active = data.customers.filter((c: any) => c.status === 'Active').length;
+        if (data.customers) {
+          const totalCustomers = data.customers.length;
+          const blacklisted = data.customers.filter((c: any) => c.status === 'Blacklisted').length;
+          const active = data.customers.filter((c: any) => c.status === 'Active').length;
 
-        setStats(prev => ({
-          ...prev,
-          customers: { total: totalCustomers, blacklisted, active }
-        }));
+          setStats(prev => ({
+            ...prev,
+            customers: { total: totalCustomers, blacklisted, active }
+          }));
 
-        // Generate customer chart data based on real data
-        generateCustomerChartData(data.customers);
+          // Generate customer chart data based on real data
+          generateCustomerChartData(data.customers);
+        }
       }
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -133,18 +139,20 @@ export default function DashboardMain() {
   // Fetch contract data
   const fetchContracts = async () => {
     try {
-      const response = await fetch('/api/contracts?limit=-1');
-      const data = await response.json();
+      const response = await getRequest('/api/contracts?limit=-1');
+      if (response.success && response.data) {
+        const data = response.data;
 
-      if (data.contracts) {
-        const totalContracts = data.contracts.length;
-        const open = data.contracts.filter((c: any) => c.status?.name === 'Active').length;
-        const closed = data.contracts.filter((c: any) => c.status?.name === 'Completed').length;
+        if (data.contracts) {
+          const totalContracts = data.contracts.length;
+          const open = data.contracts.filter((c: any) => c.status?.name === 'Active').length;
+          const closed = data.contracts.filter((c: any) => c.status?.name === 'Completed').length;
 
-        setStats(prev => ({
-          ...prev,
-          contracts: { total: totalContracts, open, closed }
-        }));
+          setStats(prev => ({
+            ...prev,
+            contracts: { total: totalContracts, open, closed }
+          }));
+        }
       }
     } catch (error) {
       console.error('Error fetching contracts:', error);

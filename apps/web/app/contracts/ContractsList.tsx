@@ -17,6 +17,7 @@ import CustomButton from '../reusableComponents/CustomButton';
 import CustomCard from '../reusableComponents/CustomCard';
 import CustomTable, { TableColumn, TableAction } from '../reusableComponents/CustomTable';
 import ContractModal from './ContractModal/index';
+import { useHttpService } from '../../lib/http-service';
 
 interface Contract {
   id: string;
@@ -60,6 +61,7 @@ interface ApiResponse {
 
 export default function ContractsList() {
   const router = useRouter();
+  const { getRequest } = useHttpService();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,21 +106,12 @@ export default function ContractsList() {
         ...(statusFilter !== 'all' && { status: statusFilter })
       });
 
-            const response = await fetch(`/api/contracts?${params}`);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('API Error:', errorData);
-        throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch contracts`);
-      }
-
-      const data: ApiResponse = await response.json();
-
-      if (data.success) {
-        setContracts(data.contracts);
-        setPagination(data.pagination);
+      const response = await getRequest(`/api/contracts?${params}`);
+      if (response.success && response.data) {
+        setContracts(response.data.contracts);
+        setPagination(response.data.pagination);
       } else {
-        throw new Error('API returned error');
+        throw new Error(response.error || 'API returned error');
       }
     } catch (err) {
       console.error('Error fetching contracts:', err);
@@ -132,30 +125,26 @@ export default function ContractsList() {
   // Fetch contract statuses from database
   const fetchContractStatuses = useCallback(async () => {
     try {
-      const response = await fetch('/api/contract-statuses?limit=100');
-      const result = await response.json();
+      const response = await getRequest('/api/contract-statuses?limit=100');
+      if (response.success && response.data) {
+        // Convert statuses to the format expected by CustomTable
+        const statusConfigData: any = { status: {} };
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch contract statuses');
+        response.data.statuses?.forEach((status: any) => {
+          // Use inline styles instead of dynamic CSS classes to avoid parsing issues
+          statusConfigData.status[status.name] = {
+            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+            label: status.name,
+            style: {
+              backgroundColor: `${status.color}20`, // 20% opacity
+              color: status.color,
+              border: `1px solid ${status.color}40` // 40% opacity for border
+            }
+          };
+        });
+
+        setStatusConfig(statusConfigData);
       }
-
-      // Convert statuses to the format expected by CustomTable
-      const statusConfigData: any = { status: {} };
-
-      result.statuses?.forEach((status: any) => {
-        // Use inline styles instead of dynamic CSS classes to avoid parsing issues
-        statusConfigData.status[status.name] = {
-          className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-          label: status.name,
-          style: {
-            backgroundColor: `${status.color}20`, // 20% opacity
-            color: status.color,
-            border: `1px solid ${status.color}40` // 40% opacity for border
-          }
-        };
-      });
-
-      setStatusConfig(statusConfigData);
     } catch (err: any) {
       console.error('Error fetching contract statuses:', err);
       // Fallback to default status config if API fails
@@ -200,7 +189,7 @@ export default function ContractsList() {
         }
       });
     }
-  }, []);
+  }, [getRequest]);
 
   // Debounce search input
   useEffect(() => {

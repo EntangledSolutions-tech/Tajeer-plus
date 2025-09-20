@@ -10,6 +10,7 @@ import Statuses from './_components/Statuses';
 import Owners from './_components/Owners';
 import ActualUsers from './_components/ActualUsers';
 import CustomTabs from '../../reusableComponents/CustomTabs';
+import { useHttpService } from '../../../lib/http-service';
 
 export default function VehicleConfigurationPage() {
   // State for all tabs
@@ -18,6 +19,8 @@ export default function VehicleConfigurationPage() {
 
   // Delete confirmation state
   const [deleteItem, setDeleteItem] = useState<{ type: 'make' | 'model' | 'color' | 'status' | 'owner' | 'actualUser', id: string, name: string } | null>(null);
+
+  const { deleteRequest } = useHttpService();
 
   const tabs = [
     { key: 'makes', label: 'Makes' },
@@ -63,17 +66,16 @@ export default function VehicleConfigurationPage() {
           break;
       }
 
-      const response = await fetch(`${endpoint}?id=${deleteItem.id}`, {
-        method: 'DELETE',
-      });
+      const response = await deleteRequest(`${endpoint}/${deleteItem.id}`);
 
-      if (!response.ok) throw new Error('Failed to delete item');
-
-      // Close the delete confirmation dialog
-      setDeleteItem(null);
-
-      // Force a page refresh to update the data
-      window.location.reload();
+      if (response.success) {
+        // Close the delete confirmation dialog
+        setDeleteItem(null);
+        // Force a page refresh to update the data
+        window.location.reload();
+      } else {
+        throw new Error(response.error || 'Failed to delete item');
+      }
     } catch (error) {
       console.error('Error deleting item:', error);
       setDeleteItem(null);

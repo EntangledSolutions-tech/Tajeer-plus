@@ -9,6 +9,7 @@ import CustomInput from '../reusableComponents/CustomInput';
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription } from '@kit/ui/alert-dialog';
 import { toast } from '@kit/ui/sonner';
 import { useRevalidatePersonalAccountDataQuery } from '@kit/accounts/hooks/use-personal-account-data';
+import { useHttpService } from '../../lib/http-service';
 
 interface Profile {
   id: string;
@@ -51,6 +52,7 @@ const validationSchema = Yup.object({
 });
 
 export default function ProfileSettings({}: ProfileSettingsProps) {
+  const { getRequest, putRequest, postRequest } = useHttpService();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -64,18 +66,17 @@ export default function ProfileSettings({}: ProfileSettingsProps) {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/profile');
-      const result = await response.json();
+      const response = await getRequest('/api/profile');
 
-      if (!response.ok) {
-        if (response.status === 401) {
+      if (response.success && response.data) {
+        setProfile(response.data.profile);
+      } else {
+        if (response.error?.includes('log in')) {
           setError('Please log in to view your profile');
           return;
         }
-        throw new Error(result.error || 'Failed to fetch profile');
+        throw new Error(response.error || 'Failed to fetch profile');
       }
-
-      setProfile(result.profile);
     } catch (err: any) {
       const errorMessage = 'Error fetching profile: ' + (err?.message || 'Unknown error');
       toast.error('Failed to load profile', {
@@ -93,31 +94,23 @@ export default function ProfileSettings({}: ProfileSettingsProps) {
       setSaving(true);
       setError(null);
 
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
+      const response = await putRequest('/api/profile', values);
 
-      const result = await response.json();
+      if (response.success && response.data) {
+        setProfile(response.data.profile);
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to update profile');
+        // Invalidate the account data query to refresh navbar
+        if (profile?.id) {
+          revalidateAccountData(profile.id);
+        }
+
+        toast.success('Profile updated successfully!', {
+          description: 'Your profile information has been saved.',
+          duration: 4000,
+        });
+      } else {
+        throw new Error(response.error || 'Failed to update profile');
       }
-
-      setProfile(result.profile);
-
-      // Invalidate the account data query to refresh navbar
-      if (profile?.id) {
-        revalidateAccountData(profile.id);
-      }
-
-      toast.success('Profile updated successfully!', {
-        description: 'Your profile information has been saved.',
-        duration: 4000,
-      });
     } catch (err: any) {
       const errorMessage = 'Error updating profile: ' + (err?.message || 'Unknown error');
       toast.error('Failed to update profile', {
@@ -145,48 +138,37 @@ export default function ProfileSettings({}: ProfileSettingsProps) {
       const fileExt = file.name.split('.').pop();
       const fileName = `${profile?.id || 'user'}-${Date.now()}.${fileExt}`;
 
-      const uploadResponse = await fetch('/api/upload-avatar', {
-        method: 'POST',
-        body: formData,
-      });
+      const uploadResponse = await postRequest('/api/upload-avatar', formData);
 
-      const uploadResult = await uploadResponse.json();
+      if (uploadResponse.success && uploadResponse.data) {
+        const uploadResult = uploadResponse.data;
 
-      if (!uploadResponse.ok) {
-        throw new Error(uploadResult.error || 'Failed to upload image');
-      }
-
-      // Update the profile with the new avatar URL
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+        // Update the profile with the new avatar URL
+        const response = await putRequest('/api/profile', {
           first_name: profile?.first_name || '',
           last_name: profile?.last_name || '',
           phone: profile?.phone || '',
           avatar_url: uploadResult.url,
-        }),
-      });
+        });
 
-      const result = await response.json();
+        if (response.success && response.data) {
+          setProfile(response.data.profile);
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to update profile');
+          // Invalidate the account data query to refresh navbar
+          if (profile?.id) {
+            revalidateAccountData(profile.id);
+          }
+
+          toast.success('Profile picture updated!', {
+            description: 'Your profile picture has been saved.',
+            duration: 3000,
+          });
+        } else {
+          throw new Error(response.error || 'Failed to update profile');
+        }
+      } else {
+        throw new Error(uploadResponse.error || 'Failed to upload image');
       }
-
-      setProfile(result.profile);
-
-      // Invalidate the account data query to refresh navbar
-      if (profile?.id) {
-        revalidateAccountData(profile.id);
-      }
-
-      toast.success('Profile picture updated!', {
-        description: 'Your profile picture has been saved.',
-        duration: 3000,
-      });
     } catch (err: any) {
       toast.error('Failed to update profile picture', {
         description: err?.message || 'Unknown error occurred',

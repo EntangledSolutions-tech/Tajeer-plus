@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, ChevronRight } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import { useHttpService } from '../../lib/http-service';
 
 interface SearchResult {
   id: string;
@@ -23,6 +24,7 @@ interface GlobalSearchDropdownProps {
 }
 
 export function GlobalSearchDropdown({ query, onClose, searchInputRef }: GlobalSearchDropdownProps) {
+  const { getRequest } = useHttpService();
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -67,14 +69,13 @@ export function GlobalSearchDropdown({ query, onClose, searchInputRef }: GlobalS
     const searchTimeout = setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await fetch(`/api/global-search?q=${encodeURIComponent(query)}&limit=3`);
-        const data = await response.json();
+        const response = await getRequest(`/api/global-search?q=${encodeURIComponent(query)}&limit=3`);
 
-        if (data.success) {
-          setResults(data.allResults || []);
-          setHasMoreResults(data.hasMoreResults || false);
+        if (response.success && response.data) {
+          setResults(response.data.allResults || []);
+          setHasMoreResults(response.data.hasMoreResults || false);
         } else {
-          console.error('Search failed:', data.error);
+          console.error('Search failed:', response.error);
           setResults([]);
           setHasMoreResults(false);
         }

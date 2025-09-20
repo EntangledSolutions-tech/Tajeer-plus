@@ -62,7 +62,7 @@ interface Income {
 export default function IncomeDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { getRequest } = useHttpService();
+  const { getRequest, deleteRequest } = useHttpService();
   const incomeId = params.id as string;
 
   const [income, setIncome] = useState<Income | null>(null);
@@ -82,16 +82,15 @@ export default function IncomeDetailPage() {
     try {
       setLoading(true);
       console.log('Fetching income for ID:', incomeId);
-      const response = await fetch(`/api/finance/income/${incomeId}`);
+      const response = await getRequest(`/api/finance/income/${incomeId}`);
 
-      console.log('Response status:', response.status);
-      if (!response.ok) {
-        throw new Error('Failed to fetch income details');
+      console.log('Response success:', response.success);
+      if (response.success && response.data) {
+        console.log('Income data received:', response.data);
+        setIncome(response.data);
+      } else {
+        throw new Error(response.error || 'Failed to fetch income details');
       }
-
-      const data = await response.json();
-      console.log('Income data received:', data);
-      setIncome(data);
     } catch (err) {
       console.error('Error fetching income:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch income');
@@ -159,24 +158,21 @@ export default function IncomeDetailPage() {
 
     try {
       setIsDeleting(true);
-      const response = await fetch(`/api/finance/income/${incomeId}`, {
-        method: 'DELETE',
-      });
+      const response = await deleteRequest(`/api/finance/income/${incomeId}`);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete income');
+      if (response.success) {
+        // Show success toast
+        toast.success('Income deleted successfully!', {
+          description: `Transaction ${income.transaction_number} has been deleted.`,
+          duration: 4000,
+        });
+
+        // Close modal and redirect to the finance list page
+        setIsDeleteModalOpen(false);
+        router.push('/finance/rental-finances');
+      } else {
+        throw new Error(response.error || 'Failed to delete income');
       }
-
-      // Show success toast
-      toast.success('Income deleted successfully!', {
-        description: `Transaction ${income.transaction_number} has been deleted.`,
-        duration: 4000,
-      });
-
-      // Close modal and redirect to the finance list page
-      setIsDeleteModalOpen(false);
-      router.push('/finance/rental-finances');
     } catch (err: any) {
       console.error('Error deleting income:', err);
       toast.error('Failed to delete income', {

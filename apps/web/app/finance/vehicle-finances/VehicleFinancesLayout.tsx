@@ -52,6 +52,9 @@ interface Customer {
 }
 
 export default function VehicleFinancesLayout() {
+  // HTTP service hook
+  const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
+
   // State management
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSellModalOpen, setIsSellModalOpen] = useState(false);
@@ -196,15 +199,12 @@ export default function VehicleFinancesLayout() {
     try {
       setLoading(prev => ({ ...prev, vehicles: true }));
       console.log('Fetching vehicles...');
-      const response = await fetch('/api/vehicles?limit=100');
-      console.log('Vehicles response status:', response.status);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Vehicles API response:', data);
-        setVehicles(data.vehicles || []);
+      const response = await getRequest('/api/vehicles?limit=100');
+      console.log('Vehicles API response:', response);
+      if (response.success && response.data) {
+        setVehicles(response.data.vehicles || []);
       } else {
-        const errorData = await response.json();
-        console.error('Vehicles API error:', errorData);
+        console.error('Vehicles API error:', response.error);
       }
     } catch (error) {
       console.error('Error fetching vehicles:', error);
@@ -216,10 +216,11 @@ export default function VehicleFinancesLayout() {
   const fetchCustomers = async () => {
     try {
       setLoading(prev => ({ ...prev, customers: true }));
-      const response = await fetch('/api/customers?limit=100');
-      if (response.ok) {
-        const data = await response.json();
-        setCustomers(data.customers || []);
+      const response = await getRequest('/api/customers?limit=100');
+      if (response.success && response.data) {
+        setCustomers(response.data.customers || []);
+      } else {
+        console.error('Customers API error:', response.error);
       }
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -233,20 +234,14 @@ export default function VehicleFinancesLayout() {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
-      const response = await fetch('/api/finance/vehicle-transactions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
+      const response = await postRequest('/api/finance/vehicle-transactions', values);
 
-      if (!response.ok) {
-        throw new Error('Failed to create transaction');
+      if (response.success) {
+        setIsAddModalOpen(false);
+        console.log('Transaction created successfully');
+      } else {
+        console.error('Error creating transaction:', response.error);
       }
-
-      setIsAddModalOpen(false);
-      console.log('Transaction created successfully');
     } catch (error) {
       console.error('Error creating transaction:', error);
     } finally {
@@ -258,20 +253,14 @@ export default function VehicleFinancesLayout() {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
-      const response = await fetch('/api/finance/sell-vehicle', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
+      const response = await postRequest('/api/finance/sell-vehicle', values);
 
-      if (!response.ok) {
-        throw new Error('Failed to create sell transaction');
+      if (response.success) {
+        setIsSellModalOpen(false);
+        console.log('Sell transaction created successfully');
+      } else {
+        console.error('Error creating sell transaction:', response.error);
       }
-
-      setIsSellModalOpen(false);
-      console.log('Sell transaction created successfully');
     } catch (error) {
       console.error('Error creating sell transaction:', error);
     } finally {
@@ -283,20 +272,14 @@ export default function VehicleFinancesLayout() {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
-      const response = await fetch('/api/finance/return-vehicle', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
+      const response = await postRequest('/api/finance/return-vehicle', values);
 
-      if (!response.ok) {
-        throw new Error('Failed to create return transaction');
+      if (response.success) {
+        setIsReturnModalOpen(false);
+        console.log('Return transaction created successfully');
+      } else {
+        console.error('Error creating return transaction:', response.error);
       }
-
-      setIsReturnModalOpen(false);
-      console.log('Return transaction created successfully');
     } catch (error) {
       console.error('Error creating return transaction:', error);
     } finally {
@@ -308,20 +291,14 @@ export default function VehicleFinancesLayout() {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
-      const response = await fetch('/api/finance/deprecation', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
+      const response = await postRequest('/api/finance/deprecation', values);
 
-      if (!response.ok) {
-        throw new Error('Failed to create deprecation record');
+      if (response.success) {
+        setIsDeprecationModalOpen(false);
+        console.log('Deprecation record created successfully');
+      } else {
+        console.error('Error creating deprecation record:', response.error);
       }
-
-      setIsDeprecationModalOpen(false);
-      console.log('Deprecation record created successfully');
     } catch (error) {
       console.error('Error creating deprecation record:', error);
     } finally {
@@ -333,20 +310,14 @@ export default function VehicleFinancesLayout() {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
-      const response = await fetch('/api/finance/penalty', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
+      const response = await postRequest('/api/finance/penalty', values);
 
-      if (!response.ok) {
-        throw new Error('Failed to create penalty record');
+      if (response.success) {
+        setIsPenaltyModalOpen(false);
+        console.log('Penalty record created successfully');
+      } else {
+        console.error('Error creating penalty record:', response.error);
       }
-
-      setIsPenaltyModalOpen(false);
-      console.log('Penalty record created successfully');
     } catch (error) {
       console.error('Error creating penalty record:', error);
     } finally {
@@ -358,20 +329,14 @@ export default function VehicleFinancesLayout() {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
-      const response = await fetch('/api/finance/insurance', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
+      const response = await postRequest('/api/finance/insurance', values);
 
-      if (!response.ok) {
-        throw new Error('Failed to create insurance payment');
+      if (response.success) {
+        setIsInsuranceModalOpen(false);
+        console.log('Insurance payment created successfully');
+      } else {
+        console.error('Error creating insurance payment:', response.error);
       }
-
-      setIsInsuranceModalOpen(false);
-      console.log('Insurance payment created successfully');
     } catch (error) {
       console.error('Error creating insurance payment:', error);
     } finally {
@@ -383,20 +348,14 @@ export default function VehicleFinancesLayout() {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
-      const response = await fetch('/api/finance/maintenance', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
+      const response = await postRequest('/api/finance/maintenance', values);
 
-      if (!response.ok) {
-        throw new Error('Failed to create maintenance log');
+      if (response.success) {
+        setIsMaintenanceModalOpen(false);
+        console.log('Maintenance log created successfully');
+      } else {
+        console.error('Error creating maintenance log:', response.error);
       }
-
-      setIsMaintenanceModalOpen(false);
-      console.log('Maintenance log created successfully');
     } catch (error) {
       console.error('Error creating maintenance log:', error);
     } finally {
@@ -408,20 +367,14 @@ export default function VehicleFinancesLayout() {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
-      const response = await fetch('/api/finance/accident', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
+      const response = await postRequest('/api/finance/accident', values);
 
-      if (!response.ok) {
-        throw new Error('Failed to create accident record');
+      if (response.success) {
+        setIsAccidentModalOpen(false);
+        console.log('Accident record created successfully');
+      } else {
+        console.error('Error creating accident record:', response.error);
       }
-
-      setIsAccidentModalOpen(false);
-      console.log('Accident record created successfully');
     } catch (error) {
       console.error('Error creating accident record:', error);
     } finally {

@@ -3,6 +3,7 @@ import CustomInput from '../../../reusableComponents/CustomInput';
 import CustomButton from '../../../reusableComponents/CustomButton';
 import { SearchBar } from '../../../reusableComponents/SearchBar';
 import { Search, User, Phone, MapPin } from 'lucide-react';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface Customer {
   id: string;
@@ -16,6 +17,7 @@ interface Customer {
 }
 
 export default function CustomerSelectionStep() {
+  const { getRequest } = useHttpService();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -34,14 +36,10 @@ export default function CustomerSelectionStep() {
         status: 'Active' // Only show active customers
       });
 
-      const response = await fetch(`/api/customers?${params}`);
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch customers');
+      const response = await getRequest(`/api/customers?${params}`);
+      if (response.success && response.data) {
+        setCustomers(response.data.customers || []);
       }
-
-      setCustomers(result.customers || []);
     } catch (error) {
       console.error('Error fetching customers:', error);
       setCustomers([]);

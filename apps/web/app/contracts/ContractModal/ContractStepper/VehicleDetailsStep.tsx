@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useFormikContext } from 'formik';
 import { SearchBar } from '../../../reusableComponents/SearchBar';
 import { Car, Calendar, Palette, MapPin, Fuel, Gauge } from 'lucide-react';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface Vehicle {
   id: string;
@@ -19,6 +20,7 @@ interface Vehicle {
 
 export default function VehicleDetailsStep() {
   const formik = useFormikContext<any>();
+  const { getRequest } = useHttpService();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -44,18 +46,12 @@ export default function VehicleDetailsStep() {
         page: '1'
       });
 
-      const response = await fetch(`/api/vehicles?${params}`);
+      const response = await getRequest(`/api/vehicles?${params}`);
+      if (response.success && response.data) {
+        console.log('Vehicles API response:', response.data); // Debug log
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch vehicles');
-      }
-
-      const data = await response.json();
-      console.log('Vehicles API response:', data); // Debug log
-
-      if (data.success && data.vehicles) {
         // Filter only available vehicles and map to expected format
-        const availableVehicles = data.vehicles
+        const availableVehicles = response.data.vehicles
           .filter((vehicle: any) =>
             vehicle.status?.name === 'Available' ||
             vehicle.status?.name === 'Active' ||

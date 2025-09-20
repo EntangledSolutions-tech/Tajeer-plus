@@ -63,7 +63,7 @@ interface Expense {
 export default function ExpenseDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { getRequest } = useHttpService();
+  const { getRequest, deleteRequest } = useHttpService();
   const expenseId = params.id as string;
 
   const [expense, setExpense] = useState<Expense | null>(null);
@@ -82,14 +82,13 @@ export default function ExpenseDetailPage() {
   const fetchExpense = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/finance/expense/${expenseId}`);
+      const response = await getRequest(`/api/finance/expense/${expenseId}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch expense details');
+      if (response.success && response.data) {
+        setExpense(response.data);
+      } else {
+        throw new Error(response.error || 'Failed to fetch expense details');
       }
-
-      const data = await response.json();
-      setExpense(data);
     } catch (err) {
       console.error('Error fetching expense:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch expense');
@@ -157,24 +156,21 @@ export default function ExpenseDetailPage() {
 
     try {
       setIsDeleting(true);
-      const response = await fetch(`/api/finance/expense/${expenseId}`, {
-        method: 'DELETE',
-      });
+      const response = await deleteRequest(`/api/finance/expense/${expenseId}`);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete expense');
+      if (response.success) {
+        // Show success toast
+        toast.success('Expense deleted successfully!', {
+          description: `Transaction ${expense.transaction_number} has been deleted.`,
+          duration: 4000,
+        });
+
+        // Close modal and redirect to the finance list page
+        setIsDeleteModalOpen(false);
+        router.push('/finance/rental-finances');
+      } else {
+        throw new Error(response.error || 'Failed to delete expense');
       }
-
-      // Show success toast
-      toast.success('Expense deleted successfully!', {
-        description: `Transaction ${expense.transaction_number} has been deleted.`,
-        duration: 4000,
-      });
-
-      // Close modal and redirect to the finance list page
-      setIsDeleteModalOpen(false);
-      router.push('/finance/rental-finances');
     } catch (err: any) {
       console.error('Error deleting expense:', err);
       toast.error('Failed to delete expense', {

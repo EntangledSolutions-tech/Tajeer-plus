@@ -20,6 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
+import { useHttpService } from '../../../lib/http-service';
 
 // Interfaces
 interface Customer {
@@ -59,6 +60,7 @@ const CustomerFinanceSchema = Yup.object().shape({
 });
 
 export default function CustomerFinancesLayout() {
+  const { getRequest, postRequest } = useHttpService();
   // State management
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -185,10 +187,9 @@ export default function CustomerFinancesLayout() {
   const fetchCustomers = async () => {
     try {
       setLoading(prev => ({ ...prev, customers: true }));
-      const response = await fetch('/api/customers?limit=100');
-      if (response.ok) {
-        const data = await response.json();
-        setCustomers(data.customers || []);
+      const response = await getRequest('/api/customers?limit=100');
+      if (response.success && response.data) {
+        setCustomers(response.data.customers || []);
       }
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -202,20 +203,13 @@ export default function CustomerFinancesLayout() {
     try {
       setLoading(prev => ({ ...prev, submit: true }));
 
-      const response = await fetch('/api/finance/customer-transactions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create transaction');
+      const response = await postRequest('/api/finance/customer-transactions', values);
+      if (response.success) {
+        setIsAddModalOpen(false);
+        console.log('Transaction created successfully');
+      } else {
+        throw new Error(response.error || 'Failed to create transaction');
       }
-
-      setIsAddModalOpen(false);
-      console.log('Transaction created successfully');
     } catch (error) {
       console.error('Error creating transaction:', error);
     } finally {

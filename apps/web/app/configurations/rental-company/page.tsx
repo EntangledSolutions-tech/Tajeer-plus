@@ -5,6 +5,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import Link from 'next/link';
 import BranchesTab from './_components/BranchesTab';
 import CustomTabs from '../../reusableComponents/CustomTabs';
+import { useHttpService } from '../../lib/http-service';
 
   // Example of how to disable tabs dynamically based on conditions
   // You can also disable tabs based on user permissions, feature flags, etc.
@@ -46,6 +47,8 @@ export default function RentalCompanyConfigurationsPage() {
   // Delete confirmation state
   const [deleteItem, setDeleteItem] = useState<{ type: 'branch', id: string, name: string } | null>(null);
 
+  const { deleteRequest } = useHttpService();
+
   useEffect(() => {
     // Simulate loading for initial data fetch
     const timer = setTimeout(() => {
@@ -59,13 +62,22 @@ export default function RentalCompanyConfigurationsPage() {
     if (!deleteItem) return;
 
     try {
-      // Here you would typically make an API call to delete the item
-      console.log(`Deleting ${deleteItem.type}:`, deleteItem.id);
+      const response = await deleteRequest(`/api/branches/${deleteItem.id}`);
 
-      // Close the dialog
-      setDeleteItem(null);
+      if (response.success) {
+        console.log(`Deleting ${deleteItem.type}:`, deleteItem.id);
+        // Close the dialog
+        setDeleteItem(null);
+      } else {
+        throw new Error(response.error || 'Failed to delete branch');
+      }
     } catch (error) {
       console.error('Error deleting item:', error);
+      if (error instanceof Error) {
+        alert(`Error: ${error.message}`);
+      } else {
+        alert('An unexpected error occurred while deleting the branch');
+      }
     }
   };
 

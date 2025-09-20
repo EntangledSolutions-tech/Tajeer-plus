@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
+import { useHttpService } from '../../../../../lib/http-service';
 
 interface Branch {
   id: string;
@@ -48,6 +49,8 @@ export default function BranchDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { getRequest, deleteRequest } = useHttpService();
+
   useEffect(() => {
     fetchBranchDetails();
   }, [branchId]);
@@ -55,14 +58,13 @@ export default function BranchDetailsPage() {
   const fetchBranchDetails = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/branches/${branchId}`);
+      const response = await getRequest(`/api/branches/${branchId}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch branch details');
+      if (response.success && response.data) {
+        setBranch(response.data.branch);
+      } else {
+        throw new Error(response.error || 'Failed to fetch branch details');
       }
-
-      const data = await response.json();
-      setBranch(data.branch);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -72,19 +74,21 @@ export default function BranchDetailsPage() {
 
   const handleBranchDelete = async () => {
     try {
-      const response = await fetch(`/api/branches/${branchId}`, {
-        method: 'DELETE',
-      });
+      const response = await deleteRequest(`/api/branches/${branchId}`);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete branch');
+      if (response.success) {
+        // Redirect to branches list
+        router.push('/configurations/rental-company');
+      } else {
+        throw new Error(response.error || 'Failed to delete branch');
       }
-
-      // Redirect to branches list
-      router.push('/configurations/rental-company');
     } catch (err: any) {
       console.error('Error deleting branch:', err);
+      if (err instanceof Error) {
+        alert(`Error: ${err.message}`);
+      } else {
+        alert('An unexpected error occurred while deleting the branch');
+      }
     }
   };
 
