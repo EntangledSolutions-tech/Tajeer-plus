@@ -68,37 +68,33 @@ export default function DashboardMain() {
       const data = await response.json();
 
       if (data.vehicles) {
-        // Count vehicles by status
-        const statusCounts: Record<string, number> = {};
+        // Count vehicles by status and get their colors
+        const statusCounts: Record<string, { count: number; color: string }> = {};
         data.vehicles.forEach((vehicle: any) => {
+          debugger
           const status = vehicle.status?.name || 'Unknown';
-          statusCounts[status] = (statusCounts[status] || 0) + 1;
+          const color = vehicle.status?.color || '#6B7280';
+
+          if (!statusCounts[status]) {
+            statusCounts[status] = { count: 0, color };
+          }
+          statusCounts[status].count += 1;
         });
 
-        // Map to our chart format with colors matching the design
-        const statusColors: Record<string, string> = {
-          'Available': '#3B82F6',      // Blue
-          'Unavailable': '#8B5CF6',    // Purple
-          'Reserved': '#A855F7',        // Light Purple
-          'Needs Maintenance': '#EC4899', // Pink
-          'Sold': '#F472B6',            // Light Pink
-          'Accident': '#EF4444',        // Red
-          'Unknown': '#6B7280'          // Gray
-        };
-
-        const vehicleStatusData: VehicleStatus[] = Object.entries(statusCounts).map(([name, value]) => ({
+        // Map to our chart format using the actual status colors
+        const vehicleStatusData: VehicleStatus[] = Object.entries(statusCounts).map(([name, data]) => ({
           name,
-          value,
-          color: statusColors[name] || statusColors['Unknown'] || '#6B7280'
+          value: data.count,
+          color: data.color
         }));
 
         setVehicleStatuses(vehicleStatusData);
 
         // Calculate vehicle stats
         const totalVehicles = data.vehicles.length;
-        const reserved = statusCounts['Reserved'] || 0;
-        const available = statusCounts['Available'] || 0;
-        const oilChange = statusCounts['Needs Maintenance'] || 0;
+        const reserved = statusCounts['Reserved']?.count || 0;
+        const available = statusCounts['Available']?.count || 0;
+        const oilChange = statusCounts['Needs Maintenance']?.count || 0;
 
         setStats(prev => ({
           ...prev,

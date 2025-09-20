@@ -85,7 +85,7 @@ export default function FinanceDashboard() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {summaryCards.map((card, index) => (
-          <CustomCard key={index} className="bg-white" padding="default">
+          <CustomCard hover={false} key={index} className="bg-white" padding="default">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
                 <div className="text-primary">
