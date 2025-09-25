@@ -11,6 +11,7 @@ import CustomStepperModal, { StepperModalStep } from '../../reusableComponents/C
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { useHttpService } from '../../../lib/http-service';
 import { Plus } from 'lucide-react';
+import { toast } from '@kit/ui/sonner';
 
 // Define stepper steps
 const stepperSteps: StepperModalStep[] = [
@@ -181,6 +182,8 @@ export default function VehicleModal({ onVehicleAdded }: { onVehicleAdded?: () =
     if (result.error) {
       throw new Error(result.error);
     }
+
+    toast.success('Vehicle added successfully');
   };
 
   return (

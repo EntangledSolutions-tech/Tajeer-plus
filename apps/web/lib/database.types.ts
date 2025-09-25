@@ -142,6 +142,45 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_add_ons: {
+        Row: {
+          amount: number
+          code: number
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          amount: number
+          code?: never
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          amount?: number
+          code?: never
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       contract_statuses: {
         Row: {
           code: number
@@ -183,8 +222,9 @@ export type Database = {
       }
       contracts: {
         Row: {
+          add_ons: Json | null
           contract_number: string | null
-          contract_number_type: string
+          contract_number_type: string | null
           created_at: string | null
           created_by: string | null
           current_km: string
@@ -194,17 +234,21 @@ export type Database = {
           customer_id_number: string | null
           customer_id_type: string | null
           customer_license_type: string | null
+          customer_mobile: string | null
           customer_name: string | null
-          customer_type: string
+          customer_nationality: string | null
+          customer_status_id: string | null
           daily_rental_rate: number
           documents: Json | null
           documents_count: number | null
+          duration_in_days: number | null
+          duration_type: string | null
           end_date: string
           excess_km_rate: number
           hourly_delay_rate: number
           id: string
           inspector_name: string
-          insurance_type: string
+          insurance_type: string | null
           membership_enabled: boolean | null
           payment_method: string
           permitted_daily_km: number
@@ -213,19 +257,31 @@ export type Database = {
           selected_inspector: string
           selected_vehicle_id: string
           start_date: string
-          status: string | null
           status_id: string | null
           tajeer_number: string | null
           total_amount: number
-          type: string
+          total_fees: number | null
+          type: string | null
           updated_at: string | null
           updated_by: string | null
+          vehicle_color: string | null
+          vehicle_daily_rent_rate: number | null
+          vehicle_excess_km_rate: number | null
+          vehicle_hourly_delay_rate: number | null
+          vehicle_make: string | null
+          vehicle_make_year: string | null
+          vehicle_mileage: number | null
+          vehicle_model: string | null
+          vehicle_permitted_daily_km: number | null
           vehicle_plate: string
+          vehicle_plate_registration_type: string | null
           vehicle_serial_number: string
+          vehicle_status: string | null
         }
         Insert: {
+          add_ons?: Json | null
           contract_number?: string | null
-          contract_number_type: string
+          contract_number_type: string | null
           created_at?: string | null
           created_by?: string | null
           current_km: string
@@ -235,17 +291,21 @@ export type Database = {
           customer_id_number?: string | null
           customer_id_type?: string | null
           customer_license_type?: string | null
+          customer_mobile?: string | null
           customer_name?: string | null
-          customer_type: string
+          customer_nationality?: string | null
+          customer_status_id?: string | null
           daily_rental_rate: number
           documents?: Json | null
           documents_count?: number | null
+          duration_in_days?: number | null
+          duration_type?: string | null
           end_date: string
           excess_km_rate: number
           hourly_delay_rate: number
           id?: string
           inspector_name: string
-          insurance_type: string
+          insurance_type?: string | null
           membership_enabled?: boolean | null
           payment_method: string
           permitted_daily_km: number
@@ -254,19 +314,31 @@ export type Database = {
           selected_inspector: string
           selected_vehicle_id: string
           start_date: string
-          status?: string | null
           status_id?: string | null
           tajeer_number?: string | null
           total_amount: number
-          type: string
+          total_fees?: number | null
+          type?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          vehicle_color?: string | null
+          vehicle_daily_rent_rate?: number | null
+          vehicle_excess_km_rate?: number | null
+          vehicle_hourly_delay_rate?: number | null
+          vehicle_make?: string | null
+          vehicle_make_year?: string | null
+          vehicle_mileage?: number | null
+          vehicle_model?: string | null
+          vehicle_permitted_daily_km?: number | null
           vehicle_plate: string
+          vehicle_plate_registration_type?: string | null
           vehicle_serial_number: string
+          vehicle_status?: string | null
         }
         Update: {
+          add_ons?: Json | null
           contract_number?: string | null
-          contract_number_type?: string
+          contract_number_type?: string | null
           created_at?: string | null
           created_by?: string | null
           current_km?: string
@@ -276,17 +348,21 @@ export type Database = {
           customer_id_number?: string | null
           customer_id_type?: string | null
           customer_license_type?: string | null
+          customer_mobile?: string | null
           customer_name?: string | null
-          customer_type?: string
+          customer_nationality?: string | null
+          customer_status_id?: string | null
           daily_rental_rate?: number
           documents?: Json | null
           documents_count?: number | null
+          duration_in_days?: number | null
+          duration_type?: string | null
           end_date?: string
           excess_km_rate?: number
           hourly_delay_rate?: number
           id?: string
           inspector_name?: string
-          insurance_type?: string
+          insurance_type?: string | null
           membership_enabled?: boolean | null
           payment_method?: string
           permitted_daily_km?: number
@@ -295,15 +371,26 @@ export type Database = {
           selected_inspector?: string
           selected_vehicle_id?: string
           start_date?: string
-          status?: string | null
           status_id?: string | null
           tajeer_number?: string | null
           total_amount?: number
-          type?: string
+          total_fees?: number | null
+          type?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          vehicle_color?: string | null
+          vehicle_daily_rent_rate?: number | null
+          vehicle_excess_km_rate?: number | null
+          vehicle_hourly_delay_rate?: number | null
+          vehicle_make?: string | null
+          vehicle_make_year?: string | null
+          vehicle_mileage?: number | null
+          vehicle_model?: string | null
+          vehicle_permitted_daily_km?: number | null
           vehicle_plate?: string
+          vehicle_plate_registration_type?: string | null
           vehicle_serial_number?: string
+          vehicle_status?: string | null
         }
         Relationships: [
           {
@@ -311,6 +398,13 @@ export type Database = {
             columns: ["status_id"]
             isOneToOne: false
             referencedRelation: "contract_statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_customer_status_id_fkey"
+            columns: ["customer_status_id"]
+            isOneToOne: false
+            referencedRelation: "customer_statuses"
             referencedColumns: ["id"]
           },
         ]

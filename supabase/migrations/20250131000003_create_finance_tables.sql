@@ -286,3 +286,4 @@ CREATE TRIGGER update_finance_summaries_updated_at BEFORE UPDATE ON public.finan
 
 
 
+

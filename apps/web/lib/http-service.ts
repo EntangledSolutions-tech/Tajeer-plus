@@ -129,13 +129,17 @@ export const getRequest = async <T = any>(url: string, options?: RequestInit): P
 // POST request
 export const postRequest = async <T = any>(url: string, data?: any, options?: RequestInit): Promise<HttpResponse<T>> => {
   try {
+    // Check if data is FormData
+    const isFormData = data instanceof FormData;
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        // Only set Content-Type for JSON data, let browser set it for FormData
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...options?.headers,
       },
-      body: data ? JSON.stringify(data) : undefined,
+      body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
       ...options,
     });
 
@@ -188,13 +192,17 @@ export const postRequest = async <T = any>(url: string, data?: any, options?: Re
 // PUT request
 export const putRequest = async <T = any>(url: string, data?: any, options?: RequestInit): Promise<HttpResponse<T>> => {
   try {
+    // Check if data is FormData
+    const isFormData = data instanceof FormData;
+
     const response = await fetch(url, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json',
+        // Only set Content-Type for JSON data, let browser set it for FormData
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...options?.headers,
       },
-      body: data ? JSON.stringify(data) : undefined,
+      body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
       ...options,
     });
 

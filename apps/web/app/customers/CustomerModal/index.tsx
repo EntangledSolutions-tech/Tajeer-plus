@@ -101,7 +101,10 @@ export default function CustomerModal({ onCustomerAdded }: { onCustomerAdded?: (
                 file_name: doc.file.name,
                 file_size: doc.file.size,
                 mime_type: doc.file.type,
-                uploaded_at: new Date().toISOString()
+                uploaded_at: new Date().toISOString(),
+                temp_path: uploadResult.data.document.temp_path,
+                tempPath: uploadResult.data.document.tempPath,
+                fileName: doc.file.name // Add fileName for the API
               });
             } else {
               throw new Error(`Failed to upload document ${doc.name}: ${uploadResult.error}`);
@@ -134,18 +137,23 @@ export default function CustomerModal({ onCustomerAdded }: { onCustomerAdded?: (
 
         // Move uploaded documents to the final customer location
         if (uploadedDocuments.length > 0) {
+          console.log('Moving documents:', uploadedDocuments);
           for (const doc of uploadedDocuments) {
             try {
+              console.log('Moving document:', doc);
               const moveResult = await postRequest(`/api/customers/${result.data.customer.id}/documents`, {
                 document: doc,
                 moveFromTemp: true
               });
 
+              console.log('Move result:', moveResult);
               if (!moveResult.success) {
-                console.warn(`Failed to move document ${doc.document_name} to final location`);
+                console.error(`Failed to move document ${doc.document_name} to final location:`, moveResult.error);
+              } else {
+                console.log(`Successfully moved document ${doc.document_name}`);
               }
             } catch (moveError) {
-              console.warn(`Error moving document ${doc.document_name}:`, moveError);
+              console.error(`Error moving document ${doc.document_name}:`, moveError);
             }
           }
         }

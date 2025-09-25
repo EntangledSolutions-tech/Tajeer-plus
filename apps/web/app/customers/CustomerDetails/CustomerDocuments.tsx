@@ -58,6 +58,7 @@ export default function CustomerDocuments({ customerId }: CustomerDocumentsProps
     try {
       setLoading(true);
       const result = await getRequest(`/api/customers/${customerId}/documents`);
+
       if (result.success && result.data) {
         // Map API response to expected format
         const mappedDocuments = result.data.documents?.map((doc: any) => {
@@ -268,6 +269,7 @@ export default function CustomerDocuments({ customerId }: CustomerDocumentsProps
       </div>
     );
   }
+
 
   return (
     <div className="flex flex-col">

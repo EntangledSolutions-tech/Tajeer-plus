@@ -4,24 +4,26 @@ import { useState, useEffect } from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@kit/ui/alert-dialog';
 import Link from 'next/link';
 import ContractStatusTab from './_components/ContractStatusTab';
+import ContractAddOnsTab from './_components/ContractAddOnsTab';
 import CustomTabs from '../../reusableComponents/CustomTabs';
-import { useHttpService } from '../../lib/http-service';
+import { useHttpService } from '../../../lib/http-service';
 
 const tabs = [
   { key: 'templates', label: 'Templates', disabled: true, disabledReason: 'Templates module is under maintenance. Please try again later.' },
   { key: 'policies', label: 'Policies', disabled: true, disabledReason: 'Policies module is under maintenance. Please try again later.' },
   { key: 'fees', label: 'Fees', disabled: true, disabledReason: 'Fees module is under maintenance. Please try again later.' },
   { key: 'terms', label: 'Terms', disabled: true, disabledReason: 'Terms module is under maintenance. Please try again later.' },
+  { key: 'add_ons', label: 'Contract Add-Ons' },
   { key: 'status', label: 'Status' }
 ];
 
 export default function ContractConfigurationsPage() {
   // State for all tabs
-  const [activeTab, setActiveTab] = useState('status');
+  const [activeTab, setActiveTab] = useState('add_ons');
   const [loading, setLoading] = useState(true);
 
   // Delete confirmation state
-  const [deleteItem, setDeleteItem] = useState<{ type: 'status', id: string, name: string } | null>(null);
+  const [deleteItem, setDeleteItem] = useState<{ type: 'status' | 'add_on', id: string, name: string } | null>(null);
 
   const { deleteRequest } = useHttpService();
 
@@ -38,26 +40,32 @@ export default function ContractConfigurationsPage() {
     if (!deleteItem) return;
 
     try {
-      const response = await deleteRequest('/api/contract-configuration/statuses', { id: deleteItem.id });
+      const endpoint = deleteItem.type === 'status'
+        ? '/api/contract-configuration/statuses'
+        : '/api/contract-configuration/add-ons';
+
+      const response = await deleteRequest(endpoint, {
+        body: JSON.stringify({ id: deleteItem.id })
+      });
 
       if (response.success) {
         console.log(`${deleteItem.name} deleted successfully`);
       } else {
-        throw new Error(response.error || 'Failed to delete status');
+        throw new Error(response.error || `Failed to delete ${deleteItem.type}`);
       }
     } catch (error) {
-      console.error('Error deleting status:', error);
+      console.error(`Error deleting ${deleteItem.type}:`, error);
       if (error instanceof Error) {
         alert(`Error: ${error.message}`);
       } else {
-        alert('An unexpected error occurred while deleting the status');
+        alert(`An unexpected error occurred while deleting the ${deleteItem.type}`);
       }
     } finally {
       setDeleteItem(null);
     }
   };
 
-  const handleDelete = (type: 'status', id: string, name: string) => {
+  const handleDelete = (type: 'status' | 'add_on', id: string, name: string) => {
     setDeleteItem({ type, id, name });
   };
 
@@ -130,6 +138,10 @@ export default function ContractConfigurationsPage() {
             </div>
           )}
 
+          {activeTab === 'add_ons' && (
+            <ContractAddOnsTab loading={loading} onDelete={handleDelete} />
+          )}
+
           {activeTab === 'status' && (
             <ContractStatusTab loading={loading} onDelete={handleDelete} />
           )}
@@ -140,7 +152,7 @@ export default function ContractConfigurationsPage() {
       <AlertDialog open={!!deleteItem} onOpenChange={() => setDeleteItem(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Status</AlertDialogTitle>
+            <AlertDialogTitle>Delete {deleteItem?.type === 'status' ? 'Status' : 'Add-On'}</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{deleteItem?.name}"? This action cannot be undone.
             </AlertDialogDescription>

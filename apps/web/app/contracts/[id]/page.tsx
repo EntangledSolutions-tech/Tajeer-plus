@@ -11,7 +11,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import CustomButton from '../../reusableComponents/CustomButton';
 import CustomTabs from '../../reusableComponents/CustomTabs';
-import ContractDocuments from './ContractDetailsComponents/ContractDocuments';
 import ContractFinance from './ContractDetailsComponents/ContractFinance';
 import ContractInvoices from './ContractDetailsComponents/ContractInvoices';
 import ContractOverview from './ContractDetailsComponents/ContractOverview';
@@ -73,8 +72,6 @@ interface Contract {
   vehicle_serial_number?: string;
   selected_inspector?: string;
   inspector_name?: string;
-  documents_count?: number;
-  documents?: any[];
 
   // Customer data from join
   customer?: Customer | null;
@@ -107,7 +104,6 @@ export default function ContractDetails() {
     { label: 'Invoices', key: 'invoices', disabled: true, disabledReason: 'This feature is not yet implemented' },
     { label: 'Finance', key: 'finance', disabled: true, disabledReason: 'This feature is not yet implemented' },
     { label: 'Penalties', key: 'penalties', disabled: true, disabledReason: 'This feature is not yet implemented' },
-    { label: 'Documents', key: 'documents' },
   ];
 
   const [activeTab, setActiveTab] = useState('overview');
@@ -341,7 +337,6 @@ export default function ContractDetails() {
           {activeTab === 'invoices' && <ContractInvoices contractId={contract?.id} />}
           {activeTab === 'finance' && <ContractFinance contractId={contract?.id} />}
           {activeTab === 'penalties' && <ContractPenalties contractId={contract?.id} />}
-          {activeTab === 'documents' && <ContractDocuments contractId={contract?.id} />}
         </div>
       </div>
 

@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     const requiredFields = [
-      'start_date', 'end_date', 'type', 'insurance_type', 'status_id',
+      'start_date', 'end_date', 'status_id',
       'selected_vehicle_id', 'vehicle_plate', 'vehicle_serial_number',
       'daily_rental_rate', 'hourly_delay_rate', 'current_km', 'rental_days',
       'permitted_daily_km', 'excess_km_rate', 'payment_method', 'total_amount',
@@ -49,14 +49,11 @@ export async function POST(request: NextRequest) {
       // Contract Details
       start_date: body.start_date,
       end_date: body.end_date,
-      type: body.type,
-      insurance_type: body.insurance_type,
       contract_number_type: body.contract_number_type || 'dynamic',
       contract_number: body.contract_number || null,
       tajeer_number: body.tajeer_number || null,
 
       // Customer Details
-      customer_type: body.customer_type || 'existing',
       selected_customer_id: body.selected_customer_id || null,
       customer_name: body.customer_name || null,
       customer_id_type: body.customer_id_type || null,
@@ -102,9 +99,9 @@ export async function POST(request: NextRequest) {
     console.log('Contract data being inserted:', contractData);
 
     // Insert contract into database
-    const { data, error: insertError } = await supabase
+    const { data, error: insertError } = await (supabase as any)
       .from('contracts')
-      .insert(contractData)
+      .insert(contractData as any)
       .select()
       .single();
 
@@ -168,9 +165,9 @@ export async function PUT(request: NextRequest) {
 
     // Remove any fields that shouldn't be updated
     const allowedFields = [
-      'start_date', 'end_date', 'type', 'insurance_type', 'status_id',
+      'start_date', 'end_date', 'status_id',
       'contract_number_type', 'contract_number', 'tajeer_number',
-      'customer_type', 'selected_customer_id', 'customer_name',
+      'selected_customer_id', 'customer_name',
       'customer_id_type', 'customer_id_number', 'customer_classification',
       'customer_date_of_birth', 'customer_license_type', 'customer_address',
       'selected_vehicle_id', 'vehicle_plate', 'vehicle_serial_number',

@@ -43,18 +43,25 @@ const CustomSwitch = ({
   label,
   required = false,
   className = '',
+  onChange,
   ...otherProps
 }: {
   name: string;
   label?: string;
   required?: boolean;
   className?: string;
+  onChange?: (checked: boolean) => void;
   [key: string]: any;
 }) => {
   const { setFieldValue } = useFormikContext();
 
   const handleCheckedChange = (checked: boolean) => {
     setFieldValue(name, checked);
+
+    // Call the custom onChange prop if provided
+    if (onChange) {
+      onChange(checked);
+    }
   };
 
   const [field, meta] = useField(name);

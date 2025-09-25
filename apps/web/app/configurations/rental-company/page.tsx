@@ -5,7 +5,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import Link from 'next/link';
 import BranchesTab from './_components/BranchesTab';
 import CustomTabs from '../../reusableComponents/CustomTabs';
-import { useHttpService } from '../../lib/http-service';
+import { useHttpService } from '../../../lib/http-service';
 
   // Example of how to disable tabs dynamically based on conditions
   // You can also disable tabs based on user permissions, feature flags, etc.
