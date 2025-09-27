@@ -26,13 +26,23 @@ interface DeprecationModalProps {
 // Validation schema for deprecation
 const DeprecationSchema = Yup.object().shape({
   vehicle: Yup.string()
-    .required('Vehicle is required'),
+    .required('Please select a vehicle'),
   expectedSalePrice: Yup.string()
     .required('Expected sale price is required')
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid amount (e.g., 1000.00 or SAR 1000.00)')
+    .test('positive-price', 'Expected sale price must be greater than 0', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue > 0;
+    }),
   leaseAmountIncrease: Yup.string()
     .required('Lease amount increase is required')
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount')
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid amount (e.g., 1000.00 or SAR 1000.00)')
+    .test('non-negative-increase', 'Lease amount increase cannot be negative', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue >= 0;
+    })
 });
 
 // Vehicle details state interface
@@ -121,8 +131,8 @@ export default function DeprecationModal({
       <Formik
         initialValues={{
           vehicle: '',
-          expectedSalePrice: '',
-          leaseAmountIncrease: ''
+          expectedSalePrice: '0',
+          leaseAmountIncrease: '0'
         }}
         validationSchema={DeprecationSchema}
         onSubmit={onSubmit}
@@ -171,21 +181,17 @@ export default function DeprecationModal({
                     <CustomInput
                       name="expectedSalePrice"
                       label="Expected Sale Price"
-                      type="text"
-                      value={values.expectedSalePrice}
-                      onChange={(value: string) => setFieldValue('expectedSalePrice', value)}
+                      type="number"
+                      isCurrency
                       placeholder="Amount"
-                      error={errors.expectedSalePrice && touched.expectedSalePrice ? errors.expectedSalePrice : undefined}
                       className="w-full"
                     />
                     <CustomInput
                       name="leaseAmountIncrease"
                       label="Lease Amount increase in case of insurance"
-                      type="text"
-                      value={values.leaseAmountIncrease}
-                      onChange={(value: string) => setFieldValue('leaseAmountIncrease', value)}
+                      type="number"
+                      isCurrency
                       placeholder="Amount"
-                      error={errors.leaseAmountIncrease && touched.leaseAmountIncrease ? errors.leaseAmountIncrease : undefined}
                       className="w-full"
                     />
                   </div>

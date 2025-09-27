@@ -36,6 +36,11 @@ export default function VehicleDetailsStep() {
   const [searchInitiated, setSearchInitiated] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, any>>({});
+  const [filterOptions, setFilterOptions] = useState({
+    colors: [],
+    makes: [],
+    models: []
+  });
 
   // Get selected vehicle from Formik values
   const selectedVehicle = vehicles.find(v => v.id === formik.values.selectedVehicleId) ||
@@ -56,9 +61,70 @@ export default function VehicleDetailsStep() {
       daily_excess_km_rate: formik.values.vehicleExcessKmRate || 0
     } as Vehicle : null);
 
+  // Calculate active filters count
+  const activeFiltersCount = Object.values(selectedFilters).filter(value => {
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+    if (typeof value === 'object' && value !== null) {
+      // For filter objects like {white: true, black: true}, check if any values are true
+      return Object.values(value).some(v => v === true);
+    }
+    return value !== undefined && value !== null && value !== '';
+  }).length;
+
+  // Fetch filter options from backend APIs
+  const fetchFilterOptions = async () => {
+    try {
+      const [colorsResponse, makesResponse] = await Promise.all([
+        getRequest('/api/vehicle-configuration/colors'),
+        getRequest('/api/vehicle-configuration/makes')
+      ]);
+
+      const colors = colorsResponse.success && colorsResponse.data?.colors
+        ? colorsResponse.data.colors.map((color: any) => ({
+            label: color.name,
+            value: color.name, // Use actual name, not lowercase
+            id: color.id,
+            hexCode: color.hex_code
+          }))
+        : [];
+
+      const makes = makesResponse.success && makesResponse.data?.makes
+        ? makesResponse.data.makes.map((make: any) => ({
+            label: make.name,
+            value: make.name, // Use actual name, not lowercase
+            id: make.id
+          }))
+        : [];
+
+      setFilterOptions({ colors, makes, models: [] });
+    } catch (error) {
+      console.error('Error fetching filter options:', error);
+    }
+  };
+
+  // Fetch models based on selected make
+  const fetchModels = async (makeName: string) => {
+    try {
+      const response = await getRequest(`/api/vehicle-configuration/models?make_name=${makeName}`);
+      if (response.success && response.data?.models) {
+        const models = response.data.models.map((model: any) => ({
+          label: model.name,
+          value: model.name, // Use actual name, not lowercase
+          id: model.id,
+          makeId: model.make_id
+        }));
+        setFilterOptions(prev => ({ ...prev, models }));
+      }
+    } catch (error) {
+      console.error('Error fetching models:', error);
+    }
+  };
+
   // Fetch vehicles from API
   const fetchVehicles = async (query: string) => {
-    if (!query.trim()) {
+    if (!query.trim() && activeFiltersCount === 0) {
       setVehicles([]);
       setSearchInitiated(false);
       return;
@@ -71,10 +137,83 @@ export default function VehicleDetailsStep() {
       // Build query parameters - search across all vehicle fields
       const params = new URLSearchParams({
         search: query,
-        limit: '50', // Increased limit for better search results
+        limit: '-1', // Increased limit for better search results
         page: '1'
       });
 
+      // Apply filters to API call
+      // selectedFilters.colors is an object like {white: true, black: true}
+      if (selectedFilters.colors && Object.keys(selectedFilters.colors).length > 0) {
+        // Extract selected color names from the object
+        const selectedColorNames = Object.keys(selectedFilters.colors).filter(key => selectedFilters.colors[key]);
+        console.log('Selected color names:', selectedColorNames);
+
+        // Convert color names to IDs and send color_id parameters
+        selectedColorNames.forEach((colorName: string) => {
+          const colorOption = filterOptions.colors.find((c: any) => c.value === colorName);
+          if (colorOption && (colorOption as any).id) {
+            params.append('color_id', (colorOption as any).id);
+            console.log('Added color_id:', (colorOption as any).id, 'for color:', colorName);
+          }
+        });
+      }
+
+      // selectedFilters.make is an object like {honda: true, toyota: true}
+      if (selectedFilters.make && Object.keys(selectedFilters.make).length > 0) {
+        // Extract selected make names from the object
+        const selectedMakeNames = Object.keys(selectedFilters.make).filter(key => selectedFilters.make[key]);
+        console.log('Selected make names:', selectedMakeNames);
+
+        // Convert make names to IDs and send make_id parameters
+        selectedMakeNames.forEach((makeName: string) => {
+          const makeOption = filterOptions.makes.find((m: any) => m.value === makeName);
+          if (makeOption && (makeOption as any).id) {
+            params.append('make_id', (makeOption as any).id);
+            console.log('Added make_id:', (makeOption as any).id, 'for make:', makeName);
+          }
+        });
+      }
+
+      // selectedFilters.model is an object like {civic: true, accord: true}
+      if (selectedFilters.model && Object.keys(selectedFilters.model).length > 0) {
+        // Extract selected model names from the object
+        const selectedModelNames = Object.keys(selectedFilters.model).filter(key => selectedFilters.model[key]);
+        console.log('Selected model names:', selectedModelNames);
+
+        // Convert model names to IDs and send model_id parameters
+        selectedModelNames.forEach((modelName: string) => {
+          const modelOption = filterOptions.models.find((m: any) => m.value === modelName);
+          if (modelOption && (modelOption as any).id) {
+            params.append('model_id', (modelOption as any).id);
+            console.log('Added model_id:', (modelOption as any).id, 'for model:', modelName);
+          }
+        });
+      }
+
+      if (selectedFilters.priceRange) {
+        if (selectedFilters.priceRange.min !== undefined) {
+          params.append('min_expected_sale_price', selectedFilters.priceRange.min.toString());
+        }
+        if (selectedFilters.priceRange.max !== undefined) {
+          params.append('max_expected_sale_price', selectedFilters.priceRange.max.toString());
+        }
+      }
+
+      if (selectedFilters.ageRange) {
+        if (selectedFilters.ageRange.min !== undefined) {
+          const currentYear = new Date().getFullYear();
+          const maxYear = currentYear - selectedFilters.ageRange.min;
+          params.append('max_make_year', maxYear.toString());
+        }
+        if (selectedFilters.ageRange.max !== undefined) {
+          const currentYear = new Date().getFullYear();
+          const minYear = currentYear - selectedFilters.ageRange.max;
+          params.append('min_make_year', minYear.toString());
+        }
+      }
+
+      console.log('API call parameters:', params.toString()); // Debug log
+      console.log('Selected filters:', selectedFilters); // Debug log
       const response = await getRequest(`/api/vehicles?${params}`);
       if (response.success && response.data) {
         console.log('Vehicles API response:', response.data); // Debug log
@@ -114,9 +253,14 @@ export default function VehicleDetailsStep() {
     }
   };
 
+  // Fetch filter options on component mount
+  useEffect(() => {
+    fetchFilterOptions();
+  }, []);
+
   // Handle search with debouncing
   useEffect(() => {
-    if (searchTerm.trim()) {
+    if (searchTerm.trim() || activeFiltersCount > 0) {
       setSearchInitiated(true);
       const timeoutId = setTimeout(() => {
         fetchVehicles(searchTerm);
@@ -127,7 +271,7 @@ export default function VehicleDetailsStep() {
       setVehicles([]);
       setSearchInitiated(false);
     }
-  }, [searchTerm]);
+  }, [searchTerm, selectedFilters, activeFiltersCount]);
 
   const handleVehicleSelect = (vehicle: Vehicle) => {
     // Update Formik values with all vehicle data
@@ -157,34 +301,17 @@ export default function VehicleDetailsStep() {
   };
 
   const getColorValue = (colorName: string) => {
-    const colorMap: { [key: string]: string } = {
-      'white': '#ffffff',
-      'black': '#000000',
-      'silver': '#c0c0c0',
-      'gray': '#808080',
-      'grey': '#808080',
-      'red': '#ff0000',
-      'blue': '#0000ff',
-      'green': '#008000',
-      'yellow': '#ffff00',
-      'orange': '#ffa500',
-      'brown': '#a52a2a',
-      'purple': '#800080',
-      'pink': '#ffc0cb',
-      'gold': '#ffd700',
-      'navy': '#000080',
-      'maroon': '#800000',
-      'beige': '#f5f5dc',
-      'cream': '#fffdd0',
-      'burgundy': '#800020',
-      'champagne': '#f7e7ce',
-      'pearl': '#f8f6f0',
-      'metallic': '#8c8c8c',
-      'charcoal': '#36454f'
-    };
+    // Find the color in our filter options (from backend)
+    const colorFromBackend = filterOptions.colors.find((color: any) =>
+      color.name === colorName || color.label === colorName || color.value === colorName
+    );
 
-    const normalizedColor = colorName.toLowerCase().trim();
-    return colorMap[normalizedColor] || '#808080'; // Default to gray if color not found
+    if (colorFromBackend && (colorFromBackend as any).hexCode) {
+      return (colorFromBackend as any).hexCode;
+    }
+
+    // Default to gray if color not found in backend data
+    return '#808080';
   };
 
   const handleCreateVehicle = () => {
@@ -199,18 +326,7 @@ export default function VehicleDetailsStep() {
       title: 'Colors',
       type: 'searchable-checkbox',
       searchPlaceholder: 'Search colors',
-      options: [
-        { label: 'White', value: 'white' },
-        { label: 'Black', value: 'black' },
-        { label: 'Silver', value: 'silver' },
-        { label: 'Gray', value: 'gray' },
-        { label: 'Red', value: 'red' },
-        { label: 'Blue', value: 'blue' },
-        { label: 'Green', value: 'green' },
-        { label: 'Yellow', value: 'yellow' },
-        { label: 'Orange', value: 'orange' },
-        { label: 'Brown', value: 'brown' }
-      ],
+      options: filterOptions.colors,
       isExpanded: true
     },
     {
@@ -227,40 +343,14 @@ export default function VehicleDetailsStep() {
       title: 'Make',
       type: 'searchable-checkbox',
       searchPlaceholder: 'Search make',
-      options: [
-        { label: 'Toyota', value: 'toyota' },
-        { label: 'Honda', value: 'honda' },
-        { label: 'Nissan', value: 'nissan' },
-        { label: 'Hyundai', value: 'hyundai' },
-        { label: 'Kia', value: 'kia' },
-        { label: 'Mazda', value: 'mazda' },
-        { label: 'Mitsubishi', value: 'mitsubishi' },
-        { label: 'Lexus', value: 'lexus' },
-        { label: 'Infiniti', value: 'infiniti' },
-        { label: 'BMW', value: 'bmw' },
-        { label: 'Mercedes-Benz', value: 'mercedes' },
-        { label: 'Audi', value: 'audi' }
-      ]
+      options: filterOptions.makes
     },
     {
       id: 'model',
       title: 'Model',
       type: 'searchable-checkbox',
       searchPlaceholder: 'Search model',
-      options: [
-        { label: 'Camry', value: 'camry' },
-        { label: 'Corolla', value: 'corolla' },
-        { label: 'Accord', value: 'accord' },
-        { label: 'Civic', value: 'civic' },
-        { label: 'Altima', value: 'altima' },
-        { label: 'Sentra', value: 'sentra' },
-        { label: 'Elantra', value: 'elantra' },
-        { label: 'Sonata', value: 'sonata' },
-        { label: 'Sportage', value: 'sportage' },
-        { label: 'Sorento', value: 'sorento' },
-        { label: 'CX-5', value: 'cx-5' },
-        { label: 'CX-9', value: 'cx-9' }
-      ]
+      options: filterOptions.models
     },
     {
       id: 'ageRange',
@@ -278,6 +368,19 @@ export default function VehicleDetailsStep() {
       ...prev,
       [sectionId]: value
     }));
+
+    // If make is selected, fetch models for that make
+    if (sectionId === 'make' && value && Object.keys(value).length > 0) {
+      // Extract selected make names from the object
+      const selectedMakeNames = Object.keys(value).filter(key => value[key]);
+      if (selectedMakeNames.length > 0) {
+        // Fetch models for the first selected make (you can extend this for multiple makes)
+        fetchModels(selectedMakeNames[0] || '');
+      }
+    } else if (sectionId === 'make' && (!value || Object.keys(value).length === 0)) {
+      // Clear models if no make is selected
+      setFilterOptions(prev => ({ ...prev, models: [] }));
+    }
   };
 
   const handleClearAllFilters = () => {
@@ -285,10 +388,12 @@ export default function VehicleDetailsStep() {
   };
 
   const handleShowFilterResults = () => {
-    // Apply filters to the vehicle search
-    // For now, we'll just close the modal and could implement filtering logic here
+    // Apply filters to the vehicle search by triggering a new search
     setIsFilterModalOpen(false);
-    // You can add filtering logic here based on selectedFilters
+    // Trigger a new search with current filters
+    if (searchTerm.trim() || activeFiltersCount > 0) {
+      fetchVehicles(searchTerm);
+    }
     console.log('Applied filters:', selectedFilters);
   };
 
@@ -312,15 +417,22 @@ export default function VehicleDetailsStep() {
             width="flex-1"
             variant="white-bg"
           />
-          <CustomButton
-            variant="outline"
-            size="sm"
-            onClick={() => setIsFilterModalOpen(true)}
-            className="p-2"
-            icon={<Filter className="w-4 h-4 text-primary" />}
-          >
-            <span className="sr-only">Filter</span>
-          </CustomButton>
+          <div className="relative">
+            <CustomButton
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFilterModalOpen(true)}
+              className="p-2"
+              icon={<Filter className="w-4 h-4 text-primary" />}
+            >
+              <span className="sr-only">Filter</span>
+            </CustomButton>
+            {activeFiltersCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                {activeFiltersCount}
+              </span>
+            )}
+          </div>
         </div>
         <p className="text-xs text-primary/60 mt-1">
           Example: "Honda Civic", "Gray", "BJQ-752", "8881212"

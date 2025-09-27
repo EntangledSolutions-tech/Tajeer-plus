@@ -33,24 +33,56 @@ interface InsuranceModalProps {
 // Validation schema for insurance
 const InsuranceSchema = Yup.object().shape({
   vehicle: Yup.string()
-    .required('Vehicle is required'),
+    .required('Please select a vehicle'),
   company: Yup.string()
-    .required('Insurance company is required'),
+    .required('Please select an insurance company'),
   policyNumber: Yup.string()
-    .required('Policy number is required'),
+    .required('Policy number is required')
+    .min(3, 'Policy number must be at least 3 characters')
+    .max(50, 'Policy number must not exceed 50 characters'),
   totalAmount: Yup.string()
     .required('Total amount is required')
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid amount (e.g., 1000.00 or SAR 1000.00)')
+    .test('positive-amount', 'Amount must be greater than 0', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue > 0;
+    }),
   totalDiscount: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid discount amount')
+    .test('non-negative-discount', 'Discount cannot be negative', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue >= 0;
+    }),
   vat: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$|^\d+%$/, 'Please enter a valid VAT amount or percentage')
+    .test('non-negative-vat', 'VAT cannot be negative', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, '').replace('%', ''));
+      return numericValue >= 0;
+    }),
   netInvoice: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid net invoice amount')
+    .test('non-negative-net', 'Net invoice amount cannot be negative', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue >= 0;
+    }),
   totalPaid: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid total paid amount')
+    .test('non-negative-paid', 'Total paid cannot be negative', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue >= 0;
+    }),
   remaining: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount')
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid remaining amount')
+    .test('non-negative-remaining', 'Remaining amount cannot be negative', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue >= 0;
+    })
 });
 
 // Vehicle details state interface
@@ -141,12 +173,12 @@ export default function InsuranceModal({
           vehicle: '',
           company: '',
           policyNumber: '',
-          totalAmount: 'SAR 1.00',
-          totalDiscount: 'SAR 0.00',
-          vat: 'SAR 15%',
-          netInvoice: 'SAR 1.15',
-          totalPaid: 'SAR 0.00',
-          remaining: 'SAR 0.00'
+          totalAmount: '0',
+          totalDiscount: '0',
+          vat: '0',
+          netInvoice: '0',
+          totalPaid: '0',
+          remaining: '0'
         }}
         validationSchema={InsuranceSchema}
         onSubmit={onSubmit}
@@ -195,55 +227,43 @@ export default function InsuranceModal({
                     <CustomInput
                       name="totalAmount"
                       label="Total Amount"
-                      type="text"
-                      value={values.totalAmount}
-                      onChange={(value: string) => setFieldValue('totalAmount', value)}
-                      error={errors.totalAmount && touched.totalAmount ? errors.totalAmount : undefined}
+                      type="number"
+                      isCurrency
                       className="w-full"
                     />
                     <CustomInput
                       name="totalDiscount"
                       label="Total Discount"
-                      type="text"
-                      value={values.totalDiscount}
-                      onChange={(value: string) => setFieldValue('totalDiscount', value)}
-                      error={errors.totalDiscount && touched.totalDiscount ? errors.totalDiscount : undefined}
+                      type="number"
+                      isCurrency
                       className="w-full"
                     />
                     <CustomInput
                       name="vat"
                       label="VAT"
-                      type="text"
-                      value={values.vat}
-                      onChange={(value: string) => setFieldValue('vat', value)}
-                      error={errors.vat && touched.vat ? errors.vat : undefined}
+                      type="number"
+                      isCurrency
                       className="w-full"
                     />
                     <CustomInput
                       name="netInvoice"
                       label="Net Invoice"
-                      type="text"
-                      value={values.netInvoice}
-                      onChange={(value: string) => setFieldValue('netInvoice', value)}
-                      error={errors.netInvoice && touched.netInvoice ? errors.netInvoice : undefined}
+                      type="number"
+                      isCurrency
                       className="w-full"
                     />
                     <CustomInput
                       name="totalPaid"
                       label="Total Paid"
-                      type="text"
-                      value={values.totalPaid}
-                      onChange={(value: string) => setFieldValue('totalPaid', value)}
-                      error={errors.totalPaid && touched.totalPaid ? errors.totalPaid : undefined}
+                      type="number"
+                      isCurrency
                       className="w-full"
                     />
                     <CustomInput
                       name="remaining"
                       label="Remaining"
-                      type="text"
-                      value={values.remaining}
-                      onChange={(value: string) => setFieldValue('remaining', value)}
-                      error={errors.remaining && touched.remaining ? errors.remaining : undefined}
+                      type="number"
+                      isCurrency
                       className="w-full"
                     />
                   </div>
@@ -256,8 +276,6 @@ export default function InsuranceModal({
                     <CustomSelect
                       name="company"
                       label="Company"
-                      value={values.company}
-                      onChange={(value: string) => setFieldValue('company', value)}
                       options={[
                         { value: '', label: 'Select company' },
                         { value: 'Tawuniya', label: 'Tawuniya' },
@@ -266,17 +284,13 @@ export default function InsuranceModal({
                         { value: 'AXA Cooperative', label: 'AXA Cooperative' },
                         { value: 'Allianz', label: 'Allianz' }
                       ]}
-                      error={errors.company && touched.company ? errors.company : undefined}
                       className="w-full"
                     />
                     <CustomInput
                       name="policyNumber"
                       label="Policy Number"
                       type="text"
-                      value={values.policyNumber}
-                      onChange={(value: string) => setFieldValue('policyNumber', value)}
                       placeholder="Enter number"
-                      error={errors.policyNumber && touched.policyNumber ? errors.policyNumber : undefined}
                       className="w-full"
                     />
                   </div>

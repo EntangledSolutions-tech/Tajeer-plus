@@ -55,31 +55,64 @@ interface ReturnVehicleModalProps {
 // Validation schema for return vehicle
 const ReturnVehicleSchema = Yup.object().shape({
   vehicle: Yup.string()
-    .required('Vehicle is required'),
+    .required('Please select a vehicle'),
   invoiceNumber: Yup.string()
-    .required('Invoice number is required'),
+    .required('Invoice number is required')
+    .min(3, 'Invoice number must be at least 3 characters')
+    .max(50, 'Invoice number must not exceed 50 characters'),
   invoiceDate: Yup.date()
     .required('Invoice date is required')
-    .max(new Date(), 'Date cannot be in the future'),
+    .max(new Date(), 'Invoice date cannot be in the future')
+    .typeError('Please enter a valid date'),
   paymentType: Yup.string()
-    .required('Payment type is required'),
+    .required('Please select a payment type'),
   customerName: Yup.string()
-    .required('Customer name is required'),
+    .required('Please select a customer'),
   totalAmount: Yup.string()
     .required('Total amount is required')
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid amount (e.g., 1000.00 or SAR 1000.00)')
+    .test('positive-amount', 'Amount must be greater than 0', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue > 0;
+    }),
   statementType: Yup.string()
-    .required('Statement type is required'),
+    .required('Please select a statement type'),
   totalDiscount: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid discount amount')
+    .test('non-negative-discount', 'Discount cannot be negative', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue >= 0;
+    }),
   vat: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$|^\d+%$/, 'Please enter a valid VAT amount or percentage')
+    .test('non-negative-vat', 'VAT cannot be negative', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, '').replace('%', ''));
+      return numericValue >= 0;
+    }),
   netInvoice: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid net invoice amount')
+    .test('non-negative-net', 'Net invoice amount cannot be negative', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue >= 0;
+    }),
   totalPaid: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid total paid amount')
+    .test('non-negative-paid', 'Total paid cannot be negative', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue >= 0;
+    }),
   remaining: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount')
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid remaining amount')
+    .test('non-negative-remaining', 'Remaining amount cannot be negative', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue >= 0;
+    })
 });
 
 // Vehicle details state interface
@@ -230,13 +263,13 @@ export default function ReturnVehicleModal({
           paymentType: 'Cash',
           vatIncluded: true,
           customerName: 'Alex Perrera',
-          totalAmount: 'SAR 1.00',
+          totalAmount: '0',
           statementType: 'Sale',
-          totalDiscount: 'SAR 0.00',
-          vat: 'SAR 15%',
-          netInvoice: 'SAR 1.15',
-          totalPaid: 'SAR 0.00',
-          remaining: 'SAR 0.00'
+          totalDiscount: '0',
+          vat: '0',
+          netInvoice: '0',
+          totalPaid: '0',
+          remaining: '0'
         }}
         validationSchema={ReturnVehicleSchema}
         onSubmit={onSubmit}
@@ -286,32 +319,23 @@ export default function ReturnVehicleModal({
                       name="invoiceNumber"
                       label="Invoice Number"
                       type="text"
-                      value={values.invoiceNumber}
-                      onChange={(value: string) => setFieldValue('invoiceNumber', value)}
-                      error={errors.invoiceNumber && touched.invoiceNumber ? errors.invoiceNumber : undefined}
                       className="w-full"
                     />
                     <CustomInput
                       name="invoiceDate"
                       label="Invoice Date"
                       type="date"
-                      value={values.invoiceDate}
-                      onChange={(value: string) => setFieldValue('invoiceDate', value)}
-                      error={errors.invoiceDate && touched.invoiceDate ? errors.invoiceDate : undefined}
                       className="w-full"
                     />
                     <CustomSelect
                       name="paymentType"
                       label="Payment type"
-                      value={values.paymentType}
-                      onChange={(value: string) => setFieldValue('paymentType', value)}
                       options={[
                         { value: 'Cash', label: 'Cash' },
                         { value: 'Credit Card', label: 'Credit Card' },
                         { value: 'Bank Transfer', label: 'Bank Transfer' },
                         { value: 'Check', label: 'Check' }
                       ]}
-                      error={errors.paymentType && touched.paymentType ? errors.paymentType : undefined}
                       className="w-full"
                     />
                     <div>
@@ -361,68 +385,53 @@ export default function ReturnVehicleModal({
                     <CustomInput
                       name="totalAmount"
                       label="Total Amount"
-                      type="text"
-                      value={values.totalAmount}
-                      onChange={(value: string) => setFieldValue('totalAmount', value)}
-                      error={errors.totalAmount && touched.totalAmount ? errors.totalAmount : undefined}
+                      type="number"
+                      isCurrency
                       className="w-full"
                     />
                     <CustomSelect
                       name="statementType"
                       label="Statement type"
-                      value={values.statementType}
-                      onChange={(value: string) => setFieldValue('statementType', value)}
                       options={[
                         { value: 'Sale', label: 'Sale' },
                         { value: 'Return', label: 'Return' },
                         { value: 'Deprecation', label: 'Deprecation' }
                       ]}
-                      error={errors.statementType && touched.statementType ? errors.statementType : undefined}
                       className="w-full"
                     />
                     <CustomInput
                       name="totalDiscount"
                       label="Total Discount"
-                      type="text"
-                      value={values.totalDiscount}
-                      onChange={(value: string) => setFieldValue('totalDiscount', value)}
-                      error={errors.totalDiscount && touched.totalDiscount ? errors.totalDiscount : undefined}
+                      type="number"
+                      isCurrency
                       className="w-full"
                     />
                     <CustomInput
                       name="vat"
                       label="VAT"
-                      type="text"
-                      value={values.vat}
-                      onChange={(value: string) => setFieldValue('vat', value)}
-                      error={errors.vat && touched.vat ? errors.vat : undefined}
+                      type="number"
+                      isCurrency
                       className="w-full"
                     />
                     <CustomInput
                       name="netInvoice"
                       label="Net Invoice"
-                      type="text"
-                      value={values.netInvoice}
-                      onChange={(value: string) => setFieldValue('netInvoice', value)}
-                      error={errors.netInvoice && touched.netInvoice ? errors.netInvoice : undefined}
+                      type="number"
+                      isCurrency
                       className="w-full"
                     />
                     <CustomInput
                       name="totalPaid"
                       label="Total Paid"
-                      type="text"
-                      value={values.totalPaid}
-                      onChange={(value: string) => setFieldValue('totalPaid', value)}
-                      error={errors.totalPaid && touched.totalPaid ? errors.totalPaid : undefined}
+                      type="number"
+                      isCurrency
                       className="w-full"
                     />
                     <CustomInput
                       name="remaining"
                       label="Remaining"
-                      type="text"
-                      value={values.remaining}
-                      onChange={(value: string) => setFieldValue('remaining', value)}
-                      error={errors.remaining && touched.remaining ? errors.remaining : undefined}
+                      type="number"
+                      isCurrency
                       className="w-full"
                     />
                   </div>

@@ -41,19 +41,28 @@ interface AddTransactionModalProps {
 const VehicleFinanceSchema = Yup.object().shape({
   amount: Yup.string()
     .required('Amount is required')
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid amount (e.g., 1000.00 or SAR 1000.00)')
+    .test('positive-amount', 'Amount must be greater than 0', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue > 0;
+    }),
   date: Yup.date()
     .required('Date is required')
-    .max(new Date(), 'Date cannot be in the future'),
+    .max(new Date(), 'Date cannot be in the future')
+    .typeError('Please enter a valid date'),
   transactionType: Yup.string()
-    .required('Transaction type is required'),
+    .required('Please select a transaction type'),
   vehicle: Yup.string()
-    .required('Vehicle is required'),
+    .required('Please select a vehicle'),
   description: Yup.string()
     .required('Description is required')
-    .min(10, 'Description must be at least 10 characters'),
+    .min(10, 'Description must be at least 10 characters')
+    .max(500, 'Description must not exceed 500 characters'),
   invoiceNumber: Yup.string()
     .required('Invoice number is required')
+    .min(3, 'Invoice number must be at least 3 characters')
+    .max(50, 'Invoice number must not exceed 50 characters')
 });
 
 // Vehicle details state interface
@@ -141,7 +150,7 @@ export default function AddTransactionModal({
     >
       <Formik
         initialValues={{
-          amount: 'SAR 1,200.00',
+          amount: '0',
           date: '03/10/2022',
           transactionType: '',
           vehicle: '',
@@ -159,10 +168,8 @@ export default function AddTransactionModal({
                 <CustomInput
                   name="amount"
                   label="Amount"
-                  type="text"
-                  value={values.amount}
-                  onChange={(value: string) => setFieldValue('amount', value)}
-                  error={errors.amount && touched.amount ? errors.amount : undefined}
+                  type="number"
+                  isCurrency
                   className="w-full"
                 />
 
@@ -171,9 +178,6 @@ export default function AddTransactionModal({
                   name="date"
                   label="Date"
                   type="date"
-                  value={values.date}
-                  onChange={(value: string) => setFieldValue('date', value)}
-                  error={errors.date && touched.date ? errors.date : undefined}
                   className="w-full"
                 />
 
@@ -181,8 +185,6 @@ export default function AddTransactionModal({
                 <CustomSelect
                   name="transactionType"
                   label="Transaction type"
-                  value={values.transactionType}
-                  onChange={(value: string) => setFieldValue('transactionType', value)}
                   options={[
                     { value: '', label: 'Select type' },
                     { value: 'Sale', label: 'Sale' },
@@ -194,7 +196,6 @@ export default function AddTransactionModal({
                     { value: 'Insurance', label: 'Insurance' },
                     { value: 'Accident', label: 'Accident' }
                   ]}
-                  error={errors.transactionType && touched.transactionType ? errors.transactionType : undefined}
                   className="w-full"
                 />
 
@@ -231,10 +232,7 @@ export default function AddTransactionModal({
                   name="invoiceNumber"
                   label="Invoice Number"
                   type="text"
-                  value={values.invoiceNumber}
-                  onChange={(value: string) => setFieldValue('invoiceNumber', value)}
                   placeholder="INV-V001"
-                  error={errors.invoiceNumber && touched.invoiceNumber ? errors.invoiceNumber : undefined}
                   className="w-full"
                 />
               </div>
@@ -244,11 +242,8 @@ export default function AddTransactionModal({
                 <CustomTextarea
                   name="description"
                   label="Description"
-                  value={values.description}
-                  onChange={(value: string) => setFieldValue('description', value)}
                   placeholder="Vehicle maintenance and repair services"
                   rows={4}
-                  error={errors.description && touched.description ? errors.description : undefined}
                   className="w-full"
                 />
               </div>

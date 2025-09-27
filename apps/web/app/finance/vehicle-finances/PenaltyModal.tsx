@@ -35,28 +35,57 @@ interface PenaltyModalProps {
 // Validation schema for penalty
 const PenaltySchema = Yup.object().shape({
   vehicle: Yup.string()
-    .required('Vehicle is required'),
+    .required('Please select a vehicle'),
   reason: Yup.string()
-    .required('Penalty reason is required'),
+    .required('Please select a penalty reason'),
   date: Yup.date()
     .required('Date is required')
-    .max(new Date(), 'Date cannot be in the future'),
+    .max(new Date(), 'Date cannot be in the future')
+    .typeError('Please enter a valid date'),
   notes: Yup.string(),
   totalAmount: Yup.string()
     .required('Total amount is required')
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid amount (e.g., 1000.00 or SAR 1000.00)')
+    .test('positive-amount', 'Amount must be greater than 0', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue > 0;
+    }),
   totalDiscount: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
-  vat: Yup.number()
-    .min(0, 'VAT cannot be less than 0%')
-    .max(100, 'VAT cannot be more than 100%')
-    .required('VAT is required'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid discount amount')
+    .test('non-negative-discount', 'Discount cannot be negative', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue >= 0;
+    }),
+  vat: Yup.string()
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$|^\d+%$/, 'Please enter a valid VAT amount or percentage')
+    .test('vat-range', 'VAT must be between 0% and 100%', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, '').replace('%', ''));
+      return numericValue >= 0 && numericValue <= 100;
+    }),
   netInvoice: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid net invoice amount')
+    .test('non-negative-net', 'Net invoice amount cannot be negative', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue >= 0;
+    }),
   totalPaid: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount'),
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid total paid amount')
+    .test('non-negative-paid', 'Total paid cannot be negative', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue >= 0;
+    }),
   remaining: Yup.string()
-    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid amount')
+    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid remaining amount')
+    .test('non-negative-remaining', 'Remaining amount cannot be negative', function(value) {
+      if (!value) return true;
+      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      return numericValue >= 0;
+    })
 });
 
 // Vehicle details state interface
@@ -202,8 +231,6 @@ export default function PenaltyModal({
                     <CustomSelect
                       name="reason"
                       label="Reason"
-                      value={values.reason}
-                      onChange={(value: string) => setFieldValue('reason', value)}
                       options={[
                         { value: '', label: 'Select penalty reason' },
                         { value: 'Late Return', label: 'Late Return' },
@@ -212,27 +239,20 @@ export default function PenaltyModal({
                         { value: 'Overdue Payment', label: 'Overdue Payment' },
                         { value: 'Contract Violation', label: 'Contract Violation' }
                       ]}
-                      error={errors.reason && touched.reason ? errors.reason : undefined}
                       className="w-full"
                     />
                     <CustomInput
                       name="date"
                       label="Date"
                       type="date"
-                      value={values.date}
-                      onChange={(value: string) => setFieldValue('date', value)}
-                      error={errors.date && touched.date ? errors.date : undefined}
                       className="w-full"
                     />
                     <div className="md:col-span-2">
                       <CustomTextarea
                         name="notes"
                         label="Notes (optional)"
-                        value={values.notes}
-                        onChange={(value: string) => setFieldValue('notes', value)}
                         placeholder="Enter notes"
                         rows={3}
-                        error={errors.notes && touched.notes ? errors.notes : undefined}
                         className="w-full"
                       />
                     </div>
@@ -247,63 +267,43 @@ export default function PenaltyModal({
                       name="totalAmount"
                       label="Total Amount"
                       type="number"
-                      value={values.totalAmount}
-                      onChange={(value: string) => setFieldValue('totalAmount', value)}
-                      error={errors.totalAmount && touched.totalAmount ? errors.totalAmount : undefined}
+                      isCurrency
                       className="w-full"
-                      isCurrency={true}
                     />
                     <CustomInput
                       name="totalDiscount"
                       label="Total Discount"
                       type="number"
-                      value={values.totalDiscount}
-                      onChange={(value: string) => setFieldValue('totalDiscount', value)}
-                      error={errors.totalDiscount && touched.totalDiscount ? errors.totalDiscount : undefined}
+                      isCurrency
                       className="w-full"
-                      isCurrency={true}
                     />
                     <CustomInput
                       name="vat"
-                      label="VAT(%)"
+                      label="VAT"
                       type="number"
-                      value={values.vat}
-                      onChange={(value: string) => setFieldValue('vat', value)}
-                      error={errors.vat && touched.vat ? errors.vat : undefined}
+                      isCurrency
                       className="w-full"
-                      suffix="%"
-                      min={0}
-                      max={100}
                     />
                     <CustomInput
                       name="netInvoice"
                       label="Net Invoice"
                       type="number"
-                      value={values.netInvoice}
-                      onChange={(value: string) => setFieldValue('netInvoice', value)}
-                      error={errors.netInvoice && touched.netInvoice ? errors.netInvoice : undefined}
+                      isCurrency
                       className="w-full"
-                      isCurrency={true}
                     />
                     <CustomInput
                       name="totalPaid"
                       label="Total Paid"
                       type="number"
-                      value={values.totalPaid}
-                      onChange={(value: string) => setFieldValue('totalPaid', value)}
-                      error={errors.totalPaid && touched.totalPaid ? errors.totalPaid : undefined}
+                      isCurrency
                       className="w-full"
-                      isCurrency={true}
                     />
                     <CustomInput
                       name="remaining"
                       label="Remaining"
                       type="number"
-                      value={values.remaining}
-                      onChange={(value: string) => setFieldValue('remaining', value)}
-                      error={errors.remaining && touched.remaining ? errors.remaining : undefined}
+                      isCurrency
                       className="w-full"
-                      isCurrency={true}
                     />
                   </div>
                 </div>

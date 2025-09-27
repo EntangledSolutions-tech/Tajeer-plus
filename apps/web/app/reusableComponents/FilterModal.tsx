@@ -5,6 +5,9 @@ export interface FilterOption {
   label: string;
   value: string;
   count?: number;
+  hexCode?: string; // For colors
+  id?: string; // For IDs
+  [key: string]: any; // Allow additional properties
 }
 
 export interface FilterSection {
@@ -115,7 +118,16 @@ export default function FilterModal({
                     }}
                     className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary focus:ring-2"
                   />
-                  <span className="text-sm text-gray-700 flex-1">{option.label}</span>
+                  <div className="flex items-center space-x-2 flex-1">
+                    {/* Show color swatch for color options */}
+                    {section.id === 'colors' && option.hexCode && (
+                      <div
+                        className="w-4 h-4 rounded-full border border-gray-300 shadow-sm"
+                        style={{ backgroundColor: option.hexCode }}
+                      />
+                    )}
+                    <span className="text-sm text-gray-700">{option.label}</span>
+                  </div>
                   {option.count !== undefined && (
                     <span className="text-xs text-gray-500">({option.count})</span>
                   )}

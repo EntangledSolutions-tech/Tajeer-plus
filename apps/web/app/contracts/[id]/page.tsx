@@ -5,7 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
-import { ChevronDown, MoreHorizontal, Pencil, Trash2, X } from 'lucide-react';
+import { ChevronDown, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -16,7 +16,15 @@ import ContractInvoices from './ContractDetailsComponents/ContractInvoices';
 import ContractOverview from './ContractDetailsComponents/ContractOverview';
 import ContractPenalties from './ContractDetailsComponents/ContractPenalties';
 import ContractStatusChangeModal from './ContractStatusChangeModal';
-import ContractModal from '../ContractModal';
+import CustomStepperModal, { StepperModalStep } from '../../reusableComponents/CustomStepperModal';
+import ContractDetailsStep from '../ContractModal/ContractStepper/ContractDetailsStep';
+import CustomerDetailsStep from '../ContractModal/ContractStepper/CustomerDetailsStep';
+import VehicleDetailsStep from '../ContractModal/ContractStepper/VehicleDetailsStep';
+import PricingTermsStep from '../ContractModal/ContractStepper/PricingTermsStep';
+import VehicleInspectionStep from '../ContractModal/ContractStepper/VehicleInspectionStep';
+import SummaryStep from '../ContractModal/ContractStepper/SummaryStep';
+import * as Yup from 'yup';
+import { contractValidationSchema, customerDetailsSchema, vehicleDetailsSchema, vehicleInspectionSchema, documentsSchema, pricingTermsSchema, contractDetailsSchema } from '../ContractModal/validation-schema';
 import { useHttpService } from '../../../lib/http-service';
 
 interface Customer {
@@ -67,15 +75,76 @@ interface Contract {
   excess_km_rate?: number;
   payment_method?: string;
   membership_enabled?: boolean;
+  selected_customer_id?: string;
   selected_vehicle_id?: string;
   vehicle_plate?: string;
   vehicle_serial_number?: string;
+  vehicle_plate_registration_type?: string;
+  vehicle_make_year?: string;
+  vehicle_model?: string;
+  vehicle_make?: string;
+  vehicle_color?: string;
+  vehicle_mileage?: number;
+  vehicle_status?: string;
+  vehicle_daily_rent_rate?: number;
+  vehicle_hourly_delay_rate?: number;
+  vehicle_permitted_daily_km?: number;
+  vehicle_excess_km_rate?: number;
   selected_inspector?: string;
   inspector_name?: string;
+
+  // Contract details
+  duration_type?: string;
+  duration_in_days?: number;
+  total_fees?: number;
 
   // Customer data from join
   customer?: Customer | null;
 }
+
+// Define stepper steps
+const stepperSteps: StepperModalStep[] = [
+  {
+    id: 'customer-details',
+    name: 'Customer Details',
+    component: CustomerDetailsStep
+  },
+  {
+    id: 'vehicle-details',
+    name: 'Vehicle Details',
+    component: VehicleDetailsStep
+  },
+  {
+    id: 'contract-details',
+    name: 'Contract Details',
+    component: ContractDetailsStep
+  },
+  {
+    id: 'pricing-terms',
+    name: 'Pricing & Terms',
+    component: PricingTermsStep
+  },
+  {
+    id: 'vehicle-inspection',
+    name: 'Vehicle Inspection',
+    component: VehicleInspectionStep
+  },
+  {
+    id: 'summary',
+    name: 'Summary',
+    component: SummaryStep
+  }
+];
+
+// Use step-specific validation schemas
+const stepSchemas = [
+  customerDetailsSchema,    // Step 1 - Customer Details
+  vehicleDetailsSchema,     // Step 2 - Vehicle Details
+  contractDetailsSchema,    // Step 3 - Contract Details
+  pricingTermsSchema,       // Step 4 - Pricing & Terms
+  vehicleInspectionSchema,  // Step 5 - Vehicle Inspection
+  Yup.object({}),          // Step 6 - Summary (no validation needed)
+];
 
 export default function ContractDetails() {
   const params = useParams();
@@ -96,8 +165,160 @@ export default function ContractDetails() {
     update: false
   });
 
-  // Edit modal management
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // Get initial values for edit modal
+  const getEditInitialValues = () => {
+    if (!contract) return {};
+
+    // Helper function to safely get nested values
+    const getNestedValue = (obj: any, path: string, defaultValue: any = '') => {
+      return path.split('.').reduce((current, key) => current?.[key], obj) ?? defaultValue;
+    };
+
+    return {
+      // Step 1 - Customer Details
+      selectedCustomerId: contract.selected_customer_id || '',
+      customerName: getNestedValue(contract, 'customer.name') || contract.customer_name || '',
+      customerIdType: getNestedValue(contract, 'customer.id_type') || '',
+      customerIdNumber: getNestedValue(contract, 'customer.id_number') || '',
+      customerClassification: getNestedValue(contract, 'customer.classification') || '',
+      customerDateOfBirth: getNestedValue(contract, 'customer.date_of_birth') || '',
+      customerLicenseType: getNestedValue(contract, 'customer.license_type') || '',
+      customerAddress: getNestedValue(contract, 'customer.address') || '',
+      customerMobile: getNestedValue(contract, 'customer.mobile_number') || '',
+      customerStatus: getNestedValue(contract, 'customer.status') || '',
+      customerStatusId: getNestedValue(contract, 'customer.status_id') || '',
+      customerNationality: getNestedValue(contract, 'customer.nationality') || '',
+
+      // Step 2 - Vehicle Details
+      selectedVehicleId: contract.selected_vehicle_id || '',
+      vehiclePlate: contract.vehicle_plate || '',
+      vehicleSerialNumber: contract.vehicle_serial_number || '',
+      vehiclePlateRegistrationType: contract.vehicle_plate_registration_type || 'Private',
+      vehicleMakeYear: contract.vehicle_make_year || '',
+      vehicleModel: contract.vehicle_model || '',
+      vehicleMake: contract.vehicle_make || '',
+      vehicleColor: contract.vehicle_color || '',
+      vehicleMileage: contract.vehicle_mileage || 0,
+      vehicleStatus: contract.vehicle_status || 'Available',
+      vehicleDailyRentRate: contract.vehicle_daily_rent_rate || contract.daily_rental_rate || 0,
+      vehicleHourlyDelayRate: contract.vehicle_hourly_delay_rate || contract.hourly_delay_rate || 0,
+      vehiclePermittedDailyKm: contract.vehicle_permitted_daily_km || contract.permitted_daily_km || 0,
+      vehicleExcessKmRate: contract.vehicle_excess_km_rate || contract.excess_km_rate || 0,
+
+      // Step 3 - Contract Details
+      startDate: contract.start_date || '',
+      endDate: contract.end_date || '',
+      durationType: contract.duration_type || 'duration',
+      durationInDays: contract.duration_in_days || 1,
+      totalFees: contract.total_fees || 0,
+      statusId: contract.status_id || '',
+      contractNumber: contract.contract_number || '',
+
+      // Step 4 - Pricing & Terms
+      dailyRentalRate: contract.daily_rental_rate?.toString() || '0',
+      hourlyDelayRate: contract.hourly_delay_rate?.toString() || '0',
+      currentKm: contract.current_km?.toString() || '0',
+      rentalDays: contract.rental_days?.toString() || '1',
+      permittedDailyKm: contract.permitted_daily_km?.toString() || '0',
+      excessKmRate: contract.excess_km_rate?.toString() || '0',
+      paymentMethod: contract.payment_method || 'cash',
+      membershipEnabled: Boolean(contract.membership_enabled),
+      totalAmount: contract.total_amount?.toString() || '0',
+
+      // Step 5 - Vehicle Inspection
+      selectedInspector: contract.selected_inspector || '',
+      inspectorName: contract.inspector_name || '',
+
+      // Step 6 - Summary (no additional fields needed)
+    };
+  };
+
+  // Handle contract edit submission
+  const handleContractEditSubmit = async (values: any, stepData: any) => {
+    try {
+      // Prepare contract data for database update
+      const contractData = {
+        // Contract Details
+        start_date: values.startDate,
+        end_date: values.endDate,
+        contract_number: values.contractNumber || null,
+
+        // Customer Details
+        selected_customer_id: values.selectedCustomerId || null,
+        customer_name: values.customerName || null,
+        customer_id_type: values.customerIdType || null,
+        customer_id_number: values.customerIdNumber || null,
+        customer_classification: values.customerClassification || null,
+        customer_date_of_birth: values.customerDateOfBirth && values.customerDateOfBirth.trim() ? values.customerDateOfBirth : null,
+        customer_license_type: values.customerLicenseType || null,
+        customer_address: values.customerAddress || null,
+
+        // Vehicle Details
+        selected_vehicle_id: values.selectedVehicleId,
+        vehicle_plate: values.vehiclePlate,
+        vehicle_serial_number: values.vehicleSerialNumber,
+
+        // Pricing & Terms
+        daily_rental_rate: parseFloat(values.dailyRentalRate) || 0,
+        hourly_delay_rate: parseFloat(values.hourlyDelayRate) || 0,
+        current_km: values.currentKm || '0',
+        rental_days: parseInt(values.rentalDays) || 0,
+        permitted_daily_km: parseInt(values.permittedDailyKm) || 0,
+        excess_km_rate: parseFloat(values.excessKmRate) || 0,
+        payment_method: values.paymentMethod || 'cash',
+        membership_enabled: Boolean(values.membershipEnabled),
+        total_amount: parseFloat(values.totalAmount) || 0,
+
+        // Vehicle Inspection
+        selected_inspector: values.selectedInspector,
+        inspector_name: values.inspectorName,
+
+        // Status - use status_id from the form
+        status_id: values.statusId
+      };
+
+      // Log the contract data being sent for debugging
+      console.log('Contract data being sent:', contractData);
+
+      const response = await putRequest(`/api/contracts/${contractId}`, contractData);
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to update contract');
+      }
+
+      // Refresh contract data
+      const refreshContractData = async () => {
+        if (!contractId) {
+          setError('No contract ID provided');
+          setLoading(false);
+          return;
+        }
+
+        try {
+          setLoading(true);
+          setError(null);
+
+          const response = await getRequest(`/api/contracts/${contractId}`);
+          if (response.success && response.data) {
+            setContract(response.data.contract);
+          } else {
+            throw new Error(response.error || 'Invalid response format');
+          }
+        } catch (err) {
+          console.error('Error fetching contract data:', err);
+          setError(err instanceof Error ? err.message : 'Failed to fetch contract data');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      refreshContractData();
+
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to update contract');
+    }
+  };
 
   const tabs = [
     { label: 'Overview', key: 'overview' },
@@ -288,14 +509,19 @@ export default function ContractDetails() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <CustomButton
-                isSecondary
-                className="bg-transparent text-white border-white hover:bg-white hover:text-primary hover:border-white"
-                onClick={() => setIsEditModalOpen(true)}
-              >
-                <Pencil className="w-4 h-4 mr-2" />
-                Edit
-              </CustomButton>
+              <CustomStepperModal
+                steps={stepperSteps}
+                stepSchemas={stepSchemas}
+                initialValues={getEditInitialValues()}
+                title="Edit Contract"
+                onSubmit={handleContractEditSubmit}
+                triggerButton={
+                  <CustomButton isSecondary className="bg-transparent text-white border-white hover:bg-white hover:text-primary hover:border-white">
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit
+                  </CustomButton>
+                }
+              />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <CustomButton isSecondary className="bg-transparent text-white border-white hover:bg-white hover:text-primary hover:border-white">
@@ -350,28 +576,6 @@ export default function ContractDetails() {
         loading={statusLoading.update}
       />
 
-      {/* Contract Edit Modal */}
-      {isEditModalOpen && contract && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="relative w-full max-w-7xl mx-4">
-            <button
-              onClick={() => setIsEditModalOpen(false)}
-              className="absolute top-4 right-4 z-10 text-white hover:text-gray-300"
-            >
-              <X className="h-6 w-6" />
-            </button>
-            <ContractModal
-              isEdit={true}
-              contractId={contract.id}
-              initialContract={contract}
-              onContractAdded={() => {
-                handleContractUpdate();
-                setIsEditModalOpen(false);
-              }}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

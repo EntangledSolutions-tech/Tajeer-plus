@@ -126,45 +126,53 @@ export default function ContractModal({
   initialContract
 }: ContractModalProps) {
   const supabase = useSupabase();
-  const { postRequest } = useHttpService();
+  const { postRequest, putRequest } = useHttpService();
 
   // Get initial values for edit mode
   const getEditInitialValues = () => {
     if (!initialContract) return initialValues;
 
+    // Helper function to safely get nested values
+    const getNestedValue = (obj: any, path: string, defaultValue: any = '') => {
+      return path.split('.').reduce((current, key) => current?.[key], obj) ?? defaultValue;
+    };
+
     return {
       // Step 1 - Customer Details
       selectedCustomerId: initialContract.selected_customer_id || '',
-      customerName: initialContract.customer_name || '',
-      customerIdType: initialContract.customer_id_type || '',
-      customerIdNumber: initialContract.customer_id_number || '',
-      customerClassification: initialContract.customer_classification || '',
-      customerDateOfBirth: initialContract.customer_date_of_birth || '',
-      customerLicenseType: initialContract.customer_license_type || '',
-      customerAddress: initialContract.customer_address || '',
-      customerMobile: initialContract.customer_mobile || '',
-      customerStatus: initialContract.customer_status || '',
-      customerStatusId: initialContract.customer_status_id || '',
-      customerNationality: initialContract.customer_nationality || '',
+      customerName: getNestedValue(initialContract, 'customer.name') || initialContract.customer_name || '',
+      customerIdType: getNestedValue(initialContract, 'customer.id_type') || initialContract.customer_id_type || '',
+      customerIdNumber: getNestedValue(initialContract, 'customer.id_number') || initialContract.customer_id_number || '',
+      customerClassification: getNestedValue(initialContract, 'customer.classification') || initialContract.customer_classification || '',
+      customerDateOfBirth: getNestedValue(initialContract, 'customer.date_of_birth') || initialContract.customer_date_of_birth || '',
+      customerLicenseType: getNestedValue(initialContract, 'customer.license_type') || initialContract.customer_license_type || '',
+      customerAddress: getNestedValue(initialContract, 'customer.address') || initialContract.customer_address || '',
+      customerMobile: getNestedValue(initialContract, 'customer.mobile_number') || initialContract.customer_mobile || '',
+      customerStatus: getNestedValue(initialContract, 'customer.status') || initialContract.customer_status || '',
+      customerStatusId: getNestedValue(initialContract, 'customer.status_id') || initialContract.customer_status_id || '',
+      customerNationality: getNestedValue(initialContract, 'customer.nationality') || initialContract.customer_nationality || '',
 
       // Step 2 - Vehicle Details
       selectedVehicleId: initialContract.selected_vehicle_id || '',
       vehiclePlate: initialContract.vehicle_plate || '',
       vehicleSerialNumber: initialContract.vehicle_serial_number || '',
-      vehiclePlateRegistrationType: initialContract.vehicle_plate_registration_type || '',
+      vehiclePlateRegistrationType: initialContract.vehicle_plate_registration_type || 'Private',
       vehicleMakeYear: initialContract.vehicle_make_year || '',
       vehicleModel: initialContract.vehicle_model || '',
       vehicleMake: initialContract.vehicle_make || '',
       vehicleColor: initialContract.vehicle_color || '',
       vehicleMileage: initialContract.vehicle_mileage || 0,
-      vehicleStatus: initialContract.vehicle_status || '',
-      vehicleDailyRentRate: initialContract.vehicle_daily_rent_rate || 0,
+      vehicleStatus: initialContract.vehicle_status || 'Available',
+      vehicleDailyRentRate: initialContract.vehicle_daily_rent_rate || initialContract.daily_rental_rate || 0,
+      vehicleHourlyDelayRate: initialContract.vehicle_hourly_delay_rate || initialContract.hourly_delay_rate || 0,
+      vehiclePermittedDailyKm: initialContract.vehicle_permitted_daily_km || initialContract.permitted_daily_km || 0,
+      vehicleExcessKmRate: initialContract.vehicle_excess_km_rate || initialContract.excess_km_rate || 0,
 
       // Step 3 - Contract Details
       startDate: initialContract.start_date || '',
       endDate: initialContract.end_date || '',
       durationType: initialContract.duration_type || 'duration',
-      durationInDays: initialContract.duration_in_days || 0,
+      durationInDays: initialContract.duration_in_days || 1,
       totalFees: initialContract.total_fees || 0,
       statusId: initialContract.status_id || '',
       contractNumber: initialContract.contract_number || '',
@@ -172,12 +180,12 @@ export default function ContractModal({
       // Step 4 - Pricing & Terms
       dailyRentalRate: initialContract.daily_rental_rate?.toString() || '0',
       hourlyDelayRate: initialContract.hourly_delay_rate?.toString() || '0',
-      currentKm: initialContract.current_km || '0',
-      rentalDays: initialContract.rental_days?.toString() || '0',
+      currentKm: initialContract.current_km?.toString() || '0',
+      rentalDays: initialContract.rental_days?.toString() || '1',
       permittedDailyKm: initialContract.permitted_daily_km?.toString() || '0',
       excessKmRate: initialContract.excess_km_rate?.toString() || '0',
       paymentMethod: initialContract.payment_method || 'cash',
-      membershipEnabled: initialContract.membership_enabled || false,
+      membershipEnabled: Boolean(initialContract.membership_enabled),
       totalAmount: initialContract.total_amount?.toString() || '0',
 
       // Step 5 - Vehicle Inspection
@@ -236,11 +244,8 @@ export default function ContractModal({
 
       let response;
       if (isEdit && contractId) {
-        // Update existing contract
-        response = await postRequest('/api/contracts', {
-          id: contractId,
-          ...contractData
-        });
+        // Update existing contract using PUT method
+        response = await putRequest(`/api/contracts/${contractId}`, contractData);
       } else {
         // Create new contract
         response = await postRequest('/api/contracts', contractData);
