@@ -209,14 +209,14 @@ export default function FilterModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex">
+    <div className="fixed inset-0 z-50 flex" onClick={(e) => e.stopPropagation()}>
       {/* Left overlay with primary color */}
       <div className="flex-1 bg-primary/90 backdrop-blur-sm" onClick={onClose} />
 
       {/* Filter panel */}
-      <div className="w-96 bg-white shadow-2xl flex flex-col">
+      <div className="w-96 bg-white shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200" onClick={(e) => e.stopPropagation()}>
           <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
           <button
             onClick={onClose}
@@ -227,13 +227,16 @@ export default function FilterModal({
         </div>
 
         {/* Filter sections */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           {sections.map((section) => {
             const isExpanded = expandedSections.has(section.id);
             return (
-              <div key={section.id} className="border-b border-gray-100">
+              <div key={section.id} className="border-b border-gray-100" onClick={(e) => e.stopPropagation()}>
                 <button
-                  onClick={() => handleSectionToggle(section.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSectionToggle(section.id);
+                  }}
                   className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
                 >
                   <span className="text-sm font-medium text-gray-900">{section.title}</span>
@@ -245,7 +248,7 @@ export default function FilterModal({
                 </button>
 
                 {isExpanded && (
-                  <div className="px-6 pb-4">
+                  <div className="px-6 pb-4" onClick={(e) => e.stopPropagation()}>
                     {renderFilterContent(section)}
                   </div>
                 )}
@@ -255,15 +258,21 @@ export default function FilterModal({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 flex items-center justify-between">
+        <div className="p-6 border-t border-gray-200 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={onClearAll}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClearAll();
+            }}
             className="text-primary underline hover:text-primary/80 font-medium"
           >
             Clear All
           </button>
           <button
-            onClick={onShowResults}
+            onClick={(e) => {
+              e.stopPropagation();
+              onShowResults();
+            }}
             className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium"
           >
             Show Results
