@@ -110,7 +110,7 @@ export default function VehicleFinancesLayout() {
 
       const response = await getRequest(`/api/finance/vehicle-transactions-list?${params}`);
       console.log('Transactions API response:', response);
-      debugger
+
       if (response.success && response.data) {
         setTransactions(response.data.transactions || []);
       } else {
@@ -462,7 +462,7 @@ export default function VehicleFinancesLayout() {
       icon: <span>→</span>,
       variant: 'ghost',
       onClick: (row) => {
-        console.log('View details for:', row.id);
+        router.push(`/finance/${row.id}`);
       },
       className: 'text-primary underline',
       iconPosition: 'right'
