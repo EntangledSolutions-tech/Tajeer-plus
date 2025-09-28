@@ -6,7 +6,8 @@ VALUES (
   true,
   52428800, -- 50MB limit
   ARRAY['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/*']
-);
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- Create storage bucket for customer documents
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -16,7 +17,8 @@ VALUES (
   true,
   52428800, -- 50MB limit
   ARRAY['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/*']
-);
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- Create policies for contract-documents bucket
 CREATE POLICY "Users can upload contract documents" ON storage.objects

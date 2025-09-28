@@ -274,8 +274,9 @@ execute procedure kit.new_user_created_setup();
 
 -- Storage
 -- Account Image
-insert into storage.buckets (id, name, PUBLIC)
-values ('account_image', 'account_image', true);
+insert into storage.buckets (id, name, public)
+values ('account_image', 'account_image', true)
+on conflict (id) do nothing;
 
 -- Function: get the storage filename as a UUID.
 -- Useful if you want to name files with UUIDs related to an account
