@@ -14,20 +14,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate required fields
-    const { vehicle, reason, date, notes, totalAmount } = body;
+    const { vehicle, reason, date, notes, totalAmount, netInvoice } = body;
     if (!vehicle || !reason || !date || !totalAmount) {
       return NextResponse.json({
         error: 'Missing required fields: vehicle, reason, date, totalAmount'
       }, { status: 400 });
     }
 
-    // Get transaction type ID for "Penalty" category
+    // Get transaction type ID for "Vehicle Penalty" category
     const { data: transactionTypeData, error: typeError } = await supabase
       .from('finance_transaction_types')
       .select('id, name, code, category')
-      .eq('name', 'Penalty')
+      .eq('name', 'Vehicle Penalty')
       .eq('category', 'expense')
       .single();
+
 
     if (typeError || !transactionTypeData) {
       console.error('Transaction type lookup failed:', { typeError });
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
         error: 'Transaction type not found'
       }, { status: 400 });
     }
+
 
     // Generate transaction number
     const timestamp = Date.now();
@@ -48,6 +50,8 @@ export async function POST(request: NextRequest) {
         transaction_number: transactionNumber,
         transaction_date: date,
         amount: parseFloat(totalAmount),
+        total_amount: parseFloat(totalAmount),
+        net_invoice: parseFloat(netInvoice || totalAmount),
         description: `${reason}: ${notes || 'Vehicle penalty record'}`,
         employee_name: body.employee || 'System',
         transaction_type_id: transactionTypeData.id,
@@ -64,6 +68,9 @@ export async function POST(request: NextRequest) {
         error: 'Failed to create penalty transaction'
       }, { status: 500 });
     }
+
+    console.log('Created transaction:', JSON.stringify(transaction, null, 2));
+
 
     // Create rental expense record
     const { error: expenseError } = await supabase

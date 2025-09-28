@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Filter, FileSpreadsheet, MoreHorizontal, ChevronDown, DollarSign, Wrench, Fuel, TrendingUp } from 'lucide-react';
 import { toast } from '@kit/ui/sonner';
 import CustomButton from '../../reusableComponents/CustomButton';
@@ -28,6 +29,9 @@ import MaintenanceModal from './MaintenanceModal';
 import AccidentModal from './AccidentModal';
 
 export default function VehicleFinancesLayout() {
+  // Router hook
+  const router = useRouter();
+
   // HTTP service hook
   const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
 
@@ -81,6 +85,14 @@ export default function VehicleFinancesLayout() {
   const [currentPage, setCurrentPage] = useState(1);
   const [currentLimit, setCurrentLimit] = useState(10);
 
+  // Vehicle click handler
+  const handleVehicleClick = (vehicleId: string) => {
+    if (vehicleId) {
+      // Navigate to vehicle details page
+      router.push(`/vehicles/${vehicleId}`);
+    }
+  };
+
   // API fetching functions
   const fetchTransactions = async () => {
     try {
@@ -98,7 +110,7 @@ export default function VehicleFinancesLayout() {
 
       const response = await getRequest(`/api/finance/vehicle-transactions-list?${params}`);
       console.log('Transactions API response:', response);
-
+      debugger
       if (response.success && response.data) {
         setTransactions(response.data.transactions || []);
       } else {
@@ -401,7 +413,13 @@ export default function VehicleFinancesLayout() {
       type: 'text',
       render: (value: string, row: any) => (
         <div>
-          <div className="font-medium text-gray-900">{value}</div>
+          <CustomButton
+            onClick={() => handleVehicleClick(row.vehicleId)}
+            variant="link"
+            className="font-medium text-primary hover:text-primary/80 underline p-0 h-auto text-left"
+          >
+            {value}
+          </CustomButton>
           <div className="text-sm text-gray-500">{row.vehicleInfo}</div>
         </div>
       )

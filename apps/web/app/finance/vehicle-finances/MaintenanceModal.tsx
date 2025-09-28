@@ -203,7 +203,18 @@ export default function MaintenanceModal({
           remaining: '0'
         }}
         validationSchema={MaintenanceSchema}
-        onSubmit={onSubmit}
+        onSubmit={(values) => {
+          // Calculate final values before submission
+          const netInvoice = calculateNetInvoice(values.totalAmount, values.totalDiscount, values.vatIncluded);
+          const remaining = calculateRemaining(netInvoice, values.totalPaid);
+
+          // Submit with calculated values
+          onSubmit({
+            ...values,
+            netInvoice,
+            remaining
+          });
+        }}
       >
         {({ values, setFieldValue, errors, touched, isSubmitting }) => {
           // Calculate net invoice whenever relevant fields change

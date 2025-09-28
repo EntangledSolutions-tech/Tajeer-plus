@@ -161,10 +161,10 @@ export default function PenaltyModal({
     const total = parseFloat(totalAmount) || 0;
     const discount = parseFloat(totalDiscount) || 0;
     const vatPercentage = parseFloat(vat) || 0;
-    
+
     // Calculate VAT amount as percentage of total amount
     const vatAmount = (total * vatPercentage) / 100;
-    
+
     // Net Invoice = Total Amount - Discount + VAT
     const netInvoice = total - discount + vatAmount;
     return netInvoice.toFixed(2);
@@ -174,7 +174,7 @@ export default function PenaltyModal({
   const calculateRemaining = (netInvoice: string, totalPaid: string) => {
     const net = parseFloat(netInvoice) || 0;
     const paid = parseFloat(totalPaid) || 0;
-    
+
     // Remaining = Net Invoice - Total Paid
     const remaining = net - paid;
     return remaining.toFixed(2);
@@ -207,14 +207,25 @@ export default function PenaltyModal({
           remaining: '0'
         }}
         validationSchema={PenaltySchema}
-        onSubmit={onSubmit}
+        onSubmit={(values) => {
+          // Calculate final values before submission
+          const netInvoice = calculateNetInvoice(values.totalAmount, values.totalDiscount, values.vat);
+          const remaining = calculateRemaining(netInvoice, values.totalPaid);
+
+          // Submit with calculated values
+          onSubmit({
+            ...values,
+            netInvoice,
+            remaining
+          });
+        }}
       >
         {({ values, setFieldValue, errors, touched, isSubmitting }) => {
           // Calculate net invoice whenever relevant fields change
           const netInvoice = calculateNetInvoice(values.totalAmount, values.totalDiscount, values.vat);
           // Calculate remaining amount
           const remaining = calculateRemaining(netInvoice, values.totalPaid);
-          
+
           return (
             <Form>
               <div className="px-8 py-6">

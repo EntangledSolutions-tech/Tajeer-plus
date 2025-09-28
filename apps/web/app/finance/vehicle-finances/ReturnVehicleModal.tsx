@@ -294,7 +294,18 @@ export default function ReturnVehicleModal({
           remaining: '0'
         }}
         validationSchema={ReturnVehicleSchema}
-        onSubmit={onSubmit}
+        onSubmit={(values) => {
+          // Calculate final values before submission
+          const netInvoice = calculateNetInvoice(values.totalAmount, values.totalDiscount, values.vat);
+          const remaining = calculateRemaining(netInvoice, values.totalPaid);
+
+          // Submit with calculated values
+          onSubmit({
+            ...values,
+            netInvoice,
+            remaining
+          });
+        }}
       >
         {({ values, setFieldValue, errors, touched, isSubmitting }) => {
           // Calculate net invoice whenever relevant fields change
