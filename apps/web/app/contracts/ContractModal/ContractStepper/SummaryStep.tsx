@@ -4,30 +4,6 @@ import { User, Car, FileText, DollarSign, ClipboardCheck } from 'lucide-react';
 
 const SummaryStep: React.FC = () => {
   const formik = useFormikContext<any>();
-  const [contractStatuses, setContractStatuses] = useState<any[]>([]);
-
-  // Fetch contract statuses
-  useEffect(() => {
-    const fetchContractStatuses = async () => {
-      try {
-        const response = await fetch('/api/contract-configuration/statuses');
-        if (response.ok) {
-          const result = await response.json();
-          setContractStatuses(result.data?.statuses || []);
-        }
-      } catch (error) {
-        console.error('Error fetching contract statuses:', error);
-      }
-    };
-
-    fetchContractStatuses();
-  }, []);
-
-  // Helper function to get status details by ID
-  const getStatusDetails = (statusId: string) => {
-    const status = contractStatuses.find(s => s.id === statusId);
-    return status || null;
-  };
 
   const renderCustomerDetails = () => {
     const {
@@ -188,8 +164,7 @@ const SummaryStep: React.FC = () => {
   };
 
   const renderContractDetails = () => {
-    const { startDate, endDate, type, insuranceType, statusId, contractNumberType, contractNumber, tajeerNumber } = formik.values;
-    const statusDetails = getStatusDetails(statusId);
+    const { startDate, endDate, durationType, durationInDays, totalFees } = formik.values;
 
     return (
       <div className="bg-gray-50 p-4 rounded-lg">
@@ -210,49 +185,22 @@ const SummaryStep: React.FC = () => {
               <span className="ml-2 text-gray-900">{endDate}</span>
             </div>
           )}
-          {type && (
+          {durationType && (
             <div>
-              <span className="font-medium text-gray-600">Type:</span>
-              <span className="ml-2 text-gray-900">{type}</span>
+              <span className="font-medium text-gray-600">Duration Type:</span>
+              <span className="ml-2 text-gray-900 capitalize">{durationType}</span>
             </div>
           )}
-          {insuranceType && (
+          {durationType === 'duration' && durationInDays && (
             <div>
-              <span className="font-medium text-gray-600">Insurance Type:</span>
-              <span className="ml-2 text-gray-900">{insuranceType}</span>
+              <span className="font-medium text-gray-600">Duration:</span>
+              <span className="ml-2 text-gray-900">{durationInDays} days</span>
             </div>
           )}
-          {statusId && statusDetails && (
+          {durationType === 'fees' && totalFees && (
             <div>
-              <span className="font-medium text-gray-600">Status:</span>
-              <span
-                className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                style={{
-                  backgroundColor: `${statusDetails.color}20`, // 20% opacity
-                  color: statusDetails.color,
-                  border: `1px solid ${statusDetails.color}40` // 40% opacity for border
-                }}
-              >
-                {statusDetails.name}
-              </span>
-            </div>
-          )}
-          {contractNumberType && (
-            <div>
-              <span className="font-medium text-gray-600">Contract Number Type:</span>
-              <span className="ml-2 text-gray-900 capitalize">{contractNumberType}</span>
-            </div>
-          )}
-          {contractNumber && (
-            <div>
-              <span className="font-medium text-gray-600">Contract Number:</span>
-              <span className="ml-2 text-gray-900">{contractNumber}</span>
-            </div>
-          )}
-          {tajeerNumber && (
-            <div>
-              <span className="font-medium text-gray-600">Tajeer Number:</span>
-              <span className="ml-2 text-gray-900">{tajeerNumber}</span>
+              <span className="font-medium text-gray-600">Total Fees:</span>
+              <span className="ml-2 text-gray-900">{totalFees} SAR</span>
             </div>
           )}
         </div>
@@ -261,7 +209,7 @@ const SummaryStep: React.FC = () => {
   };
 
   const renderPricingTerms = () => {
-    const { dailyRentalRate, hourlyDelayRate, currentKm, rentalDays, permittedDailyKm, excessKmRate, paymentMethod, membershipEnabled, totalAmount } = formik.values;
+    const { dailyRentalRate, hourlyDelayRate, currentKm, rentalDays, permittedDailyKm, excessKmRate, paymentMethod, totalAmount } = formik.values;
 
     return (
       <div className="bg-gray-50 p-4 rounded-lg">
@@ -312,10 +260,6 @@ const SummaryStep: React.FC = () => {
               <span className="ml-2 text-gray-900 capitalize">{paymentMethod}</span>
             </div>
           )}
-          <div>
-            <span className="font-medium text-gray-600">Membership Enabled:</span>
-            <span className="ml-2 text-gray-900">{membershipEnabled ? 'Yes' : 'No'}</span>
-          </div>
           {totalAmount && (
             <div>
               <span className="font-medium text-gray-600">Total Amount:</span>
@@ -327,35 +271,6 @@ const SummaryStep: React.FC = () => {
     );
   };
 
-  const renderVehicleInspection = () => {
-    const { selectedInspector, inspectorName } = formik.values;
-
-    return (
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <h3 className="text-lg font-semibold text-primary mb-3 flex items-center gap-2">
-          <ClipboardCheck className="w-5 h-5" />
-          Vehicle Inspection
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-          {selectedInspector && (
-            <div>
-              <span className="font-medium text-gray-600">Inspector ID:</span>
-              <span className="ml-2 text-gray-900">{selectedInspector}</span>
-            </div>
-          )}
-          {inspectorName && (
-            <div>
-              <span className="font-medium text-gray-600">Inspector Name:</span>
-              <span className="ml-2 text-gray-900">{inspectorName}</span>
-            </div>
-          )}
-          {!selectedInspector && !inspectorName && (
-            <div className="text-gray-500 italic">No inspection details provided</div>
-          )}
-        </div>
-      </div>
-    );
-  };
 
   return (
     <>
@@ -367,7 +282,6 @@ const SummaryStep: React.FC = () => {
         {renderVehicleDetails()}
         {renderContractDetails()}
         {renderPricingTerms()}
-        {renderVehicleInspection()}
       </div>
     </>
   );

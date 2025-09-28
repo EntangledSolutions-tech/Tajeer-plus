@@ -51,9 +51,7 @@ export const contractDetailsSchema = Yup.object({
     is: 'fees',
     then: (schema) => schema.required('Total fees is required').min(0.01, 'Total fees must be greater than 0'),
     otherwise: (schema) => schema.nullable().notRequired()
-  }),
-  statusId: Yup.string().required('Status is required'),
-  contractNumber: Yup.string().required('Contract number is required')
+  })
 });
 
 export const documentsSchema = Yup.object({
@@ -73,7 +71,6 @@ export const pricingTermsSchema = Yup.object({
   hourlyDelayRate: Yup.string().required('Hourly delay rate is required'),
   currentKm: Yup.string().required('Current km is required'),
   rentalDays: Yup.number()
-    .required('Rental days is required')
     .min(1, 'Rental days must be at least 1')
     .integer('Rental days must be a whole number'),
   permittedDailyKm: Yup.string().required('Permitted daily km is required'),

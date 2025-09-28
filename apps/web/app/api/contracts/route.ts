@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { Database } from '../../../lib/database.types';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseServerClient<Database>();
 
     // Check if user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -28,11 +29,10 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     const requiredFields = [
-      'start_date', 'end_date', 'status_id',
+      'start_date', 'end_date',
       'selected_vehicle_id', 'vehicle_plate', 'vehicle_serial_number',
       'daily_rental_rate', 'hourly_delay_rate', 'current_km', 'rental_days',
-      'permitted_daily_km', 'excess_km_rate', 'payment_method', 'total_amount',
-      'selected_inspector', 'inspector_name'
+      'permitted_daily_km', 'excess_km_rate', 'payment_method', 'total_amount'
     ];
 
     for (const field of requiredFields) {
@@ -44,13 +44,67 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Get default status (first active status, fallback to first status)
+    let defaultStatusId = null;
+    try {
+      // First try to find "Active" status specifically
+      const { data: activeStatus, error: activeStatusError } = await supabase
+        .from('contract_statuses')
+        .select('id')
+        .eq('name', 'Active')
+        .eq('is_active', true)
+        .single();
+
+      if (!activeStatusError && activeStatus) {
+        defaultStatusId = activeStatus.id;
+      } else {
+        console.log('Active status not found, trying first active status');
+        // Fallback: get first active status
+        const { data: statuses, error: statusError } = await supabase
+          .from('contract_statuses')
+          .select('id')
+          .eq('is_active', true)
+          .order('code')
+          .limit(1);
+
+        if (statusError) {
+          console.error('Error fetching default status:', statusError);
+        } else if (statuses && statuses.length > 0) {
+          defaultStatusId = statuses[0]?.id;
+        } else {
+          // Final fallback: get any status
+          const { data: fallbackStatuses } = await supabase
+            .from('contract_statuses')
+            .select('id')
+            .order('code')
+            .limit(1);
+          if (fallbackStatuses && fallbackStatuses.length > 0) {
+            defaultStatusId = fallbackStatuses[0]?.id;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching default status:', error);
+    }
+
+    // Generate 8-character alphanumeric contract number
+    const generateContractNumber = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let result = '';
+      for (let i = 0; i < 8; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    };
+    const contractNumber = generateContractNumber();
+
     // Prepare contract data
     const contractData = {
       // Contract Details
       start_date: body.start_date,
       end_date: body.end_date,
-      contract_number_type: body.contract_number_type || 'dynamic',
-      contract_number: body.contract_number || null,
+      contract_number_type: 'alphanumeric',
+      contract_number: contractNumber,
       tajeer_number: body.tajeer_number || null,
 
       // Customer Details
@@ -76,19 +130,18 @@ export async function POST(request: NextRequest) {
       permitted_daily_km: parseInt(body.permitted_daily_km) || 0,
       excess_km_rate: parseFloat(body.excess_km_rate) || 0,
       payment_method: body.payment_method || 'cash',
-      membership_enabled: Boolean(body.membership_enabled),
       total_amount: parseFloat(body.total_amount) || 0,
-
-      // Vehicle Inspection
-      selected_inspector: body.selected_inspector,
-      inspector_name: body.inspector_name,
 
       // Documents
       documents_count: body.documents_count || 0,
       documents: body.documents || [],
 
-      // Status
-      status_id: body.status_id,
+      // Vehicle Inspection (set to empty since we removed this step)
+      selected_inspector: '',
+      inspector_name: '',
+
+      // Status (use default status)
+      status_id: defaultStatusId,
 
       // Metadata
       created_by: user.id,
@@ -99,9 +152,9 @@ export async function POST(request: NextRequest) {
     console.log('Contract data being inserted:', contractData);
 
     // Insert contract into database
-    const { data, error: insertError } = await (supabase as any)
+    const { data, error: insertError } = await supabase
       .from('contracts')
-      .insert(contractData as any)
+      .insert(contractData)
       .select()
       .single();
 
@@ -132,7 +185,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseServerClient<Database>();
 
     // Check if user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -228,7 +281,7 @@ export async function PUT(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     console.log('Contracts API called');
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseServerClient<Database>();
 
     // Check if user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();

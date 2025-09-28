@@ -2,21 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useFormikContext } from 'formik';
 import CustomInput from '../../../reusableComponents/CustomInput';
 import CustomSelect from '../../../reusableComponents/CustomSelect';
-import SearchableSelect from '../../../reusableComponents/SearchableSelect';
 import { useHttpService } from '../../../../lib/http-service';
-
-interface ContractStatus {
-  id: string;
-  name: string;
-  color: string | null;
-  description?: string;
-}
 
 export default function ContractDetailsStep() {
   const formik = useFormikContext<any>();
-  const { getRequest } = useHttpService();
-  const [contractStatuses, setContractStatuses] = useState<any[]>([]);
-  const [statusLoading, setStatusLoading] = useState(false);
   const [durationType, setDurationType] = useState('duration');
   const [totalFeesError, setTotalFeesError] = useState<string>('');
 
@@ -134,36 +123,6 @@ export default function ContractDetailsStep() {
     }
   };
 
-  // Fetch contract statuses
-  const fetchContractStatuses = async () => {
-    try {
-      setStatusLoading(true);
-      const response = await getRequest('/api/contract-configuration/statuses?limit=100');
-      if (response.success && response.data) {
-        // Format statuses for SearchableSelect
-        const statusOptions = response.data.statuses?.map((status: ContractStatus) => ({
-          key: status.name,
-          id: status.id,
-          value: (
-            <div className="flex items-center gap-2">
-              <div
-                className="w-3 h-3 rounded-full border border-gray-300"
-                style={{ backgroundColor: status.color || '#ccc' }}
-              />
-              <span>{status.name}</span>
-            </div>
-          ),
-          subValue: status.description
-        })) || [];
-
-        setContractStatuses(statusOptions);
-      }
-    } catch (err: any) {
-      console.error('Error fetching contract statuses:', err);
-    } finally {
-      setStatusLoading(false);
-    }
-  };
 
 
   // Sync durationType state with formik values when component mounts
@@ -188,7 +147,7 @@ export default function ContractDetailsStep() {
       }
     }
 
-  }, [formik.values.durationType, formik.values.startDate, formik.values.vehicleDailyRentRate, formik.values.totalFees, formik.values.durationInDays, formik.values.statusId, formik.values.contractNumber]);
+  }, [formik.values.durationType, formik.values.startDate, formik.values.vehicleDailyRentRate, formik.values.totalFees, formik.values.durationInDays]);
 
   // Calculate end date when component first loads if we have the required data
   useEffect(() => {
@@ -214,10 +173,6 @@ export default function ContractDetailsStep() {
     }
   }, [formik.values.startDate, formik.values.durationInDays, durationType]);
 
-  // Fetch contract statuses on component mount
-  useEffect(() => {
-    fetchContractStatuses();
-  }, []);
 
   return (
     <>
@@ -258,29 +213,6 @@ export default function ContractDetailsStep() {
               </p>
             </div>
 
-        {/* Status */}
-        <div>
-          <SearchableSelect
-            label="Status"
-            name="statusId"
-            options={contractStatuses}
-            placeholder="Select status"
-            searchPlaceholder="Search statuses..."
-            required={true}
-            disabled={statusLoading}
-          />
-        </div>
-
-        {/* Contract Number */}
-        <div>
-          <CustomInput
-            label="Contract Number"
-            name="contractNumber"
-            type="text"
-            placeholder="Enter contract number"
-            required={true}
-          />
-        </div>
       </div>
 
       {/* Duration Type and Duration Fields */}

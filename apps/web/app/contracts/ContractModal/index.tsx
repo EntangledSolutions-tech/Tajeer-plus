@@ -8,11 +8,10 @@ import ContractDetailsStep from './ContractStepper/ContractDetailsStep';
 import CustomerDetailsStep from './ContractStepper/CustomerDetailsStep';
 import VehicleDetailsStep from './ContractStepper/VehicleDetailsStep';
 import PricingTermsStep from './ContractStepper/PricingTermsStep';
-import VehicleInspectionStep from './ContractStepper/VehicleInspectionStep';
 import SummaryStep from './ContractStepper/SummaryStep';
 import * as Yup from 'yup';
 import { useHttpService } from '../../../lib/http-service';
-import { contractValidationSchema, customerDetailsSchema, vehicleDetailsSchema, vehicleInspectionSchema, documentsSchema, pricingTermsSchema, contractDetailsSchema } from './validation-schema';
+import { contractValidationSchema, customerDetailsSchema, vehicleDetailsSchema, documentsSchema, pricingTermsSchema, contractDetailsSchema } from './validation-schema';
 
 const steps: StepperModalStep[] = [
   {
@@ -36,11 +35,6 @@ const steps: StepperModalStep[] = [
     component: PricingTermsStep
   },
   {
-    id: 'vehicle-inspection',
-    name: 'Vehicle Inspection',
-    component: VehicleInspectionStep
-  },
-  {
     id: 'summary',
     name: 'Summary',
     component: SummaryStep
@@ -53,8 +47,7 @@ const stepSchemas = [
   vehicleDetailsSchema,     // Step 2 - Vehicle Details
   contractDetailsSchema,    // Step 3 - Contract Details
   pricingTermsSchema,       // Step 4 - Pricing & Terms
-  vehicleInspectionSchema,  // Step 5 - Vehicle Inspection
-  Yup.object({}),          // Step 6 - Summary (no validation needed)
+  Yup.object({}),          // Step 5 - Summary (no validation needed)
 ];
 
 const initialValues = {
@@ -91,8 +84,6 @@ const initialValues = {
   durationType: 'duration',
   durationInDays: 1, // Default to 1 day
   totalFees: 0,
-  statusId: '',
-  contractNumber: '',
 
   // Step 4 - Pricing & Terms
   dailyRentalRate: '0',
@@ -102,12 +93,8 @@ const initialValues = {
   permittedDailyKm: '0',
   excessKmRate: '0',
   paymentMethod: 'cash',
-  membershipEnabled: false,
   totalAmount: '0',
 
-  // Step 5 - Vehicle Inspection
-  selectedInspector: '',
-  inspectorName: '',
 
   // Step 6 - Summary (no additional fields needed)
 };
@@ -185,12 +172,8 @@ export default function ContractModal({
       permittedDailyKm: initialContract.permitted_daily_km?.toString() || '0',
       excessKmRate: initialContract.excess_km_rate?.toString() || '0',
       paymentMethod: initialContract.payment_method || 'cash',
-      membershipEnabled: Boolean(initialContract.membership_enabled),
       totalAmount: initialContract.total_amount?.toString() || '0',
 
-      // Step 5 - Vehicle Inspection
-      selectedInspector: initialContract.selected_inspector || '',
-      inspectorName: initialContract.inspector_name || '',
 
       // Step 6 - Summary (no additional fields needed)
     };
@@ -228,15 +211,9 @@ export default function ContractModal({
         permitted_daily_km: parseInt(values.permittedDailyKm) || 0,
         excess_km_rate: parseFloat(values.excessKmRate) || 0,
         payment_method: values.paymentMethod || 'cash',
-        membership_enabled: Boolean(values.membershipEnabled),
         total_amount: parseFloat(values.totalAmount) || 0,
 
-        // Vehicle Inspection
-        selected_inspector: values.selectedInspector,
-        inspector_name: values.inspectorName,
 
-        // Status - use status_id from the form
-        status_id: values.statusId
       };
 
       // Log the contract data being sent for debugging
