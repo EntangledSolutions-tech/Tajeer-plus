@@ -11,7 +11,7 @@ import ClassificationTab from './_components/ClassificationTab';
 import LicenseTypeTab from './_components/LicenseTypeTab';
 import CustomerStatusTab from './_components/CustomerStatusTab';
 import CustomTabs from '../../reusableComponents/CustomTabs';
-import { useHttpService } from '../../lib/http-service';
+import { useHttpService } from '../../../lib/http-service';
 
 const tabs = [
   { key: 'nationality', label: 'Nationality' },
