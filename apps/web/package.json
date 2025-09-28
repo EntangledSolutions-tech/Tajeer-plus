@@ -13,7 +13,7 @@
     "prod": "NODE_OPTIONS='--inspect' pnpm with-env-prod next dev --turbo | pino-pretty -c",
     "lint": "next lint && eslint .",
     "format": "prettier --check \"**/*.{js,cjs,mjs,ts,tsx,md,json}\"",
-    "start": "pnpm with-env next start",
+    "start": "pnpm with-env-prod  next start",
     "start:test": "NODE_ENV=test pnpm with-env:test next start",
     "typecheck": "tsc --noEmit",
     "with-env": "dotenv -e ./.env.local --",
