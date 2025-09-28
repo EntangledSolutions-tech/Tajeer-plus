@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 import type { User } from '@supabase/supabase-js';
 
-import { PersonalAccountDropdown } from '@kit/accounts/personal-account-dropdown';
+import { EnhancedPersonalAccountDropdown } from '~/components/enhanced-personal-account-dropdown';
 import { useSignOut } from '@kit/supabase/hooks/use-sign-out';
 import { useUser } from '@kit/supabase/hooks/use-user';
 import { Button } from '@kit/ui/button';
@@ -38,17 +38,17 @@ export function SiteHeaderAccountSection({
     return <AuthButtons />;
   }
 
-  return <SuspendedPersonalAccountDropdown user={user} />;
+  return <SuspendedEnhancedPersonalAccountDropdown user={user} />;
 }
 
-function SuspendedPersonalAccountDropdown(props: { user: User | null }) {
+function SuspendedEnhancedPersonalAccountDropdown(props: { user: User | null }) {
   const signOut = useSignOut();
   const user = useUser(props.user);
   const userData = user.data ?? props.user ?? null;
 
   if (userData) {
     return (
-      <PersonalAccountDropdown
+      <EnhancedPersonalAccountDropdown
         showProfileName={false}
         paths={paths}
         features={features}

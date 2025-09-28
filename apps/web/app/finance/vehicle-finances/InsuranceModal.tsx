@@ -56,33 +56,31 @@ const InsuranceSchema = Yup.object().shape({
       return numericValue >= 0;
     }),
   vat: Yup.string()
-    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$|^\d+%$/, 'Please enter a valid VAT amount or percentage')
-    .test('non-negative-vat', 'VAT cannot be negative', function(value) {
+    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid VAT percentage')
+    .test('vat-range', 'VAT must be between 0% and 100%', function(value) {
       if (!value) return true;
-      const numericValue = parseFloat(value.replace(/SAR\s?/i, '').replace('%', ''));
-      return numericValue >= 0;
+      const numericValue = parseFloat(value);
+      return numericValue >= 0 && numericValue <= 100;
     }),
-  netInvoice: Yup.string()
-    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid net invoice amount')
-    .test('non-negative-net', 'Net invoice amount cannot be negative', function(value) {
-      if (!value) return true;
-      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
-      return numericValue >= 0;
-    }),
+  netInvoice: Yup.string(),
   totalPaid: Yup.string()
-    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid total paid amount')
+    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid total paid amount')
     .test('non-negative-paid', 'Total paid cannot be negative', function(value) {
       if (!value) return true;
-      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
-      return numericValue >= 0;
-    }),
-  remaining: Yup.string()
-    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid remaining amount')
-    .test('non-negative-remaining', 'Remaining amount cannot be negative', function(value) {
-      if (!value) return true;
-      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      const numericValue = parseFloat(value);
       return numericValue >= 0;
     })
+    .test('not-exceed-net', 'Total paid cannot exceed net invoice', function(value) {
+      if (!value) return true;
+      const paid = parseFloat(value);
+      const total = parseFloat(this.parent.totalAmount) || 0;
+      const discount = parseFloat(this.parent.totalDiscount) || 0;
+      const vat = parseFloat(this.parent.vat) || 0;
+      const vatAmount = (total * vat) / 100;
+      const netInvoice = total - discount + vatAmount;
+      return paid <= netInvoice;
+    }),
+  remaining: Yup.string()
 });
 
 // Vehicle details state interface
@@ -155,6 +153,30 @@ export default function InsuranceModal({
     await fetchVehicles(1, searchTerm);
   }, [fetchVehicles]);
 
+  // Calculate net invoice automatically
+  const calculateNetInvoice = (totalAmount: string, totalDiscount: string, vat: string) => {
+    const total = parseFloat(totalAmount) || 0;
+    const discount = parseFloat(totalDiscount) || 0;
+    const vatPercentage = parseFloat(vat) || 0;
+
+    // Calculate VAT amount as percentage of total amount
+    const vatAmount = (total * vatPercentage) / 100;
+
+    // Net Invoice = Total Amount - Discount + VAT
+    const netInvoice = total - discount + vatAmount;
+    return netInvoice.toFixed(2);
+  };
+
+  // Calculate remaining amount automatically
+  const calculateRemaining = (netInvoice: string, totalPaid: string) => {
+    const net = parseFloat(netInvoice) || 0;
+    const paid = parseFloat(totalPaid) || 0;
+
+    // Remaining = Net Invoice - Total Paid
+    const remaining = net - paid;
+    return remaining.toFixed(2);
+  };
+
   // Load initial data when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -183,10 +205,16 @@ export default function InsuranceModal({
         validationSchema={InsuranceSchema}
         onSubmit={onSubmit}
       >
-        {({ values, setFieldValue, errors, touched, isSubmitting }) => (
-          <Form>
-            <div className="px-8 py-6">
-              <div className="space-y-8">
+        {({ values, setFieldValue, errors, touched, isSubmitting }) => {
+          // Calculate net invoice whenever relevant fields change
+          const netInvoice = calculateNetInvoice(values.totalAmount, values.totalDiscount, values.vat);
+          // Calculate remaining amount
+          const remaining = calculateRemaining(netInvoice, values.totalPaid);
+
+          return (
+            <Form>
+              <div className="px-8 py-6">
+                <div className="space-y-8">
                 {/* Vehicle Details */}
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Vehicle details</h3>
@@ -240,9 +268,11 @@ export default function InsuranceModal({
                     />
                     <CustomInput
                       name="vat"
-                      label="VAT"
+                      label="VAT (%)"
                       type="number"
-                      isCurrency
+                      min="0"
+                      max="100"
+                      step="0.01"
                       className="w-full"
                     />
                     <CustomInput
@@ -251,6 +281,8 @@ export default function InsuranceModal({
                       type="number"
                       isCurrency
                       className="w-full"
+                      disabled
+                      value={netInvoice}
                     />
                     <CustomInput
                       name="totalPaid"
@@ -265,6 +297,8 @@ export default function InsuranceModal({
                       type="number"
                       isCurrency
                       className="w-full"
+                      disabled
+                      value={remaining}
                     />
                   </div>
                 </div>
@@ -323,7 +357,8 @@ export default function InsuranceModal({
               </div>
             </div>
           </Form>
-        )}
+          );
+        }}
       </Formik>
     </CustomModal>
   );

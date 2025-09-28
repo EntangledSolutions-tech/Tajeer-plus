@@ -37,7 +37,7 @@ export function ProfileAccountDropdownContainer(props: {
 
   return (
     <EnhancedPersonalAccountDropdown
-      className={'w-full'}
+      // className={'w-full'}
       paths={paths}
       features={features}
       user={userData}

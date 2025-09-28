@@ -112,7 +112,7 @@ const getIconComponent = (label: string) => {
 
 // Check if a menu item is disabled
 const isMenuItemDisabled = (label: string): boolean => {
-  const disabledItems = ['Finance', 'Inspections', 'Help'];
+  const disabledItems = [ 'Inspections', 'Help'];
   return disabledItems.includes(label);
 };
 

@@ -65,27 +65,23 @@ const MaintenanceSchema = Yup.object().shape({
       const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
       return numericValue >= 0;
     }),
-  netInvoice: Yup.string()
-    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid net invoice amount')
-    .test('non-negative-net', 'Net invoice amount cannot be negative', function(value) {
-      if (!value) return true;
-      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
-      return numericValue >= 0;
-    }),
+  netInvoice: Yup.string(),
   totalPaid: Yup.string()
-    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid total paid amount')
+    .matches(/^\d+(\.\d{1,2})?$/, 'Please enter a valid total paid amount')
     .test('non-negative-paid', 'Total paid cannot be negative', function(value) {
       if (!value) return true;
-      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
-      return numericValue >= 0;
-    }),
-  remaining: Yup.string()
-    .matches(/^SAR\s?\d+(\.\d{1,2})?$|^\d+(\.\d{1,2})?$/, 'Please enter a valid remaining amount')
-    .test('non-negative-remaining', 'Remaining amount cannot be negative', function(value) {
-      if (!value) return true;
-      const numericValue = parseFloat(value.replace(/SAR\s?/i, ''));
+      const numericValue = parseFloat(value);
       return numericValue >= 0;
     })
+    .test('not-exceed-net', 'Total paid cannot exceed net invoice', function(value) {
+      if (!value) return true;
+      const paid = parseFloat(value);
+      const total = parseFloat(this.parent.totalAmount) || 0;
+      const discount = parseFloat(this.parent.totalDiscount) || 0;
+      const netInvoice = total - discount;
+      return paid <= netInvoice;
+    }),
+  remaining: Yup.string()
 });
 
 // Vehicle details state interface
@@ -158,6 +154,26 @@ export default function MaintenanceModal({
     await fetchVehicles(1, searchTerm);
   }, [fetchVehicles]);
 
+  // Calculate net invoice automatically
+  const calculateNetInvoice = (totalAmount: string, totalDiscount: string, vatIncluded: boolean) => {
+    const total = parseFloat(totalAmount) || 0;
+    const discount = parseFloat(totalDiscount) || 0;
+
+    // Net Invoice = Total Amount - Discount (VAT is already included in total)
+    const netInvoice = total - discount;
+    return netInvoice.toFixed(2);
+  };
+
+  // Calculate remaining amount automatically
+  const calculateRemaining = (netInvoice: string, totalPaid: string) => {
+    const net = parseFloat(netInvoice) || 0;
+    const paid = parseFloat(totalPaid) || 0;
+
+    // Remaining = Net Invoice - Total Paid
+    const remaining = net - paid;
+    return remaining.toFixed(2);
+  };
+
   // Load initial data when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -189,10 +205,16 @@ export default function MaintenanceModal({
         validationSchema={MaintenanceSchema}
         onSubmit={onSubmit}
       >
-        {({ values, setFieldValue, errors, touched, isSubmitting }) => (
-          <Form>
-            <div className="px-8 py-6">
-              <div className="space-y-8">
+        {({ values, setFieldValue, errors, touched, isSubmitting }) => {
+          // Calculate net invoice whenever relevant fields change
+          const netInvoice = calculateNetInvoice(values.totalAmount, values.totalDiscount, values.vatIncluded);
+          // Calculate remaining amount
+          const remaining = calculateRemaining(netInvoice, values.totalPaid);
+
+          return (
+            <Form>
+              <div className="px-8 py-6">
+                <div className="space-y-8">
                 {/* Vehicle Details */}
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Vehicle details</h3>
@@ -281,7 +303,7 @@ export default function MaintenanceModal({
                       className="w-full"
                     />
                     <div>
-                      <label className="block text-sm font-medium text-primary mb-2">VAT</label>
+                      <label className="block text-sm font-medium text-primary mb-2">VAT (%)</label>
                       <RadioButtonGroup
                         name="vatIncluded"
                         value={values.vatIncluded ? 'included' : 'notIncluded'}
@@ -316,6 +338,8 @@ export default function MaintenanceModal({
                       type="number"
                       isCurrency
                       className="w-full"
+                      disabled
+                      value={netInvoice}
                     />
                     <CustomInput
                       name="totalPaid"
@@ -330,6 +354,8 @@ export default function MaintenanceModal({
                       type="number"
                       isCurrency
                       className="w-full"
+                      disabled
+                      value={remaining}
                     />
                   </div>
                 </div>
@@ -361,7 +387,8 @@ export default function MaintenanceModal({
               </div>
             </div>
           </Form>
-        )}
+          );
+        }}
       </Formik>
     </CustomModal>
   );

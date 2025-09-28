@@ -7,7 +7,7 @@
 }
 
 .site-header * {
-  background-color: transparent !important;
+  /* background-color: transparent !important; */
 }
 
 /* Ensure header content is visible */
@@ -25,8 +25,4 @@
   display: none !important;
 }
 
-/* Force button hover styles */
-.site-header button:hover {
-  background-color: white !important;
-  color: #005F8E !important;
-}
+
