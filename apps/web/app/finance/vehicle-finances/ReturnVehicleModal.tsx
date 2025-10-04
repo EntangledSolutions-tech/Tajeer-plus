@@ -121,6 +121,16 @@ interface VehicleDetailsState {
   vehiclesLoading: boolean;
 }
 
+// Generate 8-character alphanumeric ID
+const generateInvoiceNumber = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `INV-${result}`;
+};
+
 export default function ReturnVehicleModal({
   isOpen,
   onClose,
@@ -280,7 +290,7 @@ export default function ReturnVehicleModal({
       <Formik
         initialValues={{
           vehicle: '',
-          invoiceNumber: 'INV-4876',
+          invoiceNumber: generateInvoiceNumber(),
           invoiceDate: '06/04/2022',
           paymentType: 'Cash',
           vatIncluded: true,
@@ -359,6 +369,8 @@ export default function ReturnVehicleModal({
                       label="Invoice Number"
                       type="text"
                       className="w-full"
+                      readOnly
+                      disabled
                     />
                     <CustomInput
                       name="invoiceDate"

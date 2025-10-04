@@ -73,6 +73,16 @@ interface VehicleDetailsState {
   vehiclesLoading: boolean;
 }
 
+// Generate 8-character alphanumeric ID
+const generateInvoiceNumber = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `INV-${result}`;
+};
+
 export default function AddTransactionModal({
   isOpen,
   onClose,
@@ -155,7 +165,7 @@ export default function AddTransactionModal({
           transactionType: '',
           vehicle: '',
           description: 'Vehicle maintenance and repair services',
-          invoiceNumber: 'INV-V001'
+          invoiceNumber: generateInvoiceNumber()
         }}
         validationSchema={VehicleFinanceSchema}
         onSubmit={onSubmit}
@@ -234,6 +244,8 @@ export default function AddTransactionModal({
                   type="text"
                   placeholder="INV-V001"
                   className="w-full"
+                  readOnly
+                  disabled
                 />
               </div>
 

@@ -10,6 +10,13 @@ import SearchableSelect from '../../reusableComponents/SearchableSelect';
 import { Vehicle } from './types';
 import { useHttpService } from '../../../lib/http-service';
 
+interface InsuranceCompany {
+  id: string;
+  name: string;
+  code: string;
+  is_active: boolean;
+}
+
 interface InsuranceFormValues {
   vehicle: string;
   company: string;
@@ -91,6 +98,16 @@ interface VehicleDetailsState {
   vehiclesLoading: boolean;
 }
 
+// Generate policy number based on company code
+const generatePolicyNumber = (companyCode: string) => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `${companyCode}-${result}`;
+};
+
 export default function InsuranceModal({
   isOpen,
   onClose,
@@ -105,6 +122,43 @@ export default function InsuranceModal({
     vehiclesHasMore: true,
     vehiclesLoading: false,
   });
+
+  const [insuranceCompanies, setInsuranceCompanies] = useState<InsuranceCompany[]>([]);
+  const [companiesLoading, setCompaniesLoading] = useState(false);
+
+  // Fetch insurance companies
+  const fetchInsuranceCompanies = useCallback(async () => {
+    try {
+      setCompaniesLoading(true);
+      const response = await getRequest('/api/insurance-companies');
+
+      if (response.success && response.data?.companies) {
+        setInsuranceCompanies(response.data.companies);
+      } else {
+        console.error('Error fetching insurance companies:', response.error);
+        // Fallback to hardcoded companies if API fails
+        setInsuranceCompanies([
+          { id: '1', name: 'Tawuniya', code: 'TAW', is_active: true },
+          { id: '2', name: 'SABB Takaful', code: 'SAB', is_active: true },
+          { id: '3', name: 'Malath Insurance', code: 'MAL', is_active: true },
+          { id: '4', name: 'AXA Cooperative', code: 'AXA', is_active: true },
+          { id: '5', name: 'Allianz', code: 'ALL', is_active: true }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching insurance companies:', error);
+      // Fallback to hardcoded companies if API fails
+      setInsuranceCompanies([
+        { id: '1', name: 'Tawuniya', code: 'TAW', is_active: true },
+        { id: '2', name: 'SABB Takaful', code: 'SAB', is_active: true },
+        { id: '3', name: 'Malath Insurance', code: 'MAL', is_active: true },
+        { id: '4', name: 'AXA Cooperative', code: 'AXA', is_active: true },
+        { id: '5', name: 'Allianz', code: 'ALL', is_active: true }
+      ]);
+    } finally {
+      setCompaniesLoading(false);
+    }
+  }, [getRequest]);
 
   // Fetch vehicles with pagination
   const fetchVehicles = useCallback(async (page: number = 1, search: string = '') => {
@@ -181,8 +235,9 @@ export default function InsuranceModal({
   useEffect(() => {
     if (isOpen) {
       fetchVehicles(1);
+      fetchInsuranceCompanies();
     }
-  }, [isOpen, fetchVehicles]);
+  }, [isOpen, fetchVehicles, fetchInsuranceCompanies]);
   return (
     <CustomModal
       isOpen={isOpen}
@@ -221,6 +276,20 @@ export default function InsuranceModal({
           const netInvoice = calculateNetInvoice(values.totalAmount, values.totalDiscount, values.vat);
           // Calculate remaining amount
           const remaining = calculateRemaining(netInvoice, values.totalPaid);
+
+          // Handle company selection and auto-generate policy number
+          const handleCompanyChange = (companyId: string) => {
+            setFieldValue('company', companyId);
+            if (companyId) {
+              const selectedCompany = insuranceCompanies.find(c => c.id === companyId);
+              if (selectedCompany) {
+                const policyNumber = generatePolicyNumber(selectedCompany.code);
+                setFieldValue('policyNumber', policyNumber);
+              }
+            } else {
+              setFieldValue('policyNumber', '');
+            }
+          };
 
           return (
             <Form>
@@ -323,20 +392,26 @@ export default function InsuranceModal({
                       label="Company"
                       options={[
                         { value: '', label: 'Select company' },
-                        { value: 'Tawuniya', label: 'Tawuniya' },
-                        { value: 'SABB Takaful', label: 'SABB Takaful' },
-                        { value: 'Malath Insurance', label: 'Malath Insurance' },
-                        { value: 'AXA Cooperative', label: 'AXA Cooperative' },
-                        { value: 'Allianz', label: 'Allianz' }
+                        ...insuranceCompanies
+                          .filter(company => company.is_active)
+                          .map(company => ({
+                            value: company.id,
+                            label: company.name
+                          }))
                       ]}
                       className="w-full"
+                      onChange={(value) => handleCompanyChange(value)}
+                      disabled={companiesLoading}
                     />
                     <CustomInput
                       name="policyNumber"
                       label="Policy Number"
                       type="text"
-                      placeholder="Enter number"
+                      placeholder="Select a company first"
                       className="w-full"
+                      readOnly
+                      disabled
+                      value={values.policyNumber}
                     />
                   </div>
                 </div>
