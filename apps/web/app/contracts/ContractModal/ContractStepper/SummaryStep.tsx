@@ -185,12 +185,6 @@ const SummaryStep: React.FC = () => {
               <span className="ml-2 text-gray-900">{endDate}</span>
             </div>
           )}
-          {durationType && (
-            <div>
-              <span className="font-medium text-gray-600">Duration Type:</span>
-              <span className="ml-2 text-gray-900 capitalize">{durationType}</span>
-            </div>
-          )}
           {durationType === 'duration' && durationInDays && (
             <div>
               <span className="font-medium text-gray-600">Duration:</span>
