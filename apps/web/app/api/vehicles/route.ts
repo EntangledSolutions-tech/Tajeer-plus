@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { Database } from '../../../lib/database.types';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseServerClient<Database>();
 
     // Check if user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -232,19 +233,57 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Filter out vehicles that have active contracts
+    let availableVehicles = vehicles || [];
+
+    if (availableVehicles.length > 0) {
+      // Get all vehicle IDs
+      const vehicleIds = availableVehicles.map(vehicle => vehicle.id);
+
+      // Find vehicles that have active contracts
+      const { data: activeContracts } = await supabase
+        .from('contracts')
+        .select('selected_vehicle_id, status_id')
+        .in('selected_vehicle_id', vehicleIds);
+
+      if (activeContracts && activeContracts.length > 0) {
+        // Get active status IDs
+        const { data: activeStatuses } = await supabase
+          .from('contract_statuses')
+          .select('id')
+          .eq('name', 'Active');
+
+        const activeStatusIds = activeStatuses?.map(status => status.id) || [];
+
+        // Find vehicle IDs that have active contracts
+        const vehiclesWithActiveContracts = activeContracts
+          .filter(contract => contract.status_id && activeStatusIds.includes(contract.status_id))
+          .map(contract => contract.selected_vehicle_id);
+
+        // Filter out vehicles with active contracts
+        availableVehicles = availableVehicles.filter(
+          vehicle => !vehiclesWithActiveContracts.includes(vehicle.id)
+        );
+
+        console.log(`Filtered out ${vehicles?.length - availableVehicles.length} vehicles with active contracts`);
+      }
+    }
 
 
-    const totalPages = limit === -1 ? 1 : Math.ceil((count || 0) / limit);
+
+    // Update count to reflect filtered results
+    const filteredCount = availableVehicles.length;
+    const totalPages = limit === -1 ? 1 : Math.ceil(filteredCount / limit);
     const hasNextPage = limit === -1 ? false : page < totalPages;
     const hasPrevPage = limit === -1 ? false : page > 1;
 
     return NextResponse.json({
       success: true,
-      vehicles: vehicles || [],
+      vehicles: availableVehicles,
       pagination: {
         page: limit === -1 ? 1 : page,
-        limit: limit === -1 ? count || 0 : limit,
-        total: count || 0,
+        limit: limit === -1 ? filteredCount : limit,
+        total: filteredCount,
         totalPages,
         hasNextPage,
         hasPrevPage
@@ -262,7 +301,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseServerClient<Database>();
 
     // Check if user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
