@@ -131,6 +131,7 @@ export async function POST(request: NextRequest) {
       excess_km_rate: parseFloat(body.excess_km_rate) || 0,
       payment_method: body.payment_method || 'cash',
       total_amount: parseFloat(body.total_amount) || 0,
+      deposit: body.deposit !== undefined ? parseFloat(body.deposit) || 0 : 0,
 
       // Documents
       documents_count: body.documents_count || 0,
@@ -225,7 +226,7 @@ export async function PUT(request: NextRequest) {
       'customer_date_of_birth', 'customer_license_type', 'customer_address',
       'selected_vehicle_id', 'vehicle_plate', 'vehicle_serial_number',
       'daily_rental_rate', 'hourly_delay_rate', 'current_km', 'rental_days',
-      'permitted_daily_km', 'excess_km_rate', 'payment_method',
+      'permitted_daily_km', 'excess_km_rate', 'payment_method', 'deposit',
       'membership_enabled', 'total_amount', 'selected_inspector',
       'inspector_name', 'documents_count', 'documents'
     ];

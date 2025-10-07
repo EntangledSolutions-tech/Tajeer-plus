@@ -94,6 +94,7 @@ const initialValues = {
   excessKmRate: '0',
   paymentMethod: 'cash',
   totalAmount: '0',
+  deposit: '0',
 
 
   // Step 6 - Summary (no additional fields needed)
@@ -173,6 +174,7 @@ export default function ContractModal({
       excessKmRate: initialContract.excess_km_rate?.toString() || '0',
       paymentMethod: initialContract.payment_method || 'cash',
       totalAmount: initialContract.total_amount?.toString() || '0',
+      deposit: initialContract.deposit?.toString() || '0',
 
 
       // Step 6 - Summary (no additional fields needed)
@@ -212,6 +214,7 @@ export default function ContractModal({
         excess_km_rate: parseFloat(values.excessKmRate) || 0,
         payment_method: values.paymentMethod || 'cash',
         total_amount: parseFloat(values.totalAmount) || 0,
+        deposit: parseFloat(values.deposit) || 0,
 
 
       };

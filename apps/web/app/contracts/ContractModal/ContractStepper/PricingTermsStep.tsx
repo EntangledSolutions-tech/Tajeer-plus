@@ -278,9 +278,7 @@ export default function PricingTermsStep() {
             className="bg-gray-50 cursor-not-allowed"
             placeholder="Auto-calculated from dates"
           />
-          <p className="text-xs text-muted-foreground mt-1">
-            Calculated as: End Date - Start Date
-          </p>
+          {/* Removed per request: "Calculated as: End Date - Start Date" */}
           <CustomInput
             label="Permitted daily km"
             name="permittedDailyKm"
@@ -318,6 +316,20 @@ export default function PricingTermsStep() {
           value={paymentMethod}
           disabled
         />
+      </div>
+
+      {/* Deposit Section */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold text-primary mb-4">Deposit</h3>
+        <div className="grid grid-cols-2 gap-6">
+          <CustomInput
+            label="Deposit amount"
+            name="deposit"
+            type="text"
+            placeholder="0.00"
+            isCurrency={true}
+          />
+        </div>
       </div>
 
 

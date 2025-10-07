@@ -260,6 +260,7 @@ export type Database = {
           status_id: string | null
           tajeer_number: string | null
           total_amount: number
+          deposit: number
           total_fees: number | null
           type: string | null
           updated_at: string | null
@@ -317,6 +318,7 @@ export type Database = {
           status_id?: string | null
           tajeer_number?: string | null
           total_amount: number
+          deposit?: number
           total_fees?: number | null
           type?: string | null
           updated_at?: string | null
@@ -374,6 +376,7 @@ export type Database = {
           status_id?: string | null
           tajeer_number?: string | null
           total_amount?: number
+          deposit?: number
           total_fees?: number | null
           type?: string | null
           updated_at?: string | null
