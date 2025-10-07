@@ -44,40 +44,45 @@ export default function VehicleFinance() {
       {/* Summary Cards */}
       <div className="flex gap-4">
         {summaryCards.map((card, i) => (
-          <div key={i} className="flex-1 rounded-xl border border-[#CDE2FF] bg-white flex flex-col items-center py-5">
-            <span className="text-2xl font-bold text-[#0065F2]">{card.value}</span>
-            <span className="text-base text-[#A0B6D9] font-medium">{card.label}</span>
+          <div key={i} className="flex-1 rounded-xl border border-border bg-card flex flex-col items-center py-5">
+            <span className="text-2xl font-bold text-primary">{card.value}</span>
+            <span className="text-base text-muted-foreground font-medium">{card.label}</span>
           </div>
         ))}
       </div>
       {/* Vehicle Pricing & Depreciation */}
-      <div className="rounded-xl border border-[#CDE2FF] bg-white px-6 py-4">
-        <div className="font-bold text-[#0065F2] text-lg mb-4">Vehicle Pricing & Depreciation</div>
+      <div className="rounded-xl border border-border bg-card px-6 py-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="font-bold text-primary text-lg">Vehicle Pricing & Depreciation</div>
+          <CustomButton isSecondary size="sm">
+            Edit
+          </CustomButton>
+        </div>
         <div className="flex gap-8">
           <div>
-            <div className="text-xs text-[#A0B6D9] font-medium mb-1">Purchase Date</div>
-            <div className="text-base text-[#0065F2] font-bold">{vehiclePricing.purchaseDate}</div>
+            <div className="text-xs text-muted-foreground font-medium mb-1">Purchase Date</div>
+            <div className="text-base text-primary font-bold">{vehiclePricing.purchaseDate}</div>
           </div>
           <div>
-            <div className="text-xs text-[#A0B6D9] font-medium mb-1">Number of depreciation years</div>
-            <div className="text-base text-[#0065F2] font-bold">{vehiclePricing.depreciationYears}</div>
+            <div className="text-xs text-muted-foreground font-medium mb-1">Number of depreciation years</div>
+            <div className="text-base text-primary font-bold">{vehiclePricing.depreciationYears}</div>
           </div>
           <div>
-            <div className="text-xs text-[#A0B6D9] font-medium mb-1">Purchase Price</div>
-            <div className="text-base text-[#0065F2] font-bold">{vehiclePricing.purchasePrice}</div>
+            <div className="text-xs text-muted-foreground font-medium mb-1">Purchase Price</div>
+            <div className="text-base text-primary font-bold">{vehiclePricing.purchasePrice}</div>
           </div>
           <div>
-            <div className="text-xs text-[#A0B6D9] font-medium mb-1">Lease Amount increase in case of insurance</div>
-            <div className="text-base text-[#0065F2] font-bold">{vehiclePricing.leaseAmountIncrease}</div>
+            <div className="text-xs text-muted-foreground font-medium mb-1">Lease Amount increase in case of insurance</div>
+            <div className="text-base text-primary font-bold">{vehiclePricing.leaseAmountIncrease}</div>
           </div>
         </div>
       </div>
       {/* Revenue Table Collapsible */}
-      <div className="rounded-xl border border-[#CDE2FF] bg-white px-0 py-0 overflow-hidden">
+      <div className="rounded-xl border border-border bg-card px-0 py-0 overflow-hidden">
         <div className="-mx-0">
           <button
             onClick={() => setShowRevenue(v => !v)}
-            className="flex items-center gap-2 text-[#0065F2] font-bold text-[18px] bg-[#F6F9FF] py-2 px-2 w-full text-left"
+            className="flex items-center gap-2 text-primary font-bold text-[18px] bg-muted/50 py-2 px-2 w-full text-left"
           >
             <span className="text-[18px]">{showRevenue ? '▼' : '▶'}</span> Revenue
           </button>
@@ -114,29 +119,29 @@ export default function VehicleFinance() {
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="bg-[#F6F9FF]">
-                    <th className="px-4 py-3 text-left font-semibold text-[#0065F2]">Date</th>
-                    <th className="px-4 py-3 text-left font-semibold text-[#0065F2]">Transaction type</th>
-                    <th className="px-4 py-3 text-left font-semibold text-[#0065F2]">Description</th>
-                    <th className="px-4 py-3 text-left font-semibold text-[#0065F2]">Transaction</th>
-                    <th className="px-4 py-3 text-left font-semibold text-[#0065F2]">Method</th>
-                    <th className="px-4 py-3 text-left font-semibold text-[#0065F2]">Amount</th>
-                    <th className="px-4 py-3 text-left font-semibold text-[#0065F2]">Invoice</th>
-                    <th className="px-4 py-3 text-left font-semibold text-[#0065F2]"></th>
+                  <tr className="bg-muted/50">
+                    <th className="px-4 py-3 text-left font-semibold text-primary">Date</th>
+                    <th className="px-4 py-3 text-left font-semibold text-primary">Transaction type</th>
+                    <th className="px-4 py-3 text-left font-semibold text-primary">Description</th>
+                    <th className="px-4 py-3 text-left font-semibold text-primary">Transaction</th>
+                    <th className="px-4 py-3 text-left font-semibold text-primary">Method</th>
+                    <th className="px-4 py-3 text-left font-semibold text-primary">Amount</th>
+                    <th className="px-4 py-3 text-left font-semibold text-primary">Invoice</th>
+                    <th className="px-4 py-3 text-left font-semibold text-primary"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {revenueRows
                     .filter(row => revenueTab === 'All' || row.transaction === revenueTab.slice(0, -1))
                     .map((row, i) => (
-                      <tr key={i} className="border-t border-[#CDE2FF]">
-                        <td className="px-4 py-3 font-medium text-[#0065F2]">{row.date}</td>
-                        <td className="px-4 py-3 font-medium text-[#0065F2] cursor-pointer hover:underline">{row.type}</td>
-                        <td className="px-4 py-3 text-[#0065F2]">{row.desc}</td>
-                        <td className="px-4 py-3 text-[#0065F2]">{row.transaction}</td>
-                        <td className="px-4 py-3 text-[#0065F2]">{row.method}</td>
-                        <td className="px-4 py-3 text-[#0065F2]">{row.amount}</td>
-                        <td className="px-4 py-3 font-medium text-[#0065F2] cursor-pointer hover:underline">{row.invoice}</td>
+                      <tr key={i} className="border-t border-border">
+                        <td className="px-4 py-3 font-medium text-primary">{row.date}</td>
+                        <td className="px-4 py-3 font-medium text-primary cursor-pointer hover:underline">{row.type}</td>
+                        <td className="px-4 py-3 text-primary">{row.desc}</td>
+                        <td className="px-4 py-3 text-primary">{row.transaction}</td>
+                        <td className="px-4 py-3 text-primary">{row.method}</td>
+                        <td className="px-4 py-3 text-primary">{row.amount}</td>
+                        <td className="px-4 py-3 font-medium text-primary cursor-pointer hover:underline">{row.invoice}</td>
                         <td className="px-4 py-3">
                         <CustomButton isText>View Details</CustomButton>
                       </td>
@@ -149,11 +154,11 @@ export default function VehicleFinance() {
         )}
       </div>
       {/* Sales & Return Table Collapsible */}
-      <div className="rounded-xl border border-[#CDE2FF] bg-white px-0 py-0 overflow-hidden">
+      <div className="rounded-xl border border-border bg-card px-0 py-0 overflow-hidden">
         <div className="-mx-0">
           <button
             onClick={() => setShowSales(v => !v)}
-            className="flex items-center gap-2 text-[#0065F2] font-bold text-[18px] bg-[#F6F9FF] py-2 px-2 w-full text-left"
+            className="flex items-center gap-2 text-primary font-bold text-[18px] bg-muted/50 py-2 px-2 w-full text-left"
           >
             <span className="text-[18px]">{showSales ? '▼' : '▶'}</span> Sales & Return
           </button>
@@ -193,24 +198,24 @@ export default function VehicleFinance() {
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="bg-[#F6F9FF]">
-                    <th className="px-4 py-3 text-left font-semibold text-[#0065F2]">Date</th>
-                    <th className="px-4 py-3 text-left font-semibold text-[#0065F2]">Type</th>
-                    <th className="px-4 py-3 text-left font-semibold text-[#0065F2]">Customer</th>
-                    <th className="px-4 py-3 text-left font-semibold text-[#0065F2]">Price</th>
-                    <th className="px-4 py-3 text-left font-semibold text-[#0065F2]"></th>
+                  <tr className="bg-muted/50">
+                    <th className="px-4 py-3 text-left font-semibold text-primary">Date</th>
+                    <th className="px-4 py-3 text-left font-semibold text-primary">Type</th>
+                    <th className="px-4 py-3 text-left font-semibold text-primary">Customer</th>
+                    <th className="px-4 py-3 text-left font-semibold text-primary">Price</th>
+                    <th className="px-4 py-3 text-left font-semibold text-primary"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {salesRows
                     .filter(row => salesTab === 'All' || row.type === salesTab)
                     .map((row, i) => (
-                      <tr key={i} className="border-t border-[#CDE2FF]">
-                        <td className="px-4 py-3 font-medium text-[#0065F2]">{row.date}</td>
-                        <td className="px-4 py-3 font-medium text-[#0065F2] cursor-pointer hover:underline">{row.type}</td>
-                        <td className="px-4 py-3 text-[#0065F2]">{row.customer}</td>
-                        <td className="px-4 py-3 text-[#0065F2]">{row.price}</td>
-                        <td className="px-4 py-3 font-semibold text-[#0065F2] cursor-pointer hover:underline">{row.invoice}</td>
+                      <tr key={i} className="border-t border-border">
+                        <td className="px-4 py-3 font-medium text-primary">{row.date}</td>
+                        <td className="px-4 py-3 font-medium text-primary cursor-pointer hover:underline">{row.type}</td>
+                        <td className="px-4 py-3 text-primary">{row.customer}</td>
+                        <td className="px-4 py-3 text-primary">{row.price}</td>
+                        <td className="px-4 py-3 font-semibold text-primary cursor-pointer hover:underline">{row.invoice}</td>
                       </tr>
                     ))}
                 </tbody>

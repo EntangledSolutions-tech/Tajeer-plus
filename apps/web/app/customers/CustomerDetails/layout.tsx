@@ -109,7 +109,7 @@ export default function CustomerDetailsLayout() {
     { label: 'Overview', key: 'overview' },
     { label: 'Contracts', key: 'contracts' },
     { label: 'Invoices', key: 'invoices', disabled: true, disabledReason: 'This feature is not yet implemented' },
-    { label: 'Finance', key: 'finance', disabled: true, disabledReason: 'This feature is not yet implemented' },
+    { label: 'Finance', key: 'finance' },
     { label: 'Penalties', key: 'penalties', disabled: true, disabledReason: 'This feature is not yet implemented' },
     { label: 'Documents', key: 'documents' },
   ];
@@ -367,7 +367,7 @@ export default function CustomerDetailsLayout() {
           {activeTab === 'overview' && <CustomerOverview customer={customer} />}
           {activeTab === 'contracts' && <CustomerContracts customerId={customerId} />}
           {activeTab === 'invoices' && <CustomerInvoices />}
-          {activeTab === 'finance' && <CustomerFinance />}
+          {activeTab === 'finance' && <CustomerFinance customerId={customerId} />}
           {activeTab === 'penalties' && <CustomerPenalties />}
           {activeTab === 'documents' && <CustomerDocuments customerId={customerId} />}
         </div>
