@@ -4,6 +4,7 @@ import CustomButton from '../../reusableComponents/CustomButton';
 import { RadioButtonGroup } from '../../reusableComponents/RadioButtonGroup';
 import { SearchBar } from '../../reusableComponents/SearchBar';
 import { useParams } from 'next/navigation';
+import { useHttpService } from '../../../lib/http-service';
 
 interface OilChange {
   id: string;
@@ -88,6 +89,7 @@ export default function VehicleMaintenance() {
   const [maintenanceData, setMaintenanceData] = useState<MaintenanceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { getRequest, postRequest, putRequest } = useHttpService();
 
   useEffect(() => {
     const fetchMaintenanceData = async () => {
@@ -106,51 +108,42 @@ export default function VehicleMaintenance() {
 
         if (!isUUID) {
           // If it's not a UUID, treat it as a plate number and fetch the vehicle ID
-          const vehicleResponse = await fetch(`/api/vehicles?plate_number=${vehicleId}`);
+          const vehicleResponse = await getRequest(`/api/vehicles?plate_number=${vehicleId}`);
 
-          if (!vehicleResponse.ok) {
-            const errorText = await vehicleResponse.text();
-            throw new Error(`Failed to fetch vehicle data: ${vehicleResponse.status} ${vehicleResponse.statusText}`);
-          }
-
-          const vehicleResponseData = await vehicleResponse.json();
-
-          // Handle the API response format - check if it's an object with vehicles array or direct array
-          let vehicleData;
-          if (vehicleResponseData && typeof vehicleResponseData === 'object') {
-            if (Array.isArray(vehicleResponseData)) {
-              vehicleData = vehicleResponseData;
-            } else if (vehicleResponseData.vehicles && Array.isArray(vehicleResponseData.vehicles)) {
-              vehicleData = vehicleResponseData.vehicles;
+          if (vehicleResponse.success && vehicleResponse.data) {
+            // Handle the API response format - check if it's an object with vehicles array or direct array
+            let vehicleData;
+            if (Array.isArray(vehicleResponse.data)) {
+              vehicleData = vehicleResponse.data;
+            } else if (vehicleResponse.data.vehicles && Array.isArray(vehicleResponse.data.vehicles)) {
+              vehicleData = vehicleResponse.data.vehicles;
             } else {
               throw new Error('Unexpected vehicle response format');
             }
+
+            if (!vehicleData || !Array.isArray(vehicleData) || vehicleData.length === 0) {
+              throw new Error(`Vehicle not found for plate number: ${vehicleId}`);
+            }
+
+            const foundVehicleId = vehicleData[0]?.id;
+            if (!foundVehicleId) {
+              throw new Error('Vehicle ID not found in response');
+            }
+
+            actualVehicleId = foundVehicleId;
           } else {
-            throw new Error('Invalid vehicle response data');
+            throw new Error(vehicleResponse.error || 'Failed to fetch vehicle data');
           }
-
-          if (!vehicleData || !Array.isArray(vehicleData) || vehicleData.length === 0) {
-            throw new Error(`Vehicle not found for plate number: ${vehicleId}`);
-          }
-
-          const foundVehicleId = vehicleData[0]?.id;
-          if (!foundVehicleId) {
-            throw new Error('Vehicle ID not found in response');
-          }
-
-          actualVehicleId = foundVehicleId;
         }
 
         // Then fetch maintenance data using the actual vehicle ID
-        const response = await fetch(`/api/vehicles/${actualVehicleId}/maintenance`);
+        const response = await getRequest(`/api/vehicles/${actualVehicleId}/maintenance`);
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Failed to fetch maintenance data: ${response.status} ${response.statusText}`);
+        if (response.success && response.data) {
+          setMaintenanceData(response.data);
+        } else {
+          throw new Error(response.error || 'Failed to fetch maintenance data');
         }
-
-        const data = await response.json();
-        setMaintenanceData(data);
       } catch (err) {
         console.error('Error fetching maintenance data:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch maintenance data');

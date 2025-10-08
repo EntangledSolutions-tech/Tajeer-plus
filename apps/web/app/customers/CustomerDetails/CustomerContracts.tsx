@@ -7,6 +7,7 @@ import { SearchBar } from '../../reusableComponents/SearchBar';
 import CustomButton from '../../reusableComponents/CustomButton';
 import { SummaryCard } from '../../reusableComponents/SummaryCard';
 import { ArrowRight, FileText, CheckCircle, Calendar, Filter, FileSpreadsheet } from 'lucide-react';
+import { useHttpService } from '../../../lib/http-service';
 
 interface Contract {
   id: string;
@@ -33,6 +34,7 @@ interface CustomerContractsProps {
 
 export default function CustomerContracts({ customerId }: CustomerContractsProps) {
   const router = useRouter();
+  const { getRequest } = useHttpService();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,20 +82,11 @@ export default function CustomerContracts({ customerId }: CustomerContractsProps
         ...(statusFilter !== 'all' && { status: statusFilter })
       });
 
-      const response = await fetch(`/api/customers/${customerId}/contracts?${params}`);
+      const result = await getRequest(`/api/customers/${customerId}/contracts?${params}`);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('API Error:', errorData);
-        throw new Error(errorData.error || `HTTP ${response.status}: Failed to fetch contracts`);
-      }
-
-      const data = await response.json();
-
-
-      if (data.success) {
-        setContracts(data.contracts || []);
-        setPagination(data.pagination || {
+      if (result.success && result.data) {
+        setContracts(result.data.contracts || []);
+        setPagination(result.data.pagination || {
           page: 1,
           limit: 10,
           total: 0,
@@ -104,11 +97,11 @@ export default function CustomerContracts({ customerId }: CustomerContractsProps
 
         // Calculate summary data on client side using status_details
         const summary = {
-          total: data.pagination?.total || 0,
-          active: data.contracts?.filter((c: Contract) => c.status_details?.name === 'Active').length || 0,
-          completed: data.contracts?.filter((c: Contract) => c.status_details?.name === 'Completed').length || 0,
-          draft: data.contracts?.filter((c: Contract) => c.status_details?.name === 'Draft').length || 0,
-          cancelled: data.contracts?.filter((c: Contract) => c.status_details?.name === 'Cancelled').length || 0
+          total: result.data.pagination?.total || 0,
+          active: result.data.contracts?.filter((c: Contract) => c.status_details?.name === 'Active').length || 0,
+          completed: result.data.contracts?.filter((c: Contract) => c.status_details?.name === 'Completed').length || 0,
+          draft: result.data.contracts?.filter((c: Contract) => c.status_details?.name === 'Draft').length || 0,
+          cancelled: result.data.contracts?.filter((c: Contract) => c.status_details?.name === 'Cancelled').length || 0
         };
         setSummaryData(summary);
 
@@ -117,7 +110,7 @@ export default function CustomerContracts({ customerId }: CustomerContractsProps
         const uniqueStatuses = new Set();
 
         // Collect unique statuses from contracts
-        data.contracts?.forEach((contract: Contract) => {
+        result.data.contracts?.forEach((contract: Contract) => {
           if (contract.status_details?.name) {
             uniqueStatuses.add(contract.status_details.name);
           }
@@ -125,7 +118,7 @@ export default function CustomerContracts({ customerId }: CustomerContractsProps
 
         // Create configuration for each status using color from status_details
         uniqueStatuses.forEach((statusName: any) => {
-          const contract = data.contracts?.find((c: Contract) => c.status_details?.name === statusName);
+          const contract = result.data.contracts?.find((c: Contract) => c.status_details?.name === statusName);
           const color = contract?.status_details?.color;
 
           // Convert hex color to Tailwind classes
@@ -137,6 +130,8 @@ export default function CustomerContracts({ customerId }: CustomerContractsProps
           };
         });
         setStatusConfig(statusConfig);
+      } else {
+        setError(result.error || 'Failed to fetch contracts');
       }
     } catch (err: any) {
       console.error('Error fetching contracts:', err);
@@ -144,7 +139,7 @@ export default function CustomerContracts({ customerId }: CustomerContractsProps
     } finally {
       setLoading(false);
     }
-  }, [customerId, currentPage, currentLimit, debouncedSearch, statusFilter]);
+  }, [customerId, currentPage, currentLimit, debouncedSearch, statusFilter, getRequest]);
 
   // Fetch contracts on component mount and when dependencies change
   useEffect(() => {

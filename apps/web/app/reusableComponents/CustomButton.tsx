@@ -4,7 +4,14 @@ import React, { useState, createContext, useContext, useCallback, useEffect, use
 import { Button } from '@kit/ui/button';
 import { Spinner } from '@kit/ui/spinner';
 import { useFormikContext } from 'formik';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Plus } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@kit/ui/dropdown-menu';
 
 // Global dropdown state management
 // This ensures only one dropdown can be open at a time across the entire application
@@ -136,29 +143,7 @@ const CustomButton = ({
     ? activeDropdownId === dropdownIdToUse
     : localDropdownOpen;
 
-  // Ref for the dropdown container
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Handle click outside to close dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        if (setActiveDropdownId && isDropdownOpen) {
-          setActiveDropdownId(null);
-        } else if (!setActiveDropdownId && localDropdownOpen) {
-          setLocalDropdownOpen(false);
-        }
-      }
-    };
-
-    if (isDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isDropdownOpen, localDropdownOpen, setActiveDropdownId]);
 
   // Safely get formik context, defaulting to undefined if not in formik context
   let isSubmitting = false;
@@ -201,69 +186,67 @@ const CustomButton = ({
   const customClasses = buildCustomClasses();
   const finalClassName = `${customClasses} ${className}`.trim();
 
-  const handleDropdownToggle = () => {
-    if (isDropdown) {
-      if (setActiveDropdownId) {
-        // Use global state - close if already open, otherwise open this one
-        setActiveDropdownId(isDropdownOpen ? null : dropdownIdToUse);
-      } else {
-        // Use local state fallback
-        setLocalDropdownOpen(!localDropdownOpen);
-      }
-    }
-  };
 
   const handleOptionSelect = (option: { label: string; value: string }) => {
     onDropdownSelect?.(option);
-    if (setActiveDropdownId) {
-      setActiveDropdownId(null);
-    } else {
-      setLocalDropdownOpen(false);
-    }
   };
 
   if (isDropdown) {
     return (
-      <div className="custom-dropdown" ref={dropdownRef}>
-        <SimpleButton
-          type={type}
-          disabled={isDisabled}
-          className={finalClassName}
-          variant={buttonVariant}
-          size={size}
-          {...otherProps}
-          onClick={handleDropdownToggle}
-        >
-          <div className="flex items-center gap-2">
-            {icon && iconSide === 'left' && <span className="flex items-center">{icon}</span>}
-            {type === 'submit' && isSubmitting ? (
-              <div className="flex items-center gap-2">
-                <Spinner className="h-4 w-4" />
-                <span>{submittingText}</span>
-              </div>
-            ) : (
-              children
-            )}
-            {icon && iconSide === 'right' && <span className="flex items-center">{icon}</span>}
-            <ChevronDown className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
-          </div>
-        </SimpleButton>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <SimpleButton
+            type={type}
+            disabled={isDisabled}
+            className={finalClassName}
+            variant={buttonVariant}
+            size={size}
+            {...otherProps}
+          >
+            <div className="flex items-center gap-2">
+              {icon && iconSide === 'left' && <span className="flex items-center">{icon}</span>}
+              {type === 'submit' && isSubmitting ? (
+                <div className="flex items-center gap-2">
+                  <Spinner className="h-4 w-4" />
+                  <span>{submittingText}</span>
+                </div>
+              ) : (
+                children
+              )}
+              {icon && iconSide === 'right' && <span className="flex items-center">{icon}</span>}
+              <ChevronDown className="w-4 h-4" />
+            </div>
+          </SimpleButton>
+        </DropdownMenuTrigger>
 
-        {isDropdownOpen && dropdownOptions.length > 0 && (
-          <div className="dropdown-menu">
-            {dropdownOptions.map((option, index) => (
-              <button
+        <DropdownMenuContent className="w-56" align="start">
+          {dropdownOptions.map((option, index) => {
+            if (option.value === 'create-branch') {
+              return (
+                <React.Fragment key={index}>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-primary font-semibold cursor-pointer"
+                    onClick={() => handleOptionSelect(option)}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    {option.label}
+                  </DropdownMenuItem>
+                </React.Fragment>
+              );
+            }
+            return (
+              <DropdownMenuItem
                 key={index}
-                className="dropdown-option"
+                className="cursor-pointer"
                 onClick={() => handleOptionSelect(option)}
-                onMouseDown={(e) => e.preventDefault()} // Prevent focus issues
               >
                 {option.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   }
 

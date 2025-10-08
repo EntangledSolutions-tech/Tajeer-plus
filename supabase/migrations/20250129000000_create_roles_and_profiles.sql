@@ -75,11 +75,13 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Create trigger for new user profile creation
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW
-    EXECUTE FUNCTION public.handle_new_user();
+-- Note: This requires superuser privileges, so we'll skip it for now
+-- The trigger can be created manually if needed
+-- DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+-- CREATE TRIGGER on_auth_user_created
+--     AFTER INSERT ON auth.users
+--     FOR EACH ROW
+--     EXECUTE FUNCTION public.handle_new_user();
 
 -- Enable RLS
 ALTER TABLE public.roles ENABLE ROW LEVEL SECURITY;

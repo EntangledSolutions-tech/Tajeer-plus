@@ -6,6 +6,7 @@ import { toast } from '@kit/ui/sonner';
 import CustomTable, { TableColumn, TableAction } from '../../../reusableComponents/CustomTable';
 import CustomButton from '../../../reusableComponents/CustomButton';
 import ProfessionModal from './ProfessionModal';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface Profession {
   id: string;
@@ -18,6 +19,7 @@ interface Profession {
 }
 
 export default function ProfessionTab() {
+  const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
   const [professions, setProfessions] = useState<Profession[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -91,15 +93,14 @@ export default function ProfessionTab() {
         search: searchValue,
       });
 
-      const response = await fetch(`/api/customer-configurations/professions?${params}`);
+      const response = await getRequest(`/api/customer-configurations/professions?${params}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch professions');
+      if (response.error) {
+        throw new Error(response.error);
       }
 
-      const result = await response.json();
-      setProfessions(result.data);
-      setTotalPages(result.pagination.totalPages);
+      setProfessions(response.data.data);
+      setTotalPages(response.data.pagination.totalPages);
     } catch (error) {
       console.error('Error fetching professions:', error);
       toast.error('Failed to fetch professions');
@@ -114,13 +115,10 @@ export default function ProfessionTab() {
     }
 
     try {
-      const response = await fetch(`/api/customer-configurations/professions/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await deleteRequest(`/api/customer-configurations/professions/${id}`);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete profession');
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       toast.success('Profession deleted successfully');
@@ -133,23 +131,16 @@ export default function ProfessionTab() {
 
   const handleSubmit = async (values: { profession: string; description?: string }) => {
     try {
-      const url = editingProfession
-        ? `/api/customer-configurations/professions/${editingProfession.id}`
-        : '/api/customer-configurations/professions';
+      let response;
 
-      const method = editingProfession ? 'PATCH' : 'POST';
+      if (editingProfession) {
+        response = await putRequest(`/api/customer-configurations/professions/${editingProfession.id}`, values);
+      } else {
+        response = await postRequest('/api/customer-configurations/professions', values);
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || `Failed to ${editingProfession ? 'update' : 'create'} profession`);
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       toast.success(`Profession ${editingProfession ? 'updated' : 'created'} successfully`);

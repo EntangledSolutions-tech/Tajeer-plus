@@ -15,6 +15,7 @@ import CustomTextarea from '../../../reusableComponents/CustomTextarea';
 import CustomSwitch from '../../../reusableComponents/CustomSwitch';
 import CustomColorInput from '../../../reusableComponents/CustomColorInput';
 import CustomModal from '../../../reusableComponents/CustomModal';
+import { useHttpService } from '../../../../lib/http-service';
 
 type VehicleStatus = Database['public']['Tables']['vehicle_statuses']['Row'];
 
@@ -24,6 +25,7 @@ interface StatusesProps {
 }
 
 export default function Statuses({ loading, onDelete }: StatusesProps) {
+  const { getRequest, postRequest, putRequest } = useHttpService();
   const [statuses, setStatuses] = useState<VehicleStatus[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -77,13 +79,16 @@ export default function Statuses({ loading, onDelete }: StatusesProps) {
         ...(debouncedSearch && { search: debouncedSearch })
       });
 
-      const response = await fetch(`/api/vehicle-configuration/statuses?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch statuses');
-      const data = await response.json();
-      setStatuses(data.statuses || []);
+      const response = await getRequest(`/api/vehicle-configuration/statuses?${params}`);
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      setStatuses(response.data.statuses || []);
       setPagination(prev => ({
         ...prev,
-        total: data.pagination?.total || 0
+        total: response.data.pagination?.total || 0
       }));
     } catch (error) {
       console.error('Error fetching statuses:', error);
@@ -95,28 +100,18 @@ export default function Statuses({ loading, onDelete }: StatusesProps) {
 
   const handleSubmit = async (values: any, { setSubmitting, resetForm }: any) => {
     try {
-      if (editingStatus) {
-        const response = await fetch('/api/vehicle-configuration/statuses', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...values, id: editingStatus.id })
-        });
+      let response;
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update status');
+      if (editingStatus) {
+        response = await putRequest('/api/vehicle-configuration/statuses', { ...values, id: editingStatus.id });
+        if (response.error) {
+          throw new Error(response.error);
         }
         setIsEditModalOpen(false);
       } else {
-        const response = await fetch('/api/vehicle-configuration/statuses', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values)
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create status');
+        response = await postRequest('/api/vehicle-configuration/statuses', values);
+        if (response.error) {
+          throw new Error(response.error);
         }
         setIsAddModalOpen(false);
       }
@@ -151,13 +146,15 @@ export default function Statuses({ loading, onDelete }: StatusesProps) {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/vehicle-configuration/statuses');
-      if (!response.ok) throw new Error('Failed to export statuses');
-      const data = await response.json();
+      const response = await getRequest('/api/vehicle-configuration/statuses');
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
 
       const csvContent = [
         ['Code', 'Name', 'Description', 'Color', 'Status', 'Created At'],
-        ...(data.statuses || []).map((status: any) => [
+        ...(response.data.statuses || []).map((status: any) => [
           status.code || '',
           status.name || '',
           status.description || '',

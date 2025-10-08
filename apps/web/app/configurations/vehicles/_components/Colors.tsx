@@ -15,6 +15,7 @@ import CustomTextarea from '../../../reusableComponents/CustomTextarea';
 import CustomSwitch from '../../../reusableComponents/CustomSwitch';
 import CustomColorInput from '../../../reusableComponents/CustomColorInput';
 import CustomModal from '../../../reusableComponents/CustomModal';
+import { useHttpService } from '../../../../lib/http-service';
 
 type VehicleColor = Database['public']['Tables']['vehicle_colors']['Row'];
 
@@ -24,6 +25,7 @@ interface ColorsProps {
 }
 
 export default function Colors({ loading, onDelete }: ColorsProps) {
+  const { getRequest, postRequest, putRequest } = useHttpService();
   const [colors, setColors] = useState<VehicleColor[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -77,13 +79,16 @@ export default function Colors({ loading, onDelete }: ColorsProps) {
         ...(debouncedSearch && { search: debouncedSearch })
       });
 
-      const response = await fetch(`/api/vehicle-configuration/colors?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch colors');
-      const data = await response.json();
-      setColors(data.colors || []);
+      const response = await getRequest(`/api/vehicle-configuration/colors?${params}`);
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      setColors(response.data.colors || []);
       setPagination(prev => ({
         ...prev,
-        total: data.pagination?.total || 0
+        total: response.data.pagination?.total || 0
       }));
     } catch (error) {
       console.error('Error fetching colors:', error);
@@ -95,28 +100,18 @@ export default function Colors({ loading, onDelete }: ColorsProps) {
 
   const handleSubmit = async (values: any, { setSubmitting, resetForm }: any) => {
     try {
-      if (editingColor) {
-        const response = await fetch('/api/vehicle-configuration/colors', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...values, id: editingColor.id })
-        });
+      let response;
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update color');
+      if (editingColor) {
+        response = await putRequest('/api/vehicle-configuration/colors', { ...values, id: editingColor.id });
+        if (response.error) {
+          throw new Error(response.error);
         }
         setIsEditModalOpen(false);
       } else {
-        const response = await fetch('/api/vehicle-configuration/colors', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values)
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create color');
+        response = await postRequest('/api/vehicle-configuration/colors', values);
+        if (response.error) {
+          throw new Error(response.error);
         }
         setIsAddModalOpen(false);
       }
@@ -151,13 +146,15 @@ export default function Colors({ loading, onDelete }: ColorsProps) {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/vehicle-configuration/colors');
-      if (!response.ok) throw new Error('Failed to export colors');
-      const data = await response.json();
+      const response = await getRequest('/api/vehicle-configuration/colors');
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
 
       const csvContent = [
         ['Code', 'Name', 'Description', 'Hex Code', 'Status', 'Created At'],
-        ...(data.colors || []).map((color: any) => [
+        ...(response.data.colors || []).map((color: any) => [
           color.code || '',
           color.name || '',
           color.description || '',

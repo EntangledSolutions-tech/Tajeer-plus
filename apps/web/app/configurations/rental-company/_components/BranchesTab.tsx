@@ -3,8 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@kit/ui/button';
 import { Plus, Pencil, Trash2, FileSpreadsheet, Eye } from 'lucide-react';
-import { Formik, Form } from 'formik';
-import * as Yup from 'yup';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import CustomTable, { TableColumn, TableAction } from '../../../reusableComponents/CustomTable';
@@ -12,11 +10,8 @@ import { CollapsibleSection } from '../../../reusableComponents/CollapsibleSecti
 import { SearchBar } from '../../../reusableComponents/SearchBar';
 import { SimpleButton } from '../../../reusableComponents/CustomButton';
 import CustomButton from '../../../reusableComponents/CustomButton';
-import CustomInput from '../../../reusableComponents/CustomInput';
-import CustomTextarea from '../../../reusableComponents/CustomTextarea';
-import CustomSwitch from '../../../reusableComponents/CustomSwitch';
-import CustomSelect from '../../../reusableComponents/CustomSelect';
-import CustomModal from '../../../reusableComponents/CustomModal';
+import { BranchModal } from '../../../reusableComponents/BranchModal';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface Branch {
   id: string;
@@ -48,6 +43,7 @@ interface BranchesTabProps {
 
 export default function BranchesTab({ loading, onDelete }: BranchesTabProps) {
   const router = useRouter();
+  const { getRequest, postRequest, putRequest } = useHttpService();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -57,86 +53,6 @@ export default function BranchesTab({ loading, onDelete }: BranchesTabProps) {
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 });
   const [isLoading, setIsLoading] = useState(false);
 
-  // Validation schema
-  const validationSchema = Yup.object({
-    name: Yup.string()
-      .required('Branch name is required')
-      .min(2, 'Branch name must be at least 2 characters')
-      .max(100, 'Branch name must be less than 100 characters'),
-    code: Yup.string()
-      .required('Branch code is required')
-      .min(2, 'Branch code must be at least 2 characters')
-      .max(20, 'Branch code must be less than 20 characters'),
-    address: Yup.string()
-      .max(500, 'Address must be less than 500 characters'),
-    phone: Yup.string()
-      .max(20, 'Phone must be less than 20 characters'),
-    email: Yup.string()
-      .email('Invalid email format')
-      .max(100, 'Email must be less than 100 characters'),
-    manager_name: Yup.string()
-      .max(100, 'Manager name must be less than 100 characters'),
-    city_region: Yup.string()
-      .max(100, 'City/Region must be less than 100 characters'),
-    commercial_registration_number: Yup.string()
-      .max(50, 'Commercial registration number must be less than 50 characters'),
-    website: Yup.string()
-      .max(255, 'Website must be less than 255 characters'),
-    branch_license_number: Yup.string()
-      .max(50, 'Branch license number must be less than 50 characters'),
-    is_rental_office: Yup.boolean(),
-    has_no_cars: Yup.boolean(),
-    has_cars_and_employees: Yup.boolean(),
-    is_maintenance_center: Yup.boolean(),
-    has_shift_system_support: Yup.boolean(),
-    is_limousine_office: Yup.boolean(),
-    is_active: Yup.boolean()
-  });
-
-  // Initial form values
-  const getInitialValues = () => {
-    if (modalMode === 'edit' && editingBranch) {
-      return {
-        name: editingBranch.name || '',
-        code: editingBranch.code || '',
-        address: editingBranch.address || '',
-        phone: editingBranch.phone || '',
-        email: editingBranch.email || '',
-        manager_name: editingBranch.manager_name || '',
-        city_region: editingBranch.city_region || '',
-        commercial_registration_number: editingBranch.commercial_registration_number || '',
-        website: editingBranch.website || '',
-        branch_license_number: editingBranch.branch_license_number || '',
-        is_rental_office: editingBranch.is_rental_office ?? false,
-        has_no_cars: editingBranch.has_no_cars ?? false,
-        has_cars_and_employees: editingBranch.has_cars_and_employees ?? false,
-        is_maintenance_center: editingBranch.is_maintenance_center ?? false,
-        has_shift_system_support: editingBranch.has_shift_system_support ?? false,
-        is_limousine_office: editingBranch.is_limousine_office ?? false,
-        is_active: editingBranch.is_active ?? true
-      };
-    }
-
-    return {
-      name: '',
-      code: '',
-      address: '',
-      phone: '',
-      email: '',
-      manager_name: '',
-      city_region: '',
-      commercial_registration_number: '',
-      website: '',
-      branch_license_number: '',
-      is_rental_office: false,
-      has_no_cars: false,
-      has_cars_and_employees: false,
-      is_maintenance_center: false,
-      has_shift_system_support: false,
-      is_limousine_office: false,
-      is_active: true
-    };
-  };
 
   // Helper functions for modal operations
   const openAddModal = () => {
@@ -178,13 +94,16 @@ export default function BranchesTab({ loading, onDelete }: BranchesTabProps) {
         ...(debouncedSearch && { search: debouncedSearch })
       });
 
-      const response = await fetch(`/api/branches?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch branches');
-      const data = await response.json();
-      setBranches(data.branches || []);
+      const response = await getRequest(`/api/branches?${params}`);
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      setBranches(response.data.branches || []);
       setPagination(prev => ({
         ...prev,
-        total: data.pagination?.total || 0
+        total: response.data.pagination?.total || 0
       }));
     } catch (error) {
       console.error('Error fetching branches:', error);
@@ -194,29 +113,19 @@ export default function BranchesTab({ loading, onDelete }: BranchesTabProps) {
     }
   };
 
-  const handleSubmit = async (values: any, { setSubmitting, resetForm }: any) => {
+  const handleSubmit = async (values: any) => {
     try {
-      if (editingBranch) {
-        const response = await fetch(`/api/branches/${editingBranch.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values)
-        });
+      let response;
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update branch');
+      if (editingBranch) {
+        response = await putRequest(`/api/branches/${editingBranch.id}`, values);
+        if (response.error) {
+          throw new Error(response.error);
         }
       } else {
-        const response = await fetch('/api/branches', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values)
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create branch');
+        response = await postRequest('/api/branches', values);
+        if (response.error) {
+          throw new Error(response.error);
         }
       }
 
@@ -230,8 +139,7 @@ export default function BranchesTab({ loading, onDelete }: BranchesTabProps) {
       } else {
         alert('An unexpected error occurred while saving the branch');
       }
-    } finally {
-      setSubmitting(false);
+      throw error; // Re-throw to let the modal handle the error state
     }
   };
 
@@ -249,13 +157,15 @@ export default function BranchesTab({ loading, onDelete }: BranchesTabProps) {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/branches');
-      if (!response.ok) throw new Error('Failed to export branches');
-      const data = await response.json();
+      const response = await getRequest('/api/branches');
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
 
       const csvContent = [
         ['Code', 'Name', 'City/Region', 'Address', 'Phone', 'Email', 'Manager', 'Status', 'Created At'],
-        ...(data.branches || []).map((branch: any) => [
+        ...(response.data.branches || []).map((branch: any) => [
           branch.code || '',
           branch.name || '',
           branch.city_region || '',
@@ -402,135 +312,14 @@ export default function BranchesTab({ loading, onDelete }: BranchesTabProps) {
         />
       </CollapsibleSection>
 
-      {/* Single Modal for Add/Edit */}
-      <CustomModal
+      {/* Branch Modal */}
+      <BranchModal
         isOpen={isModalOpen}
         onClose={closeModal}
-        title={modalMode === 'add' ? 'Add New Branch' : 'Edit Branch'}
-        subtitle={modalMode === 'add' ? 'Enter the details for the new branch.' : 'Update the details for this branch.'}
-        maxWidth="sm:max-w-[800px]"
-      >
-        <Formik
-          initialValues={getInitialValues()}
-          validationSchema={validationSchema}
-          onSubmit={handleSubmit}
-          enableReinitialize
-        >
-          <Form>
-            <div className="grid gap-4 py-4 px-6">
-              <div className="grid grid-cols-2 gap-4">
-                <CustomInput
-                  name="name"
-                  label="Branch Name"
-                  required
-                  placeholder="Enter branch name"
-                />
-                <CustomInput
-                  name="code"
-                  label="Branch Code"
-                  required
-                  placeholder="Enter branch code"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <CustomInput
-                  name="city_region"
-                  label="City/Region"
-                  placeholder="Enter city or region"
-                />
-                <CustomInput
-                  name="phone"
-                  label="Phone"
-                  placeholder="Enter phone number"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <CustomInput
-                  name="email"
-                  label="Email"
-                  type="email"
-                  placeholder="Enter email address"
-                />
-                <CustomInput
-                  name="website"
-                  label="Website"
-                  placeholder="eg. welmrental.com"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <CustomInput
-                  name="commercial_registration_number"
-                  label="Commercial registration number"
-                  placeholder="Enter number"
-                />
-                <CustomInput
-                  name="branch_license_number"
-                  label="Branch license number"
-                  placeholder="Enter number"
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                <CustomInput
-                  name="manager_name"
-                  label="Manager Name"
-                  placeholder="Enter manager name"
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                <CustomTextarea
-                  name="address"
-                  label="Address"
-                  placeholder="Enter branch address"
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium">Branch Roles</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-2">
-                      <CustomSwitch name="is_rental_office" />
-                      <label className="text-sm">Branch is a rental office</label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CustomSwitch name="has_no_cars" />
-                      <label className="text-sm">Branch does not have cars</label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CustomSwitch name="has_cars_and_employees" />
-                      <label className="text-sm">Branch has cars and employees</label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CustomSwitch name="is_maintenance_center" />
-                      <label className="text-sm">Branch is a maintenance center</label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CustomSwitch name="has_shift_system_support" />
-                      <label className="text-sm">Branch has a shift system support</label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <CustomSwitch name="is_limousine_office" />
-                      <label className="text-sm">Branch is a limousine office</label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                <CustomSwitch
-                  name="is_active"
-                  label="Active"
-                />
-              </div>
-            </div>
-            <div className="bg-white px-6 py-4 border-t border-primary/20 flex-shrink-0">
-              <div className="flex justify-end">
-                <CustomButton type="submit" className="bg-primary hover:bg-primary/90 text-white">
-                  {modalMode === 'add' ? 'Save Branch' : 'Update Branch'}
-                </CustomButton>
-              </div>
-            </div>
-          </Form>
-        </Formik>
-      </CustomModal>
+        onSubmit={handleSubmit}
+        mode={modalMode}
+        initialData={editingBranch || undefined}
+      />
     </>
   );
 }

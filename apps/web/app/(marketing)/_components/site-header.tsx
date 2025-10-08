@@ -6,13 +6,18 @@ import { AppLogo } from '~/components/app-logo';
 
 import { SiteHeaderAccountSection } from './site-header-account-section';
 import { SiteNavigation } from './site-navigation';
+import { ProfileAccountDropdownContainer } from '~/components/personal-account-dropdown-container';
 
 export function SiteHeader(props: { user?: User | null }) {
   return (
-    <Header
-      logo={<AppLogo />}
-      navigation={<SiteNavigation />}
-      actions={<SiteHeaderAccountSection user={props.user ?? null} />}
-    />
+    <div className="absolute top-0 left-0 right-0 z-50">
+      <Header
+        className="bg-transparent backdrop-blur-none"
+        style={{ backgroundColor: 'transparent !important' }}
+        logo={<AppLogo />}
+        navigation={<SiteNavigation />}
+        actions={ <ProfileAccountDropdownContainer   showProfileName={false} />}
+      />
+    </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { toast } from '@kit/ui/sonner';
-import { ArrowRight, Calendar, Car, CheckCircle, FileSpreadsheet, Filter, Wrench } from 'lucide-react';
+import { ArrowRight, Calendar, Car, CheckCircle, FileSpreadsheet, Filter, Wrench, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import CustomButton from '../reusableComponents/CustomButton';
@@ -10,6 +10,7 @@ import CustomTable, { TableAction, TableColumn } from '../reusableComponents/Cus
 import { SearchBar } from '../reusableComponents/SearchBar';
 import { SummaryCard } from '../reusableComponents/SummaryCard';
 import VehicleModal from './VehicleModal/index';
+import { useHttpService } from '../../lib/http-service';
 
 interface Vehicle {
   id: string;
@@ -39,6 +40,7 @@ export default function VehicleList() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [refetchTrigger, setRefetchTrigger] = useState(0);
+  const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
 
   // Column definitions for CustomTable
   const columns: TableColumn[] = [
@@ -177,39 +179,137 @@ export default function VehicleList() {
   const [model, setModel] = useState('');
   const [year, setYear] = useState('');
 
+  // Enhanced filter state
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    make: '',
+    model: '',
+    color: '',
+    carClass: '',
+    branch: '',
+    plateRegistrationType: '',
+    minMileage: '',
+    maxMileage: '',
+    minExpectedSalePrice: '',
+    maxExpectedSalePrice: '',
+    isActive: ''
+  });
+
+  // Options for filters
+  const [makes, setMakes] = useState<any[]>([]);
+  const [models, setModels] = useState<any[]>([]);
+  const [colors, setColors] = useState<any[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
+
+  // Fetch filter options
+  const fetchFilterOptions = useCallback(async () => {
+    try {
+      const [makesResponse, colorsResponse, branchesResponse] = await Promise.all([
+        getRequest('/api/vehicle-configuration/makes?limit=1000'),
+        getRequest('/api/vehicle-configuration/colors?limit=1000'),
+        getRequest('/api/branches?limit=1000')
+      ]);
+
+      if (makesResponse.success && makesResponse.data) {
+        setMakes(makesResponse.data.makes || []);
+      }
+
+      if (colorsResponse.success && colorsResponse.data) {
+        setColors(colorsResponse.data.colors || []);
+      }
+
+      if (branchesResponse.success && branchesResponse.data) {
+        setBranches(branchesResponse.data.branches || []);
+      }
+    } catch (error) {
+      console.error('Error fetching filter options:', error);
+    }
+  }, []);
+
   // Fetch vehicle statuses from database
   const fetchVehicleStatuses = useCallback(async () => {
     try {
-      const response = await fetch('/api/vehicle-configuration/statuses?limit=100');
-      const result = await response.json();
+      const response = await getRequest('/api/vehicle-configuration/statuses?limit=100');
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch vehicle statuses');
-      }
+      if (response.success && response.data) {
+        const result = response.data;
+        // Convert statuses to the format expected by CustomTable
+        const statusConfigData: any = { status: {} };
+        const statusOptionsData = [{ label: 'All Status', value: 'all' }];
 
-            // Convert statuses to the format expected by CustomTable
-      const statusConfigData: any = { status: {} };
-      const statusOptionsData = [{ label: 'All Status', value: 'all' }];
-
-      result.statuses.forEach((status: any) => {
-        // Use inline styles instead of dynamic CSS classes to avoid parsing issues
-        statusConfigData.status[status.name] = {
-          className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-          label: status.name,
-          style: {
-            backgroundColor: `${status.color}20`, // 20% opacity
-            color: status.color,
-            border: `1px solid ${status.color}40` // 40% opacity for border
-          }
-        };
-        statusOptionsData.push({
-          label: status.name,
-          value: status.name.toLowerCase().replace(/\s+/g, '_')
+        result.statuses.forEach((status: any) => {
+          // Use inline styles instead of dynamic CSS classes to avoid parsing issues
+          statusConfigData.status[status.name] = {
+            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+            label: status.name,
+            style: {
+              backgroundColor: `${status.color}20`, // 20% opacity
+              color: status.color,
+              border: `1px solid ${status.color}40` // 40% opacity for border
+            }
+          };
+          statusOptionsData.push({
+            label: status.name,
+            value: status.name.toLowerCase().replace(/\s+/g, '_')
+          });
         });
-      });
 
-      setStatusConfig(statusConfigData);
-      setStatusOptions(statusOptionsData);
+        setStatusConfig(statusConfigData);
+        setStatusOptions(statusOptionsData);
+      } else {
+        console.error('Error fetching vehicle statuses:', response.error);
+        if (response.error) {
+          alert(`Error: ${response.error}`);
+        }
+        // Fallback to default status config if API fails
+        setStatusConfig({
+          status: {
+            'Available': {
+              className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+              label: 'Available',
+              style: {
+                backgroundColor: '#10B98120',
+                color: '#10B981',
+                border: '1px solid #10B98140'
+              }
+            },
+            'Rented': {
+              className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+              label: 'Rented',
+              style: {
+                backgroundColor: '#3B82F620',
+                color: '#3B82F6',
+                border: '1px solid #3B82F640'
+              }
+            },
+            'Maintenance': {
+              className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+              label: 'Maintenance',
+              style: {
+                backgroundColor: '#F59E0B20',
+                color: '#F59E0B',
+                border: '1px solid #F59E0B40'
+              }
+            },
+            'Out of Service': {
+              className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
+              label: 'Out of Service',
+              style: {
+                backgroundColor: '#EF444420',
+                color: '#EF4444',
+                border: '1px solid #EF444440'
+              }
+            }
+          }
+        });
+        setStatusOptions([
+          { label: 'All Status', value: 'all' },
+          { label: 'Available', value: 'available' },
+          { label: 'Rented', value: 'rented' },
+          { label: 'Maintenance', value: 'maintenance' },
+          { label: 'Out of Service', value: 'out_of_service' }
+        ]);
+      }
     } catch (err: any) {
       console.error('Error fetching vehicle statuses:', err);
       // Fallback to default status config if API fails
@@ -286,48 +386,66 @@ export default function VehicleList() {
         year: year
       });
 
-      const response = await fetch(`/api/vehicles?${params}`);
-      const result = await response.json();
+      // Add enhanced filters
+      if (filters.make) params.append('make_id', filters.make);
+      if (filters.model) params.append('model_id', filters.model);
+      if (filters.color) params.append('color_id', filters.color);
+      if (filters.carClass) params.append('car_class', filters.carClass);
+      if (filters.branch) params.append('branch_id', filters.branch);
+      if (filters.plateRegistrationType) params.append('plate_registration_type', filters.plateRegistrationType);
+      if (filters.minMileage) params.append('min_mileage', filters.minMileage);
+      if (filters.maxMileage) params.append('max_mileage', filters.maxMileage);
+      if (filters.minExpectedSalePrice) params.append('min_expected_sale_price', filters.minExpectedSalePrice);
+      if (filters.maxExpectedSalePrice) params.append('max_expected_sale_price', filters.maxExpectedSalePrice);
+      if (filters.isActive) params.append('is_active', filters.isActive);
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch vehicles');
+      const response = await getRequest(`/api/vehicles?${params}`);
+
+      if (response.success && response.data) {
+        const result = response.data;
+        // Add status field to vehicles data and normalize make/color/model
+        const vehiclesWithStatus = (result.vehicles || []).map((vehicle: any) => {
+          // Handle the joined data structure with foreign keys
+          const makeName = vehicle.make?.name || 'Unknown';
+          const modelName = vehicle.model?.name || 'Unknown';
+          const colorName = vehicle.color?.name || 'Unknown';
+          const colorHex = vehicle.color?.hex_code;
+          const statusName = vehicle.status?.name || 'Available';
+          const ownerName = vehicle.owner?.name || 'Unknown';
+          const actualUserName = vehicle.actual_user?.name || 'Unknown';
+
+          return {
+            ...vehicle,
+            make: makeName,
+            model: modelName,
+            color: colorName,
+            colorHex: colorHex,
+            status: statusName,
+            owner: ownerName,
+            actual_user: actualUserName
+          };
+        });
+        setVehicles(vehiclesWithStatus);
+        setPagination(result.pagination || pagination);
+      } else {
+        console.error('Error fetching vehicles:', response.error);
+        if (response.error) {
+          alert(`Error: ${response.error}`);
+        }
+        setVehicles([]);
       }
-
-      // Add status field to vehicles data and normalize make/color/model
-      const vehiclesWithStatus = (result.vehicles || []).map((vehicle: any) => {
-        // Handle the joined data structure with foreign keys
-        const makeName = vehicle.make?.name || 'Unknown';
-        const modelName = vehicle.model?.name || 'Unknown';
-        const colorName = vehicle.color?.name || 'Unknown';
-        const colorHex = vehicle.color?.hex_code;
-        const statusName = vehicle.status?.name || 'Available';
-        const ownerName = vehicle.owner?.name || 'Unknown';
-        const actualUserName = vehicle.actual_user?.name || 'Unknown';
-
-        return {
-          ...vehicle,
-          make: makeName,
-          model: modelName,
-          color: colorName,
-          colorHex: colorHex,
-          status: statusName,
-          owner: ownerName,
-          actual_user: actualUserName
-        };
-      });
-      setVehicles(vehiclesWithStatus);
-      setPagination(result.pagination || pagination);
     } catch (err: any) {
       toast.error('Error fetching vehicles: ' + (err?.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, pagination.page, pagination.limit, status, model, year]);
+  }, [debouncedSearch, pagination.page, pagination.limit, status, model, year, filters]);
 
   useEffect(() => {
     fetchVehicleStatuses();
+    fetchFilterOptions();
     fetchVehicles();
-  }, [fetchVehicleStatuses, fetchVehicles]);
+  }, [fetchVehicleStatuses, fetchFilterOptions, fetchVehicles]);
 
   // Separate effect for refetch trigger
   useEffect(() => {
@@ -355,6 +473,45 @@ export default function VehicleList() {
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
+  // Calculate active filters count
+  const activeFiltersCount = Object.values(filters).filter(value => value !== '').length;
+
+  // Handle filter changes
+  const handleFilterChange = (filterKey: string, value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterKey]: value
+    }));
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setFilters({
+      make: '',
+      model: '',
+      color: '',
+      carClass: '',
+      branch: '',
+      plateRegistrationType: '',
+      minMileage: '',
+      maxMileage: '',
+      minExpectedSalePrice: '',
+      maxExpectedSalePrice: '',
+      isActive: ''
+    });
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  // Clear specific filter
+  const clearFilter = (filterKey: string) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterKey]: ''
+    }));
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
   const handleExportExcel = async () => {
     try {
       // Build query parameters for export (without pagination)
@@ -365,22 +522,23 @@ export default function VehicleList() {
         year: year
       });
 
-      const response = await fetch(`/api/vehicles/export?${params}`);
+      const response = await getRequest(`/api/vehicles/export?${params}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to export vehicles');
+      if (response.success && response.data) {
+        // Create blob and download
+        const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `vehicles_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success('Vehicles exported successfully');
+      } else {
+        throw new Error(response.error || 'Failed to export vehicles');
       }
-
-      // Create blob and download
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `vehicles_export_${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
     } catch (error) {
       console.error('Export error:', error);
       toast.error('Failed to export vehicles');
@@ -495,8 +653,18 @@ export default function VehicleList() {
               placeholder="Search"
               width="w-72"
             />
-            <CustomButton isSecondary size="sm" className="p-2">
+            <CustomButton
+              isSecondary
+              size="sm"
+              className="p-2 relative"
+              onClick={() => setShowFilters(!showFilters)}
+            >
               <Filter className="w-5 h-5 text-primary" />
+              {activeFiltersCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                  {activeFiltersCount}
+                </span>
+              )}
             </CustomButton>
             <CustomButton
               isSecondary
@@ -508,6 +676,185 @@ export default function VehicleList() {
             </CustomButton>
           </div>
         </div>
+
+        {/* Filter Panel */}
+        {showFilters && (
+          <div className="p-6 border-b border-gray-100 bg-gray-50">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-primary">Filter Vehicles</h3>
+              <button
+                onClick={clearAllFilters}
+                className="text-sm text-primary hover:text-primary/80 underline"
+              >
+                Clear All
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {/* Make Filter */}
+              <div>
+                <label className="block text-sm font-medium text-primary mb-1">
+                  Make
+                </label>
+                <select
+                  value={filters.make}
+                  onChange={(e) => handleFilterChange('make', e.target.value)}
+                  className="w-full px-3 py-2 border border-primary/30 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">All Makes</option>
+                  {makes.map((make) => (
+                    <option key={make.id} value={make.id}>
+                      {make.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Color Filter */}
+              <div>
+                <label className="block text-sm font-medium text-primary mb-1">
+                  Color
+                </label>
+                <select
+                  value={filters.color}
+                  onChange={(e) => handleFilterChange('color', e.target.value)}
+                  className="w-full px-3 py-2 border border-primary/30 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">All Colors</option>
+                  {colors.map((color) => (
+                    <option key={color.id} value={color.id}>
+                      {color.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Car Class Filter */}
+              <div>
+                <label className="block text-sm font-medium text-primary mb-1">
+                  Car Class
+                </label>
+                <select
+                  value={filters.carClass}
+                  onChange={(e) => handleFilterChange('carClass', e.target.value)}
+                  className="w-full px-3 py-2 border border-primary/30 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">All Classes</option>
+                  <option value="economy">Economy</option>
+                  <option value="compact">Compact</option>
+                  <option value="midsize">Midsize</option>
+                  <option value="fullsize">Full Size</option>
+                  <option value="luxury">Luxury</option>
+                  <option value="suv">SUV</option>
+                  <option value="truck">Truck</option>
+                  <option value="van">Van</option>
+                </select>
+              </div>
+
+              {/* Branch Filter */}
+              <div>
+                <label className="block text-sm font-medium text-primary mb-1">
+                  Branch
+                </label>
+                <select
+                  value={filters.branch}
+                  onChange={(e) => handleFilterChange('branch', e.target.value)}
+                  className="w-full px-3 py-2 border border-primary/30 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                >
+                  <option value="">All Branches</option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Mileage Range */}
+              <div>
+                <label className="block text-sm font-medium text-primary mb-1">
+                  Min Mileage
+                </label>
+                <input
+                  type="number"
+                  value={filters.minMileage}
+                  onChange={(e) => handleFilterChange('minMileage', e.target.value)}
+                  placeholder="Min mileage"
+                  className="w-full px-3 py-2 border border-primary/30 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-primary mb-1">
+                  Max Mileage
+                </label>
+                <input
+                  type="number"
+                  value={filters.maxMileage}
+                  onChange={(e) => handleFilterChange('maxMileage', e.target.value)}
+                  placeholder="Max mileage"
+                  className="w-full px-3 py-2 border border-primary/30 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              {/* Price Range */}
+              <div>
+                <label className="block text-sm font-medium text-primary mb-1">
+                  Min Price
+                </label>
+                <input
+                  type="number"
+                  value={filters.minExpectedSalePrice}
+                  onChange={(e) => handleFilterChange('minExpectedSalePrice', e.target.value)}
+                  placeholder="Min price"
+                  className="w-full px-3 py-2 border border-primary/30 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-primary mb-1">
+                  Max Price
+                </label>
+                <input
+                  type="number"
+                  value={filters.maxExpectedSalePrice}
+                  onChange={(e) => handleFilterChange('maxExpectedSalePrice', e.target.value)}
+                  placeholder="Max price"
+                  className="w-full px-3 py-2 border border-primary/30 rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+            </div>
+
+            {/* Active Filters Display */}
+            {activeFiltersCount > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(filters).map(([key, value]) => {
+                    if (value === '') return null;
+                    const displayValue = key.includes('make') ? makes.find(m => m.id === value)?.name :
+                                      key.includes('color') ? colors.find(c => c.id === value)?.name :
+                                      key.includes('branch') ? branches.find(b => b.id === value)?.name :
+                                      value;
+                    return (
+                      <span
+                        key={key}
+                        className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-sm rounded-md"
+                      >
+                        <span className="capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}: {displayValue}</span>
+                        <button
+                          onClick={() => clearFilter(key)}
+                          className="text-primary/60 hover:text-primary"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* CustomTable */}
         <CustomTable

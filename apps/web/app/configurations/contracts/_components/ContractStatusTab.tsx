@@ -16,6 +16,7 @@ import CustomTextarea from '../../../reusableComponents/CustomTextarea';
 import CustomSwitch from '../../../reusableComponents/CustomSwitch';
 import CustomColorInput from '../../../reusableComponents/CustomColorInput';
 import CustomModal from '../../../reusableComponents/CustomModal';
+import { useHttpService } from '../../../../lib/http-service';
 
 type ContractStatus = Database['public']['Tables']['contract_statuses']['Row'];
 
@@ -33,6 +34,8 @@ export default function ContractStatusTab({ loading, onDelete }: ContractStatusT
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0 });
   const [isLoading, setIsLoading] = useState(false);
+
+  const { getRequest, postRequest, putRequest } = useHttpService();
 
   // Validation schema
   const validationSchema = Yup.object({
@@ -78,14 +81,21 @@ export default function ContractStatusTab({ loading, onDelete }: ContractStatusT
         ...(debouncedSearch && { search: debouncedSearch })
       });
 
-      const response = await fetch(`/api/contract-configuration/statuses?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch statuses');
-      const data = await response.json();
-      setStatuses(data.statuses || []);
-      setPagination(prev => ({
-        ...prev,
-        total: data.pagination?.total || 0
-      }));
+      const response = await getRequest(`/api/contract-configuration/statuses?${params}`);
+
+      if (response.success && response.data) {
+        setStatuses(response.data.statuses || []);
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.pagination?.total || 0
+        }));
+      } else {
+        console.error('Error fetching statuses:', response.error);
+        setStatuses([]);
+        if (response.error) {
+          alert(`Error: ${response.error}`);
+        }
+      }
     } catch (error) {
       console.error('Error fetching statuses:', error);
       setStatuses([]);
@@ -96,35 +106,26 @@ export default function ContractStatusTab({ loading, onDelete }: ContractStatusT
 
   const handleSubmit = async (values: any, { setSubmitting, resetForm }: any) => {
     try {
+      let response;
+
       if (editingStatus) {
-        const response = await fetch('/api/contract-configuration/statuses', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...values, id: editingStatus.id })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update status');
-        }
-        setIsEditModalOpen(false);
+        response = await putRequest('/api/contract-configuration/statuses', { ...values, id: editingStatus.id });
       } else {
-        const response = await fetch('/api/contract-configuration/statuses', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values)
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create status');
-        }
-        setIsAddModalOpen(false);
+        response = await postRequest('/api/contract-configuration/statuses', values);
       }
 
-      resetForm();
-      setEditingStatus(null);
-      fetchStatuses();
+      if (response.success) {
+        if (editingStatus) {
+          setIsEditModalOpen(false);
+        } else {
+          setIsAddModalOpen(false);
+        }
+        resetForm();
+        setEditingStatus(null);
+        fetchStatuses();
+      } else {
+        throw new Error(response.error || 'Failed to save status');
+      }
     } catch (error) {
       console.error('Error saving status:', error);
       if (error instanceof Error) {
@@ -152,33 +153,39 @@ export default function ContractStatusTab({ loading, onDelete }: ContractStatusT
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/contract-configuration/statuses');
-      if (!response.ok) throw new Error('Failed to export statuses');
-      const data = await response.json();
+      const response = await getRequest('/api/contract-configuration/statuses');
 
-      const csvContent = [
-        ['Code', 'Name', 'Description', 'Color', 'Status', 'Created At'],
-        ...(data.statuses || []).map((status: any) => [
-          status.code || '',
-          status.name || '',
-          status.description || '',
-          status.color || '',
-          status.is_active ? 'Active' : 'Inactive',
-          status.created_at ? new Date(status.created_at).toLocaleDateString() : ''
-        ])
-      ].map(row => row.join(',')).join('\n');
+      if (response.success && response.data) {
+        const csvContent = [
+          ['Code', 'Name', 'Description', 'Color', 'Status', 'Created At'],
+          ...(response.data.statuses || []).map((status: any) => [
+            status.code || '',
+            status.name || '',
+            status.description || '',
+            status.color || '',
+            status.is_active ? 'Active' : 'Inactive',
+            status.created_at ? new Date(status.created_at).toLocaleDateString() : ''
+          ])
+        ].map(row => row.join(',')).join('\n');
 
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'contract-statuses.csv';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'contract-statuses.csv';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        console.error('Export error:', response.error);
+        if (response.error) {
+          alert(`Export failed: ${response.error}`);
+        }
+      }
     } catch (error) {
       console.error('Export error:', error);
+      alert('Export failed due to an unexpected error');
     }
   };
 

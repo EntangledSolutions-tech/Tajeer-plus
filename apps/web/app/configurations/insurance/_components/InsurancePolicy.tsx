@@ -8,6 +8,7 @@ import CustomTable, { TableColumn, TableAction } from '../../../reusableComponen
 import InsuranceModal from './InsuranceModal';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kit/ui/dialog';
 import { toast } from 'sonner';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface InsurancePolicy {
   id: string;
@@ -36,16 +37,19 @@ export default function InsurancePolicy({ loading }: InsurancePolicyProps) {
   const [deletePolicy, setDeletePolicy] = useState<InsurancePolicy | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
+  const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
+
   // Fetch policies from API
   const fetchPolicies = async () => {
     try {
       setFetchLoading(true);
-      const response = await fetch('/api/insurance-policies');
-      if (!response.ok) {
-        throw new Error('Failed to fetch policies');
+      const response = await getRequest('/api/insurance-policies');
+
+      if (response.success && response.data) {
+        setPolicies(response.data.policies || []);
+      } else {
+        throw new Error(response.error || 'Failed to fetch policies');
       }
-      const data = await response.json();
-      setPolicies(data.policies || []);
     } catch (error) {
       console.error('Error fetching policies:', error);
       toast.error('Failed to fetch insurance policies');
@@ -62,43 +66,28 @@ export default function InsurancePolicy({ loading }: InsurancePolicyProps) {
   const handleSubmit = async (values: any) => {
     try {
       setIsLoading(true);
+      let response;
 
       if (editingPolicy) {
         // Update existing policy
-        const response = await fetch(`/api/insurance-policies/${editingPolicy.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(values),
-        });
+        response = await putRequest(`/api/insurance-policies/${editingPolicy.id}`, values);
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update policy');
+        if (response.success && response.data) {
+          setPolicies(policies.map(p => p.id === editingPolicy.id ? response.data.policy : p));
+          toast.success('Insurance policy updated successfully');
+        } else {
+          throw new Error(response.error || 'Failed to update policy');
         }
-
-        const data = await response.json();
-        setPolicies(policies.map(p => p.id === editingPolicy.id ? data.policy : p));
-        toast.success('Insurance policy updated successfully');
       } else {
         // Create new policy
-        const response = await fetch('/api/insurance-policies', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(values),
-        });
+        response = await postRequest('/api/insurance-policies', values);
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create policy');
+        if (response.success && response.data) {
+          setPolicies([response.data.policy, ...policies]);
+          toast.success('Insurance policy created successfully');
+        } else {
+          throw new Error(response.error || 'Failed to create policy');
         }
-
-        const data = await response.json();
-        setPolicies([data.policy, ...policies]);
-        toast.success('Insurance policy created successfully');
       }
 
       setIsModalOpen(false);
@@ -129,16 +118,14 @@ export default function InsurancePolicy({ loading }: InsurancePolicyProps) {
 
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/insurance-policies/${deletePolicy.id}`, {
-        method: 'DELETE',
-      });
+      const response = await deleteRequest(`/api/insurance-policies/${deletePolicy.id}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to delete policy');
+      if (response.success) {
+        setPolicies(policies.filter(p => p.id !== deletePolicy.id));
+        toast.success('Insurance policy deleted successfully');
+      } else {
+        throw new Error(response.error || 'Failed to delete policy');
       }
-
-      setPolicies(policies.filter(p => p.id !== deletePolicy.id));
-      toast.success('Insurance policy deleted successfully');
     } catch (error) {
       console.error('Error deleting policy:', error);
       toast.error('Failed to delete policy');

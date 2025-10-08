@@ -9,6 +9,7 @@ import { ArrowLeft, Edit, MoreHorizontal, Phone, Mail, MapPin, Globe, FileText, 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import CustomButton from '../../../reusableComponents/CustomButton';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface Branch {
   id: string;
@@ -41,6 +42,8 @@ export default function BranchDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { getRequest } = useHttpService();
+
   useEffect(() => {
     fetchBranchDetails();
   }, [branchId]);
@@ -48,14 +51,13 @@ export default function BranchDetailsPage() {
   const fetchBranchDetails = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/branches/${branchId}`);
+      const response = await getRequest(`/api/branches/${branchId}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch branch details');
+      if (response.success && response.data) {
+        setBranch(response.data.branch);
+      } else {
+        throw new Error(response.error || 'Failed to fetch branch details');
       }
-
-      const data = await response.json();
-      setBranch(data.branch);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

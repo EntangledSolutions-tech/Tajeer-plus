@@ -6,6 +6,7 @@ import CustomInput from '../../../reusableComponents/CustomInput';
 import CustomSelect from '../../../reusableComponents/CustomSelect';
 import SearchableSelect from '../../../reusableComponents/SearchableSelect';
 import CustomButton from '../../../reusableComponents/CustomButton';
+import { useHttpService } from '../../../../lib/http-service';
 
 type BaseField = {
   label: string;
@@ -40,6 +41,7 @@ type VehicleField = SearchableSelectField | SelectField | InputField;
 
 export default function VehicleDetailsStep() {
   const { values, setFieldValue } = useFormikContext<any>();
+  const { getRequest } = useHttpService();
   const [makes, setMakes] = useState<any[]>([]);
   const [models, setModels] = useState<any[]>([]);
   const [colors, setColors] = useState<any[]>([]);
@@ -56,10 +58,9 @@ export default function VehicleDetailsStep() {
   const fetchMakes = async () => {
     try {
       setLoading(prev => ({ ...prev, makes: true }));
-      const response = await fetch('/api/vehicle-configuration/makes');
-      if (response.ok) {
-        const data = await response.json();
-        const makeOptions = data.makes?.map((make: any) => ({
+      const result = await getRequest('/api/vehicle-configuration/makes');
+      if (result.success && result.data) {
+        const makeOptions = result.data.makes?.map((make: any) => ({
           key: make.code || make.name,
           id: make.id,
           value: make.name,
@@ -83,10 +84,9 @@ export default function VehicleDetailsStep() {
 
     try {
       setLoading(prev => ({ ...prev, models: true }));
-      const response = await fetch(`/api/vehicle-configuration/models?make_id=${makeId}`);
-      if (response.ok) {
-        const data = await response.json();
-        const modelOptions = data.models?.map((model: any) => ({
+      const result = await getRequest(`/api/vehicle-configuration/models?make_id=${makeId}`);
+      if (result.success && result.data) {
+        const modelOptions = result.data.models?.map((model: any) => ({
           key: model.code || model.name,
           id: model.id,
           value: model.name,
@@ -105,10 +105,9 @@ export default function VehicleDetailsStep() {
   const fetchColors = async () => {
     try {
       setLoading(prev => ({ ...prev, colors: true }));
-      const response = await fetch('/api/vehicle-configuration/colors');
-      if (response.ok) {
-        const data = await response.json();
-        const colorOptions = data.colors?.map((color: any) => ({
+      const result = await getRequest('/api/vehicle-configuration/colors');
+      if (result.success && result.data) {
+        const colorOptions = result.data.colors?.map((color: any) => ({
           key: color.name, // Use name directly for easier matching
           id: color.id,
           value: (
@@ -135,10 +134,9 @@ export default function VehicleDetailsStep() {
   const fetchBranches = async () => {
     try {
       setLoading(prev => ({ ...prev, branches: true }));
-      const response = await fetch('/api/branches');
-      if (response.ok) {
-        const data = await response.json();
-        const branchOptions = data.branches?.filter((branch: any) => branch.is_active).map((branch: any) => ({
+      const result = await getRequest('/api/branches');
+      if (result.success && result.data) {
+        const branchOptions = result.data.branches?.filter((branch: any) => branch.is_active).map((branch: any) => ({
           key: branch.code,
           id: branch.id,
           value: branch.name,

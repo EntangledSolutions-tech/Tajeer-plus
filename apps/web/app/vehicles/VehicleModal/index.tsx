@@ -9,7 +9,9 @@ import AdditionalDetailsStep from './VehicleStepper/AdditionalDetailsStep';
 import CustomButton from '../../reusableComponents/CustomButton';
 import CustomStepperModal, { StepperModalStep } from '../../reusableComponents/CustomStepperModal';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
+import { useHttpService } from '../../../lib/http-service';
 import { Plus } from 'lucide-react';
+import { toast } from '@kit/ui/sonner';
 
 // Define stepper steps
 const stepperSteps: StepperModalStep[] = [
@@ -141,6 +143,7 @@ const initialValues = {
 export default function VehicleModal({ onVehicleAdded }: { onVehicleAdded?: () => void }) {
   const [documents, setDocuments] = React.useState<{ name: string; file: File }[]>([]);
   const supabase = useSupabase();
+  const { postRequest } = useHttpService();
 
   const handleDocumentsChange = React.useCallback((docs: { name: string; file: File }[]) => {
     setDocuments(docs);
@@ -167,24 +170,20 @@ export default function VehicleModal({ onVehicleAdded }: { onVehicleAdded?: () =
       })
     );
 
-    const response = await fetch('/api/add-vehicle', {
-      method: 'POST',
-      body: JSON.stringify({
-        vehicle: values,
-        pricing: values,
-        expirations: values,
-        depreciation: values,
-        additional_details: values,
-        documents: uploadedDocs
-      }),
-      headers: { 'Content-Type': 'application/json' }
+    const result = await postRequest('/api/add-vehicle', {
+      vehicle: values,
+      pricing: values,
+      expirations: values,
+      depreciation: values,
+      additional_details: values,
+      documents: uploadedDocs
     });
 
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.error || 'Failed to add vehicle');
+    if (result.error) {
+      throw new Error(result.error);
     }
+
+    toast.success('Vehicle added successfully');
   };
 
   return (

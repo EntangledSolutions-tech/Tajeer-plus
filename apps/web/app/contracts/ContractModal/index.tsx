@@ -8,16 +8,12 @@ import ContractDetailsStep from './ContractStepper/ContractDetailsStep';
 import CustomerDetailsStep from './ContractStepper/CustomerDetailsStep';
 import VehicleDetailsStep from './ContractStepper/VehicleDetailsStep';
 import PricingTermsStep from './ContractStepper/PricingTermsStep';
-import VehicleInspectionStep from './ContractStepper/VehicleInspectionStep';
-import DocumentsStep from './ContractStepper/DocumentsStep';
+import SummaryStep from './ContractStepper/SummaryStep';
 import * as Yup from 'yup';
+import { useHttpService } from '../../../lib/http-service';
+import { contractValidationSchema, customerDetailsSchema, vehicleDetailsSchema, documentsSchema, pricingTermsSchema, contractDetailsSchema } from './validation-schema';
 
 const steps: StepperModalStep[] = [
-  {
-    id: 'contract-details',
-    name: 'Contract Details',
-    component: ContractDetailsStep
-  },
   {
     id: 'customer-details',
     name: 'Customer Details',
@@ -29,158 +25,33 @@ const steps: StepperModalStep[] = [
     component: VehicleDetailsStep
   },
   {
+    id: 'contract-details',
+    name: 'Contract Details',
+    component: ContractDetailsStep
+  },
+  {
     id: 'pricing-terms',
     name: 'Pricing & Terms',
     component: PricingTermsStep
   },
   {
-    id: 'vehicle-inspection',
-    name: 'Vehicle Inspection',
-    component: VehicleInspectionStep
-  },
-  {
-    id: 'documents',
-    name: 'Documents',
-    component: DocumentsStep
+    id: 'summary',
+    name: 'Summary',
+    component: SummaryStep
   }
 ];
 
-const contractDetailsSchema = Yup.object({
-  startDate: Yup.string()
-    .required('Start date is required')
-    .test('not-past', 'Start date cannot be in the past', function(value) {
-      if (!value) return false;
-      const selectedDate = new Date(value);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return selectedDate >= today;
-    }),
-  endDate: Yup.string()
-    .required('End date is required')
-    .when('startDate', ([startDate], schema) => {
-      return startDate
-        ? schema.test('after-start', 'End date must be at least one day after start date', function(value) {
-            if (!value || !startDate) return false;
-            const start = new Date(startDate as string);
-            const end = new Date(value);
-            return end > start;
-          })
-        : schema;
-    }),
-  type: Yup.string().required('Type is required'),
-  insuranceType: Yup.string().required('Insurance type is required'),
-  statusId: Yup.string().required('Status is required'),
-  contractNumberType: Yup.string().required('Contract number type is required'),
-  contractNumber: Yup.string().when('contractNumberType', {
-    is: 'dynamic',
-    then: (schema) => schema.required('Contract number is required'),
-    otherwise: (schema) => schema
-  }),
-  tajeerNumber: Yup.string().when('contractNumberType', {
-    is: 'linked',
-    then: (schema) => schema.required('Tajeer number is required'),
-    otherwise: (schema) => schema
-  })
-});
-
-const customerDetailsSchema = Yup.object({
-  customerType: Yup.string().required('Customer type is required'),
-  selectedCustomerId: Yup.string().when('customerType', {
-    is: 'existing',
-    then: (schema) => schema.required('Please select a customer'),
-    otherwise: (schema) => schema
-  }),
-  customerName: Yup.string().when('customerType', {
-    is: 'new',
-    then: (schema) => schema.required('Customer name is required'),
-    otherwise: (schema) => schema
-  }),
-  customerIdType: Yup.string().when('customerType', {
-    is: 'new',
-    then: (schema) => schema.required('ID type is required'),
-    otherwise: (schema) => schema
-  }),
-  customerIdNumber: Yup.string().when('customerType', {
-    is: 'new',
-    then: (schema) => schema.required('ID number is required'),
-    otherwise: (schema) => schema
-  }),
-  customerClassification: Yup.string().when('customerType', {
-    is: 'new',
-    then: (schema) => schema.required('Classification is required'),
-    otherwise: (schema) => schema
-  }),
-  customerDateOfBirth: Yup.string().when('customerType', {
-    is: 'new',
-    then: (schema) => schema.required('Date of birth is required'),
-    otherwise: (schema) => schema
-  }),
-  customerLicenseType: Yup.string().when('customerType', {
-    is: 'new',
-    then: (schema) => schema.required('License type is required'),
-    otherwise: (schema) => schema
-  }),
-  customerAddress: Yup.string().when('customerType', {
-    is: 'new',
-    then: (schema) => schema.required('Address is required'),
-    otherwise: (schema) => schema
-  })
-});
-
-const vehicleDetailsSchema = Yup.object({
-  selectedVehicleId: Yup.string().required('Please select a vehicle'),
-  vehiclePlate: Yup.string().required('Vehicle plate is required'),
-  vehicleSerialNumber: Yup.string().required('Vehicle serial number is required')
-});
-
-const pricingTermsSchema = Yup.object({
-  dailyRentalRate: Yup.string().required('Daily rental rate is required'),
-  hourlyDelayRate: Yup.string().required('Hourly delay rate is required'),
-  currentKm: Yup.string().required('Current km is required'),
-  rentalDays: Yup.string().required('Rental days is required'),
-  permittedDailyKm: Yup.string().required('Permitted daily km is required'),
-  excessKmRate: Yup.string().required('Excess km rate is required'),
-  paymentMethod: Yup.string().required('Payment method is required'),
-  totalAmount: Yup.string().required('Total amount is required')
-});
-
-const vehicleInspectionSchema = Yup.object({
-  selectedInspector: Yup.string().required('Please select an inspector'),
-  inspectorName: Yup.string().required('Inspector name is required')
-});
-
-const documentsSchema = Yup.object({
-  documentsCount: Yup.number().min(1, 'At least one document is required'),
-  documents: Yup.array().of(
-    Yup.object({
-      name: Yup.string().required('Document name is required'),
-      uploaded: Yup.boolean().oneOf([true], 'Document must be uploaded')
-    })
-  ).min(1, 'At least one document is required')
-});
-
+// Use step-specific validation schemas
 const stepSchemas = [
-  contractDetailsSchema,
-  customerDetailsSchema,
-  vehicleDetailsSchema,
-  pricingTermsSchema,
-  vehicleInspectionSchema,
-  documentsSchema,
+  customerDetailsSchema,    // Step 1 - Customer Details
+  vehicleDetailsSchema,     // Step 2 - Vehicle Details
+  contractDetailsSchema,    // Step 3 - Contract Details
+  pricingTermsSchema,       // Step 4 - Pricing & Terms
+  Yup.object({}),          // Step 5 - Summary (no validation needed)
 ];
 
 const initialValues = {
-  // Step 1 - Contract Details
-  startDate: '',
-  endDate: '',
-  type: '',
-  insuranceType: '',
-  statusId: '',
-  contractNumberType: 'dynamic',
-  contractNumber: '',
-  tajeerNumber: '',
-
-    // Step 2 - Customer Details
-  customerType: 'existing',
+  // Step 1 - Customer Details
   selectedCustomerId: '',
   customerName: '',
   customerIdType: '',
@@ -189,11 +60,30 @@ const initialValues = {
   customerDateOfBirth: '',
   customerLicenseType: '',
   customerAddress: '',
+  customerMobile: '',
+  customerStatus: '',
+  customerStatusId: '',
+  customerNationality: '',
 
-  // Step 3 - Vehicle Details
+  // Step 2 - Vehicle Details
   selectedVehicleId: '',
   vehiclePlate: '',
   vehicleSerialNumber: '',
+  vehiclePlateRegistrationType: '',
+  vehicleMakeYear: '',
+  vehicleModel: '',
+  vehicleMake: '',
+  vehicleColor: '',
+  vehicleMileage: 0,
+  vehicleStatus: '',
+  vehicleDailyRentRate: 0,
+
+  // Step 3 - Contract Details
+  startDate: new Date().toISOString().split('T')[0], // Current date in YYYY-MM-DD format
+  endDate: '',
+  durationType: 'duration',
+  durationInDays: 1, // Default to 1 day
+  totalFees: 0,
 
   // Step 4 - Pricing & Terms
   dailyRentalRate: '0',
@@ -203,16 +93,11 @@ const initialValues = {
   permittedDailyKm: '0',
   excessKmRate: '0',
   paymentMethod: 'cash',
-  membershipEnabled: false,
   totalAmount: '0',
+  deposit: '0',
 
-  // Step 5 - Vehicle Inspection
-  selectedInspector: '',
-  inspectorName: '',
 
-  // Step 6 - Documents
-  documentsCount: 0,
-  documents: [],
+  // Step 6 - Summary (no additional fields needed)
 };
 
 interface ContractModalProps {
@@ -229,108 +114,83 @@ export default function ContractModal({
   initialContract
 }: ContractModalProps) {
   const supabase = useSupabase();
+  const { postRequest, putRequest } = useHttpService();
 
   // Get initial values for edit mode
   const getEditInitialValues = () => {
     if (!initialContract) return initialValues;
 
+    // Helper function to safely get nested values
+    const getNestedValue = (obj: any, path: string, defaultValue: any = '') => {
+      return path.split('.').reduce((current, key) => current?.[key], obj) ?? defaultValue;
+    };
+
     return {
-      // Step 1 - Contract Details
-      startDate: initialContract.start_date || '',
-      endDate: initialContract.end_date || '',
-      type: initialContract.type || '',
-      insuranceType: initialContract.insurance_type || '',
-      statusId: initialContract.status_id || '',
-      contractNumberType: initialContract.contract_number_type || 'dynamic',
-      contractNumber: initialContract.contract_number || '',
-      tajeerNumber: initialContract.tajeer_number || '',
-
-      // Step 2 - Customer Details
-      customerType: initialContract.customer_type || 'existing',
+      // Step 1 - Customer Details
       selectedCustomerId: initialContract.selected_customer_id || '',
-      customerName: initialContract.customer_name || '',
-      customerIdType: initialContract.customer_id_type || '',
-      customerIdNumber: initialContract.customer_id_number || '',
-      customerClassification: initialContract.customer_classification || '',
-      customerDateOfBirth: initialContract.customer_date_of_birth || '',
-      customerLicenseType: initialContract.customer_license_type || '',
-      customerAddress: initialContract.customer_address || '',
+      customerName: getNestedValue(initialContract, 'customer.name') || initialContract.customer_name || '',
+      customerIdType: getNestedValue(initialContract, 'customer.id_type') || initialContract.customer_id_type || '',
+      customerIdNumber: getNestedValue(initialContract, 'customer.id_number') || initialContract.customer_id_number || '',
+      customerClassification: getNestedValue(initialContract, 'customer.classification') || initialContract.customer_classification || '',
+      customerDateOfBirth: getNestedValue(initialContract, 'customer.date_of_birth') || initialContract.customer_date_of_birth || '',
+      customerLicenseType: getNestedValue(initialContract, 'customer.license_type') || initialContract.customer_license_type || '',
+      customerAddress: getNestedValue(initialContract, 'customer.address') || initialContract.customer_address || '',
+      customerMobile: getNestedValue(initialContract, 'customer.mobile_number') || initialContract.customer_mobile || '',
+      customerStatus: getNestedValue(initialContract, 'customer.status') || initialContract.customer_status || '',
+      customerStatusId: getNestedValue(initialContract, 'customer.status_id') || initialContract.customer_status_id || '',
+      customerNationality: getNestedValue(initialContract, 'customer.nationality') || initialContract.customer_nationality || '',
 
-      // Step 3 - Vehicle Details
+      // Step 2 - Vehicle Details
       selectedVehicleId: initialContract.selected_vehicle_id || '',
       vehiclePlate: initialContract.vehicle_plate || '',
       vehicleSerialNumber: initialContract.vehicle_serial_number || '',
+      vehiclePlateRegistrationType: initialContract.vehicle_plate_registration_type || 'Private',
+      vehicleMakeYear: initialContract.vehicle_make_year || '',
+      vehicleModel: initialContract.vehicle_model || '',
+      vehicleMake: initialContract.vehicle_make || '',
+      vehicleColor: initialContract.vehicle_color || '',
+      vehicleMileage: initialContract.vehicle_mileage || 0,
+      vehicleStatus: initialContract.vehicle_status || 'Available',
+      vehicleDailyRentRate: initialContract.vehicle_daily_rent_rate || initialContract.daily_rental_rate || 0,
+      vehicleHourlyDelayRate: initialContract.vehicle_hourly_delay_rate || initialContract.hourly_delay_rate || 0,
+      vehiclePermittedDailyKm: initialContract.vehicle_permitted_daily_km || initialContract.permitted_daily_km || 0,
+      vehicleExcessKmRate: initialContract.vehicle_excess_km_rate || initialContract.excess_km_rate || 0,
+
+      // Step 3 - Contract Details
+      startDate: initialContract.start_date || '',
+      endDate: initialContract.end_date || '',
+      durationType: initialContract.duration_type || 'duration',
+      durationInDays: initialContract.duration_in_days || 1,
+      totalFees: initialContract.total_fees || 0,
+      statusId: initialContract.status_id || '',
+      contractNumber: initialContract.contract_number || '',
 
       // Step 4 - Pricing & Terms
       dailyRentalRate: initialContract.daily_rental_rate?.toString() || '0',
       hourlyDelayRate: initialContract.hourly_delay_rate?.toString() || '0',
-      currentKm: initialContract.current_km || '0',
-      rentalDays: initialContract.rental_days?.toString() || '0',
+      currentKm: initialContract.current_km?.toString() || '0',
+      rentalDays: initialContract.rental_days?.toString() || '1',
       permittedDailyKm: initialContract.permitted_daily_km?.toString() || '0',
       excessKmRate: initialContract.excess_km_rate?.toString() || '0',
       paymentMethod: initialContract.payment_method || 'cash',
-      membershipEnabled: initialContract.membership_enabled || false,
       totalAmount: initialContract.total_amount?.toString() || '0',
+      deposit: initialContract.deposit?.toString() || '0',
 
-      // Step 5 - Vehicle Inspection
-      selectedInspector: initialContract.selected_inspector || '',
-      inspectorName: initialContract.inspector_name || '',
 
-      // Step 6 - Documents
-      documentsCount: initialContract.documents_count || 0,
-      documents: initialContract.documents || [],
+      // Step 6 - Summary (no additional fields needed)
     };
   };
 
   const submitContract = async (values: any, stepData: any) => {
     try {
-      // First, upload all documents to storage if any exist
-      let uploadedDocuments: any[] = [];
-      if (values.documents && values.documents.length > 0) {
-        for (const doc of values.documents as any[]) {
-          if (doc.file) {
-            const formData = new FormData();
-            formData.append('file', doc.file);
-            formData.append('documentName', doc.name);
-
-            const response = await fetch(`/api/contracts/temp/documents`, {
-              method: 'POST',
-              body: formData
-            });
-
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(`Failed to upload document ${doc.name}: ${errorData.error}`);
-            }
-
-            const uploadResult = await response.json();
-            uploadedDocuments.push({
-              id: doc.id,
-              name: doc.name,
-              fileName: doc.file.name,
-              fileUrl: uploadResult.document.fileUrl,
-              fileSize: doc.file.size,
-              mimeType: doc.file.type,
-              uploaded: true,
-              uploadedAt: new Date().toISOString()
-            });
-          }
-        }
-      }
-
       // Prepare contract data for database insertion
       const contractData = {
         // Contract Details
         start_date: values.startDate,
         end_date: values.endDate,
-        type: values.type,
-        insurance_type: values.insuranceType,
-        contract_number_type: values.contractNumberType,
         contract_number: values.contractNumber || null,
-        tajeer_number: values.tajeerNumber || null,
 
         // Customer Details
-        customer_type: values.customerType,
         selected_customer_id: values.selectedCustomerId || null,
         customer_name: values.customerName || null,
         customer_id_type: values.customerIdType || null,
@@ -353,19 +213,10 @@ export default function ContractModal({
         permitted_daily_km: parseInt(values.permittedDailyKm) || 0,
         excess_km_rate: parseFloat(values.excessKmRate) || 0,
         payment_method: values.paymentMethod || 'cash',
-        membership_enabled: Boolean(values.membershipEnabled),
         total_amount: parseFloat(values.totalAmount) || 0,
+        deposit: parseFloat(values.deposit) || 0,
 
-        // Vehicle Inspection
-        selected_inspector: values.selectedInspector,
-        inspector_name: values.inspectorName,
 
-        // Documents
-        documents_count: uploadedDocuments.length,
-        documents: uploadedDocuments,
-
-        // Status - use status_id from the form
-        status_id: values.statusId
       };
 
       // Log the contract data being sent for debugging
@@ -373,59 +224,20 @@ export default function ContractModal({
 
       let response;
       if (isEdit && contractId) {
-        // Update existing contract
-        response = await fetch('/api/contracts', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            id: contractId,
-            ...contractData
-          })
-        });
+        // Update existing contract using PUT method
+        response = await putRequest(`/api/contracts/${contractId}`, contractData);
       } else {
         // Create new contract
-        response = await fetch('/api/contracts', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(contractData)
-        });
+        response = await postRequest('/api/contracts', contractData);
       }
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to ${isEdit ? 'update' : 'create'} contract`);
+      if (!response.success) {
+        throw new Error(response.error || `Failed to ${isEdit ? 'update' : 'create'} contract`);
       }
 
-      const result = await response.json();
-      const createdContract = result.contract;
+      const createdContract = response.data.contract;
 
-      // Move uploaded documents to the final contract location (only for new contracts)
-      if (!isEdit && uploadedDocuments.length > 0) {
-        for (const doc of uploadedDocuments) {
-          try {
-            const moveResponse = await fetch(`/api/contracts/${createdContract.id}/documents`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                document: doc,
-                moveFromTemp: true
-              })
-            });
-
-            if (!moveResponse.ok) {
-              console.warn(`Failed to move document ${doc.name} to final location`);
-            }
-          } catch (moveError) {
-            console.warn(`Error moving document ${doc.name}:`, moveError);
-          }
-        }
-      }
+      // Note: Document handling removed as Documents step is no longer used
 
       if (onContractAdded) {
         onContractAdded();

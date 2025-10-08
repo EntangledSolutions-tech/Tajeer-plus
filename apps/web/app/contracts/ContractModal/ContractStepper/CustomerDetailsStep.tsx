@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useFormikContext } from 'formik';
+import { useRouter } from 'next/navigation';
 import CustomInput from '../../../reusableComponents/CustomInput';
 import CustomSelect from '../../../reusableComponents/CustomSelect';
+import CustomButton from '../../../reusableComponents/CustomButton';
 import CustomSearchableDropdown, { SearchableDropdownOption } from '../../../reusableComponents/SearchableDropdown';
 import { SearchBar } from '../../../reusableComponents/SearchBar';
-import { User, Phone, MapPin } from 'lucide-react';
+import { User, Phone, MapPin, Plus } from 'lucide-react';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface Customer {
   id: string;
@@ -58,9 +61,9 @@ interface ApiResponse<T> {
 export default function CustomerDetailsStep() {
   const formik = useFormikContext<any>();
   const supabase = useSupabase();
-  const [customerType, setCustomerType] = useState('existing');
+  const { getRequest } = useHttpService();
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchInitiated, setSearchInitiated] = useState(false);
 
@@ -74,6 +77,23 @@ export default function CustomerDetailsStep() {
     licenseTypeLoading: false,
     statusesLoading: false
   });
+
+  // Get selected customer from Formik values
+  const selectedCustomer = customers.find(c => c.id === formik.values.selectedCustomerId) ||
+    (formik.values.selectedCustomerId ? {
+      id: formik.values.selectedCustomerId,
+      name: formik.values.customerName || '',
+      id_number: formik.values.customerIdNumber || '',
+      id_type: formik.values.customerIdType || '',
+      mobile: formik.values.customerMobile || '',
+      address: formik.values.customerAddress || '',
+      status: formik.values.customerStatus || 'Active',
+      status_id: formik.values.customerStatusId || '',
+      classification: formik.values.customerClassification || '',
+      nationality: formik.values.customerNationality || '',
+      date_of_birth: formik.values.customerDateOfBirth || '',
+      license_type: formik.values.customerLicenseType || ''
+    } as Customer : null);
 
     // Fetch classifications
   const fetchClassifications = async (search: string = '') => {
@@ -90,22 +110,17 @@ export default function CustomerDetailsStep() {
         searchParams.append('search', search);
       }
 
-      const response = await fetch(`/api/customer-configurations/classifications?${searchParams}`);
+      const response = await getRequest(`/api/customer-configurations/classifications?${searchParams}`);
+      if (response.success && response.data) {
+        const options: SearchableDropdownOption[] = response.data.data.map((item: Classification) => ({
+          id: item.id,
+          value: item.classification,
+          label: item.classification,
+          subLabel: item.description
+        }));
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch classifications');
+        setClassifications(options);
       }
-
-      const result: ApiResponse<Classification> = await response.json();
-
-      const options: SearchableDropdownOption[] = result.data.map(item => ({
-        id: item.id,
-        value: item.classification,
-        label: item.classification,
-        subLabel: item.description
-      }));
-
-      setClassifications(options);
     } catch (err) {
       console.error('Error fetching classifications:', err);
       setClassifications([]);
@@ -129,22 +144,17 @@ export default function CustomerDetailsStep() {
         searchParams.append('search', search);
       }
 
-      const response = await fetch(`/api/customer-configurations/license-types?${searchParams}`);
+      const response = await getRequest(`/api/customer-configurations/license-types?${searchParams}`);
+      if (response.success && response.data) {
+        const options: SearchableDropdownOption[] = response.data.data.map((item: LicenseType) => ({
+          id: item.id,
+          value: item.license_type,
+          label: item.license_type,
+          subLabel: item.description
+        }));
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch license types');
+        setLicenseTypes(options);
       }
-
-      const result: ApiResponse<LicenseType> = await response.json();
-
-      const options: SearchableDropdownOption[] = result.data.map(item => ({
-        id: item.id,
-        value: item.license_type,
-        label: item.license_type,
-        subLabel: item.description
-      }));
-
-      setLicenseTypes(options);
     } catch (err) {
       console.error('Error fetching license types:', err);
       setLicenseTypes([]);
@@ -171,14 +181,10 @@ export default function CustomerDetailsStep() {
         limit: '20' // Limit results for performance
       });
 
-      const response = await fetch(`/api/customers?${params}`);
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch customers');
+      const response = await getRequest(`/api/customers?${params}`);
+      if (response.success && response.data) {
+        setCustomers(response.data.customers || []);
       }
-
-      setCustomers(result.customers || []);
     } catch (error) {
       console.error('Error fetching customers:', error);
       setCustomers([]);
@@ -191,13 +197,9 @@ export default function CustomerDetailsStep() {
   const fetchCustomerStatuses = async () => {
     setLoading(prev => ({ ...prev, statusesLoading: true }));
     try {
-      const response = await fetch('/api/customer-configuration/statuses?limit=100');
-      if (!response.ok) {
-        throw new Error('Failed to fetch customer statuses');
-      }
-      const result = await response.json();
-      if (result.success && Array.isArray(result.statuses)) {
-        setCustomerStatuses(result.statuses);
+      const response = await getRequest('/api/customer-configuration/statuses?limit=100');
+      if (response.success && response.data && Array.isArray(response.data.statuses)) {
+        setCustomerStatuses(response.data.statuses);
       }
     } catch (err) {
       console.error('Error fetching customer statuses:', err);
@@ -225,7 +227,6 @@ export default function CustomerDetailsStep() {
     } else {
       setCustomers([]);
       setSearchInitiated(false);
-      setSelectedCustomer(null);
     }
   }, [searchTerm]);
 
@@ -236,16 +237,29 @@ export default function CustomerDetailsStep() {
       return; // Don't allow selection of blacklisted customers
     }
 
-    setSelectedCustomer(customer);
-    // Update Formik values
+    // Update Formik values with all customer data
     formik.setFieldValue('selectedCustomerId', customer.id);
-    formik.setFieldValue('customerName', customer.name);
-    formik.setFieldValue('customerIdType', customer.id_type);
-    formik.setFieldValue('customerIdNumber', customer.id_number);
-    formik.setFieldValue('customerClassification', customer.classification);
-    formik.setFieldValue('customerAddress', customer.address);
-    // Trigger validation to enable continue button
-    setTimeout(() => formik.validateForm(), 100);
+    formik.setFieldValue('customerName', customer.name || '');
+    formik.setFieldValue('customerIdType', customer.id_type || '');
+    formik.setFieldValue('customerIdNumber', customer.id_number || '');
+    formik.setFieldValue('customerClassification', customer.classification || '');
+    formik.setFieldValue('customerAddress', customer.address || '');
+    formik.setFieldValue('customerMobile', customer.mobile || '');
+    formik.setFieldValue('customerStatus', customer.status || '');
+    formik.setFieldValue('customerStatusId', customer.status_id || '');
+    formik.setFieldValue('customerNationality', customer.nationality || '');
+    formik.setFieldValue('customerDateOfBirth', customer.date_of_birth || '');
+    formik.setFieldValue('customerLicenseType', customer.license_type || '');
+
+    // Trigger validation to enable the next button
+    setTimeout(() => {
+      formik.validateForm();
+    }, 100);
+  };
+
+  const handleCreateCustomer = () => {
+    // Navigate to customers page - you can implement this based on your routing setup
+    router.push('/customers');
   };
 
   return (
@@ -254,90 +268,71 @@ export default function CustomerDetailsStep() {
         Customer Details
       </h2>
       <p className="text-primary/70 mb-8">
-        Select an existing customer or add a new customer for this contract.
+        Search for an existing customer or create a new one for this contract.
       </p>
 
-      {/* Customer Type Selection */}
-      <div className="flex gap-8 mb-8">
-        <label className="flex items-center gap-2 text-primary font-medium text-lg">
-          <input
-            type="radio"
-            name="customerType"
-            value="existing"
-            checked={customerType === 'existing'}
-            onChange={(e) => setCustomerType(e.target.value)}
-            className="accent-primary w-5 h-5"
+      {/* Customer Search Section */}
+      <div className="space-y-6">
+        {/* Search Field */}
+        <div>
+          <label className="block text-sm font-medium text-primary mb-2">Search Customer</label>
+          <SearchBar
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Search Customer"
+            width="w-full"
+            variant="white-bg"
           />
-          Existing Customer
-        </label>
-        <label className="flex items-center gap-2 text-primary font-medium text-lg">
-          <input
-            type="radio"
-            name="customerType"
-            value="new"
-            checked={customerType === 'new'}
-            onChange={(e) => setCustomerType(e.target.value)}
-            className="accent-primary w-5 h-5"
-          />
-          New Customer
-        </label>
-      </div>
+        </div>
 
-      {/* Existing Customer Section */}
-      {customerType === 'existing' && (
-        <div className="space-y-6">
-          {/* Search Field */}
-          <div>
-            <label className="block text-sm font-medium text-primary mb-2">Customer</label>
-            <SearchBar
-              value={searchTerm}
-              onChange={setSearchTerm}
-              placeholder="Search Customer"
-              width="w-full"
-              variant="white-bg"
-            />
+        {/* Loading State */}
+        {loading.customerSearchLoading && (
+          <div className="text-center py-8">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <p className="mt-2 text-primary/70">Searching customers...</p>
           </div>
+        )}
 
-                    {/* Loading State */}
-          {loading.customerSearchLoading && (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <p className="mt-2 text-primary/70">Searching customers...</p>
-            </div>
-          )}
-
-          {/* Customer Results */}
-          {searchInitiated && !loading.customerSearchLoading && (
-            <div className="space-y-3 max-h-60 overflow-y-auto">
-              {customers.length === 0 ? (
-                              <div className="text-center py-8 text-muted-foreground">
+        {/* Customer Results */}
+        {searchInitiated && !loading.customerSearchLoading && (
+          <div className="space-y-3 max-h-60 overflow-y-auto">
+            {customers.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
                 <User className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                <p>No customers found</p>
-                <p className="text-sm">Try adjusting your search terms</p>
+                <p className="text-lg font-medium mb-2">No customers found</p>
+                <p className="text-sm mb-4">Try adjusting your search terms</p>
+                <CustomButton
+                  onClick={handleCreateCustomer}
+                  variant="ghost"
+                  className="text-primary underline hover:text-primary/80 font-medium flex items-center gap-2 mx-auto p-0 h-auto"
+                >
+                  <Plus className="w-4 h-4" />
+                  Create Customer
+                </CustomButton>
               </div>
-              ) : (
-                customers.map((customer) => {
-                  const customerStatus = customerStatuses.find(s => s.name === customer.status);
-                  const isBlacklisted = customerStatus?.name === 'Blacklisted';
+            ) : (
+              customers.map((customer) => {
+                const customerStatus = customerStatuses.find(s => s.name === customer.status);
+                const isBlacklisted = customerStatus?.name === 'Blacklisted';
 
-                  return (
-                    <div
-                      key={customer.id}
-                      className={`p-4 border-2 rounded-lg transition-all ${
-                        selectedCustomer?.id === customer.id
-                          ? 'border-primary bg-primary/5'
-                          : isBlacklisted
-                          ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
-                          : 'border-primary/30 bg-white hover:border-primary/50 cursor-pointer hover:shadow-md'
-                      }`}
-                      onClick={() => handleCustomerSelect(customer)}
-                    >
+                return (
+                  <div
+                    key={customer.id}
+                    className={`p-4 border-2 rounded-lg transition-all ${
+                      selectedCustomer?.id === customer.id
+                        ? 'border-primary bg-primary/5'
+                        : isBlacklisted
+                        ? 'border-gray-300 bg-gray-50 cursor-not-allowed'
+                        : 'border-primary/30 bg-white hover:border-primary/50 cursor-pointer hover:shadow-md'
+                    }`}
+                    onClick={() => handleCustomerSelect(customer)}
+                  >
                     <div className="flex items-start justify-between">
-                                              <div className="flex-1">
-                          <h4 className={`font-semibold ${isBlacklisted ? 'text-gray-500' : 'text-primary'}`}>
-                            {customer.name}
-                            {isBlacklisted && <span className="ml-2 text-xs text-red-500">(Not Available)</span>}
-                          </h4>
+                      <div className="flex-1">
+                        <h4 className={`font-semibold ${isBlacklisted ? 'text-gray-500' : 'text-primary'}`}>
+                          {customer.name}
+                          {isBlacklisted && <span className="ml-2 text-xs text-red-500">(Not Available)</span>}
+                        </h4>
                         <p className={`text-sm mt-1 ${isBlacklisted ? 'text-gray-400' : 'text-primary/70'}`}>
                           {customer.id_type}: {customer.id_number}
                         </p>
@@ -367,113 +362,76 @@ export default function CustomerDetailsStep() {
                     </div>
                   </div>
                 );
-                })
-              )}
+              })
+            )}
+          </div>
+        )}
+
+        {/* Show create customer option when no search is initiated */}
+        {!searchInitiated && !searchTerm && (
+          <div className="text-center py-8 text-muted-foreground">
+            <User className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <p className="text-lg font-medium mb-2">Search for a customer</p>
+            <p className="text-sm mb-4">Enter a name or ID number to find existing customers</p>
+            <CustomButton
+              onClick={handleCreateCustomer}
+              variant="ghost"
+              className="text-primary underline hover:text-primary/80 font-medium flex items-center gap-2 mx-auto p-0 h-auto"
+            >
+              <Plus className="w-4 h-4" />
+              Create New Customer
+            </CustomButton>
+          </div>
+        )}
+
+        {/* Selected Customer Display */}
+        {selectedCustomer && (
+          <div className="mt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-green-800 font-medium">Selected Customer</span>
             </div>
-          )}
-
-
-        </div>
-      )}
-
-      {/* New Customer Section */}
-      {customerType === 'new' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-6">
-            {/* Name */}
-            <div>
-              <CustomInput
-                label="Name"
-                name="customerName"
-                type="text"
-                placeholder="Enter name"
-                required={true}
-              />
-            </div>
-
-            {/* ID Type */}
-            <div>
-              <CustomSelect
-                label="ID Type"
-                name="customerIdType"
-                options={[
-                  { value: '', label: 'Select ID Type' },
-                  { value: 'national_id', label: 'National ID' },
-                  { value: 'passport', label: 'Passport' },
-                  { value: 'residence_permit', label: 'Residence Permit' }
-                ]}
-                required={true}
-              />
-            </div>
-
-            {/* ID Number */}
-            <div>
-              <CustomInput
-                label="ID Number"
-                name="customerIdNumber"
-                type="text"
-                placeholder="Enter number"
-                required={true}
-              />
-            </div>
-
-            {/* Classification */}
-            <div>
-              <CustomSearchableDropdown
-                name="customerClassification"
-                label="Classification"
-                options={classifications}
-                placeholder="Select classification"
-                searchPlaceholder="Search classifications..."
-                required={true}
-                isLoading={loading.classificationLoading}
-                onSearch={fetchClassifications}
-              />
-            </div>
-
-            {/* Date of birth */}
-            <div>
-              <CustomInput
-                label="Date of birth"
-                name="customerDateOfBirth"
-                type="date"
-                placeholder="Select date"
-                required={true}
-              />
-            </div>
-
-            {/* License type */}
-            <div>
-              <CustomSearchableDropdown
-                name="customerLicenseType"
-                label="License type"
-                options={licenseTypes}
-                placeholder="Select license type"
-                searchPlaceholder="Search license types..."
-                required={true}
-                isLoading={loading.licenseTypeLoading}
-                onSearch={fetchLicenseTypes}
-              />
+            <div className="p-4 border-2 border-green-200 bg-green-50 rounded-lg">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h4 className="font-semibold text-primary text-lg mb-2">{selectedCustomer.name}</h4>
+                  <p className="text-sm text-primary/70 mb-2">
+                    {selectedCustomer.id_type}: {selectedCustomer.id_number}
+                  </p>
+                  {selectedCustomer.mobile && (
+                    <div className="flex items-center gap-1 mb-1 text-sm text-primary/70">
+                      <Phone className="w-3 h-3" />
+                      {selectedCustomer.mobile}
+                    </div>
+                  )}
+                  {selectedCustomer.address && (
+                    <div className="flex items-center gap-1 text-sm text-primary/70">
+                      <MapPin className="w-3 h-3" />
+                      {selectedCustomer.address}
+                    </div>
+                  )}
+                </div>
+                <span
+                  className="px-2 py-1 text-xs rounded-full font-medium"
+                  style={{
+                    backgroundColor: `${selectedCustomer.status === 'Active' ? '#10B981' : '#6B7280'}20`,
+                    color: selectedCustomer.status === 'Active' ? '#10B981' : '#6B7280',
+                    border: `1px solid ${selectedCustomer.status === 'Active' ? '#10B981' : '#6B7280'}40`
+                  }}
+                >
+                  {selectedCustomer.status}
+                </span>
+              </div>
             </div>
           </div>
+        )}
+      </div>
 
-          {/* Address - Full Width */}
-          <div>
-            <CustomInput
-              label="Address"
-              name="customerAddress"
-              type="text"
-              placeholder="Enter address"
-              required={true}
-            />
-          </div>
+      {/* Validation error display */}
+      {formik.touched.selectedCustomerId && formik.errors.selectedCustomerId && (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-600 text-sm">{String(formik.errors.selectedCustomerId)}</p>
         </div>
-      )}
-
-      {/* Hidden inputs for form validation */}
-      <input type="hidden" name="customerType" value={customerType} />
-      {customerType === 'existing' && selectedCustomer && (
-        <input type="hidden" name="selectedCustomerId" value={selectedCustomer.id} />
       )}
     </>
   );

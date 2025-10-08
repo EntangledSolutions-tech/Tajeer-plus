@@ -10,6 +10,7 @@ import CustomTextarea from '../../reusableComponents/CustomTextarea';
 import CustomSelect from '../../reusableComponents/CustomSelect';
 import CustomSwitch from '../../reusableComponents/CustomSwitch';
 import CustomModal from '../../reusableComponents/CustomModal';
+import { useHttpService } from '../../../lib/http-service';
 
 interface VehicleDetails {
   id: string;
@@ -97,6 +98,7 @@ export default function AccidentModal({ isOpen, onClose, vehicleId, onSuccess }:
     submitLoading: false
   });
   const [error, setError] = useState<string | null>(null);
+  const { getRequest, postRequest, putRequest } = useHttpService();
 
   // Initial form values
   const initialValues: AccidentFormValues = {
@@ -118,13 +120,17 @@ export default function AccidentModal({ isOpen, onClose, vehicleId, onSuccess }:
       setLoading(prev => ({ ...prev, vehicleLoading: true }));
       setError(null);
 
-      const response = await fetch(`/api/vehicles/${vehicleId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch vehicle details');
-      }
+      const response = await getRequest(`/api/vehicles/${vehicleId}`);
 
-      const vehicleData = await response.json();
-      setCurrentVehicle(vehicleData);
+      if (response.success && response.data) {
+        setCurrentVehicle(response.data);
+      } else {
+        console.error('Error fetching vehicle:', response.error);
+        setError('Failed to load vehicle details');
+        if (response.error) {
+          alert(`Error: ${response.error}`);
+        }
+      }
     } catch (error) {
       console.error('Error fetching vehicle:', error);
       setError('Failed to load vehicle details');
@@ -144,44 +150,35 @@ export default function AccidentModal({ isOpen, onClose, vehicleId, onSuccess }:
   const findOrCreateAccidentStatus = async (): Promise<string> => {
     try {
       // First, try to find existing accident status
-      const statusResponse = await fetch('/api/vehicle-configuration/statuses?limit=100');
-      if (statusResponse.ok) {
-        const statusData = await statusResponse.json();
-        if (statusData.success && Array.isArray(statusData.statuses)) {
-          // Look for any status containing "accident" (case insensitive)
-          const accidentStatus = statusData.statuses.find((status: any) =>
-            status.name.toLowerCase().includes('accident')
-          );
+      const statusResponse = await getRequest('/api/vehicle-configuration/statuses?limit=100');
 
-          if (accidentStatus) {
-            console.log('Found existing accident status:', accidentStatus);
-            return accidentStatus.id;
-          }
+      if (statusResponse.success && statusResponse.data && Array.isArray(statusResponse.data.statuses)) {
+        // Look for any status containing "accident" (case insensitive)
+        const accidentStatus = statusResponse.data.statuses.find((status: any) =>
+          status.name.toLowerCase().includes('accident')
+        );
+
+        if (accidentStatus) {
+          console.log('Found existing accident status:', accidentStatus);
+          return accidentStatus.id;
         }
       }
 
       // If no accident status found, create one
       console.log('No accident status found, creating new one...');
-      const createResponse = await fetch('/api/vehicle-configuration/statuses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: 'Accident',
-          description: 'Vehicle is in an accident',
-          color: '#EF4444', // Red color for accident status
-          is_active: true
-        }),
+      const createResponse = await postRequest('/api/vehicle-configuration/statuses', {
+        name: 'Accident',
+        description: 'Vehicle is in an accident',
+        color: '#EF4444', // Red color for accident status
+        is_active: true
       });
 
-      if (!createResponse.ok) {
-        throw new Error('Failed to create accident status');
+      if (createResponse.success && createResponse.data) {
+        console.log('Created new accident status:', createResponse.data);
+        return createResponse.data.id;
+      } else {
+        throw new Error(createResponse.error || 'Failed to create accident status');
       }
-
-      const newStatus = await createResponse.json();
-      console.log('Created new accident status:', newStatus);
-      return newStatus.id;
 
     } catch (error) {
       console.error('Error finding/creating accident status:', error);
@@ -192,21 +189,14 @@ export default function AccidentModal({ isOpen, onClose, vehicleId, onSuccess }:
   // Helper function to update vehicle status
   const updateVehicleStatus = async (statusId: string) => {
     try {
-      const response = await fetch(`/api/vehicles/${vehicleId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status_id: statusId }),
-      });
+      const response = await putRequest(`/api/vehicles/${vehicleId}`, { status_id: statusId });
 
-      if (!response.ok) {
-        throw new Error('Failed to update vehicle status');
+      if (response.success && response.data) {
+        console.log('Vehicle status updated:', response.data);
+        return response.data;
+      } else {
+        throw new Error(response.error || 'Failed to update vehicle status');
       }
-
-      const updatedVehicle = await response.json();
-      console.log('Vehicle status updated:', updatedVehicle);
-      return updatedVehicle;
 
     } catch (error) {
       console.error('Error updating vehicle status:', error);
@@ -240,21 +230,13 @@ export default function AccidentModal({ isOpen, onClose, vehicleId, onSuccess }:
         })
       };
 
-      const accidentResponse = await fetch(`/api/vehicles/${vehicleId}/accidents`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(accidentData),
-      });
+      const accidentResponse = await postRequest(`/api/vehicles/${vehicleId}/accidents`, accidentData);
 
-      if (!accidentResponse.ok) {
-        const errorData = await accidentResponse.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to save accident data');
+      if (accidentResponse.success && accidentResponse.data) {
+        console.log('Accident record created:', accidentResponse.data);
+      } else {
+        throw new Error(accidentResponse.error || 'Failed to save accident data');
       }
-
-      const accidentResult = await accidentResponse.json();
-      console.log('Accident record created:', accidentResult);
 
       // Step 3: Update vehicle status to Accident
       await updateVehicleStatus(accidentStatusId);

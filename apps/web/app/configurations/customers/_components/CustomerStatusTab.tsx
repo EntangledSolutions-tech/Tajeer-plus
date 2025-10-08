@@ -16,6 +16,7 @@ import CustomTextarea from '../../../reusableComponents/CustomTextarea';
 import CustomSwitch from '../../../reusableComponents/CustomSwitch';
 import CustomColorInput from '../../../reusableComponents/CustomColorInput';
 import CustomModal from '../../../reusableComponents/CustomModal';
+import { useHttpService } from '../../../../lib/http-service';
 
 type CustomerStatus = Database['public']['Tables']['customer_statuses']['Row'];
 
@@ -25,6 +26,7 @@ interface CustomerStatusTabProps {
 }
 
 export default function CustomerStatusTab({ loading, onDelete }: CustomerStatusTabProps) {
+  const { getRequest, postRequest, putRequest } = useHttpService();
   const [statuses, setStatuses] = useState<CustomerStatus[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -107,13 +109,16 @@ export default function CustomerStatusTab({ loading, onDelete }: CustomerStatusT
         ...(debouncedSearch && { search: debouncedSearch })
       });
 
-      const response = await fetch(`/api/customer-configuration/statuses?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch statuses');
-      const data = await response.json();
-      setStatuses(data.statuses || []);
+      const response = await getRequest(`/api/customer-configuration/statuses?${params}`);
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      setStatuses(response.data.statuses || []);
       setPagination(prev => ({
         ...prev,
-        total: data.pagination?.total || 0
+        total: response.data.pagination?.total || 0
       }));
     } catch (error) {
       console.error('Error fetching statuses:', error);
@@ -125,28 +130,16 @@ export default function CustomerStatusTab({ loading, onDelete }: CustomerStatusT
 
   const handleSubmit = async (values: any, { setSubmitting, resetForm }: any) => {
     try {
+      let response;
+
       if (editingStatus) {
-        const response = await fetch('/api/customer-configuration/statuses', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...values, id: editingStatus.id })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update status');
-        }
+        response = await putRequest('/api/customer-configuration/statuses', { ...values, id: editingStatus.id });
       } else {
-        const response = await fetch('/api/customer-configuration/statuses', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values)
-        });
+        response = await postRequest('/api/customer-configuration/statuses', values);
+      }
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create status');
-        }
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       // Close modal and refresh data
@@ -178,13 +171,15 @@ export default function CustomerStatusTab({ loading, onDelete }: CustomerStatusT
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/customer-configuration/statuses');
-      if (!response.ok) throw new Error('Failed to export statuses');
-      const data = await response.json();
+      const response = await getRequest('/api/customer-configuration/statuses');
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
 
       const csvContent = [
         ['Code', 'Name', 'Description', 'Color', 'Status', 'Created At'],
-        ...(data.statuses || []).map((status: any) => [
+        ...(response.data.statuses || []).map((status: any) => [
           status.code || '',
           status.name || '',
           status.description || '',

@@ -11,6 +11,7 @@ import ClassificationTab from './_components/ClassificationTab';
 import LicenseTypeTab from './_components/LicenseTypeTab';
 import CustomerStatusTab from './_components/CustomerStatusTab';
 import CustomTabs from '../../reusableComponents/CustomTabs';
+import { useHttpService } from '../../../lib/http-service';
 
 const tabs = [
   { key: 'nationality', label: 'Nationality' },
@@ -26,6 +27,8 @@ export default function CustomerConfigurationsPage() {
 
   // Delete confirmation state
   const [deleteItem, setDeleteItem] = useState<{ type: 'nationality' | 'profession' | 'classification' | 'license-type' | 'status', id: string, name: string } | null>(null);
+
+  const { deleteRequest } = useHttpService();
 
   useEffect(() => {
     // Simulate loading for initial data fetch
@@ -59,17 +62,16 @@ export default function CustomerConfigurationsPage() {
           break;
       }
 
-      const response = await fetch(`${endpoint}?id=${deleteItem.id}`, {
-        method: 'DELETE',
-      });
+      const response = await deleteRequest(`${endpoint}/${deleteItem.id}`);
 
-      if (!response.ok) throw new Error('Failed to delete item');
-
-      // Close the delete confirmation dialog
-      setDeleteItem(null);
-
-      // Force a page refresh to update the data
-      window.location.reload();
+      if (response.success) {
+        // Close the delete confirmation dialog
+        setDeleteItem(null);
+        // Force a page refresh to update the data
+        window.location.reload();
+      } else {
+        throw new Error(response.error || 'Failed to delete item');
+      }
     } catch (error) {
       console.error('Error deleting item:', error);
       setDeleteItem(null);

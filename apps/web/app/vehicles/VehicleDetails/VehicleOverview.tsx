@@ -4,6 +4,7 @@ import { Button } from '@kit/ui/button';
 import { useParams } from 'next/navigation';
 import { CollapsibleSection } from '../../reusableComponents/CollapsibleSection';
 import CustomButton from '../../reusableComponents/CustomButton';
+import { useHttpService } from '../../../lib/http-service';
 
 interface Vehicle {
   id: string;
@@ -61,6 +62,7 @@ export default function VehicleOverview() {
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { getRequest, postRequest, putRequest } = useHttpService();
 
   useEffect(() => {
     const fetchVehicleData = async () => {
@@ -79,50 +81,42 @@ export default function VehicleOverview() {
 
         if (!isUUID) {
           // If it's not a UUID, treat it as a plate number and fetch the vehicle ID
-          const vehicleResponse = await fetch(`/api/vehicles?plate_number=${vehicleId}`);
+          const vehicleResponse = await getRequest(`/api/vehicles?plate_number=${vehicleId}`);
 
-          if (!vehicleResponse.ok) {
-            throw new Error(`Failed to fetch vehicle data: ${vehicleResponse.status}`);
-          }
-
-          const vehicleResponseData = await vehicleResponse.json();
-
-          // Handle the API response format
-          let vehicleData;
-          if (vehicleResponseData && typeof vehicleResponseData === 'object') {
-            if (Array.isArray(vehicleResponseData)) {
-              vehicleData = vehicleResponseData;
-            } else if (vehicleResponseData.vehicles && Array.isArray(vehicleResponseData.vehicles)) {
-              vehicleData = vehicleResponseData.vehicles;
+          if (vehicleResponse.success && vehicleResponse.data) {
+            // Handle the API response format
+            let vehicleData;
+            if (Array.isArray(vehicleResponse.data)) {
+              vehicleData = vehicleResponse.data;
+            } else if (vehicleResponse.data.vehicles && Array.isArray(vehicleResponse.data.vehicles)) {
+              vehicleData = vehicleResponse.data.vehicles;
             } else {
               throw new Error('Unexpected vehicle response format');
             }
+
+            if (!vehicleData || !Array.isArray(vehicleData) || vehicleData.length === 0) {
+              throw new Error(`Vehicle not found for plate number: ${vehicleId}`);
+            }
+
+            const foundVehicleId = vehicleData[0]?.id;
+            if (!foundVehicleId) {
+              throw new Error('Vehicle ID not found in response');
+            }
+
+            actualVehicleId = foundVehicleId;
           } else {
-            throw new Error('Invalid vehicle response data');
+            throw new Error(vehicleResponse.error || 'Failed to fetch vehicle data');
           }
-
-          if (!vehicleData || !Array.isArray(vehicleData) || vehicleData.length === 0) {
-            throw new Error(`Vehicle not found for plate number: ${vehicleId}`);
-          }
-
-          const foundVehicleId = vehicleData[0]?.id;
-          if (!foundVehicleId) {
-            throw new Error('Vehicle ID not found in response');
-          }
-
-          actualVehicleId = foundVehicleId;
         }
 
         // Fetch vehicle details
-        const response = await fetch(`/api/vehicles/${actualVehicleId}`);
+        const response = await getRequest(`/api/vehicles/${actualVehicleId}`);
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch vehicle details: ${response.status}`);
+        if (response.success && response.data) {
+          setVehicle(response.data);
+        } else {
+          throw new Error(response.error || 'Failed to fetch vehicle details');
         }
-
-        const data = await response.json();
-        debugger
-        setVehicle(data);
       } catch (err) {
         console.error('Error fetching vehicle data:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch vehicle data');

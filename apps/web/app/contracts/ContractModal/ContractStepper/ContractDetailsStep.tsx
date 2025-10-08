@@ -2,20 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useFormikContext } from 'formik';
 import CustomInput from '../../../reusableComponents/CustomInput';
 import CustomSelect from '../../../reusableComponents/CustomSelect';
-import SearchableSelect from '../../../reusableComponents/SearchableSelect';
-
-interface ContractStatus {
-  id: string;
-  name: string;
-  color: string | null;
-  description?: string;
-}
+import { useHttpService } from '../../../../lib/http-service';
 
 export default function ContractDetailsStep() {
   const formik = useFormikContext<any>();
-  const [contractNumberType, setContractNumberType] = useState('dynamic');
-  const [contractStatuses, setContractStatuses] = useState<any[]>([]);
-  const [statusLoading, setStatusLoading] = useState(false);
+  const [durationType, setDurationType] = useState('duration');
+  const [totalFeesError, setTotalFeesError] = useState<string>('');
 
   // Get start date value to determine if end date should be enabled
   const startDate = formik.values.startDate;
@@ -33,64 +25,154 @@ export default function ContractDetailsStep() {
     const newStartDate = e.target.value;
     formik.setFieldValue('startDate', newStartDate);
 
-    // Reset end date if it's before or equal to the new start date
-    if (formik.values.endDate && formik.values.endDate <= newStartDate) {
+    // Calculate end date based on current duration type
+    calculateEndDate(newStartDate);
+
+    // Trigger validation
+    setTimeout(() => {
+      formik.validateForm();
+    }, 100);
+  };
+
+  // Handle duration type change
+  const handleDurationTypeChange = (value: string) => {
+    setDurationType(value);
+    formik.setFieldValue('durationType', value);
+
+    // Clear the dynamic fields when switching types
+    if (value === 'duration') {
+      formik.setFieldValue('totalFees', 0); // Set to 0 instead of empty string
+      setTotalFeesError(''); // Clear total fees error
+    } else {
+      formik.setFieldValue('durationInDays', 0); // Set to 0 instead of empty string
+    }
+
+    // Trigger validation update after field changes
+    setTimeout(() => {
+      formik.validateForm();
+    }, 100);
+
+    // Recalculate end date if start date exists
+    if (formik.values.startDate) {
+      calculateEndDate(formik.values.startDate);
+    }
+  };
+
+  // Handle duration in days change (real-time as user types)
+  const handleDurationInDaysChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const days = parseInt(e.target.value) || 0;
+    formik.setFieldValue('durationInDays', days);
+
+    // Calculate end date immediately as user types
+    if (formik.values.startDate) {
+      calculateEndDate(formik.values.startDate);
+    }
+
+    // Trigger validation
+    setTimeout(() => {
+      formik.validateForm();
+    }, 100);
+  };
+
+  // Handle total fees change (real-time as user types)
+  const handleTotalFeesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fees = parseFloat(e.target.value) || 0;
+    formik.setFieldValue('totalFees', fees);
+
+    // Validate total fees against vehicle daily rate
+    const vehicleDailyRate = parseFloat(formik.values.vehicleDailyRentRate) || 0;
+    if (fees > 0 && vehicleDailyRate > 0 && fees < vehicleDailyRate) {
+      setTotalFeesError('Total fees must be equal or greater than vehicle daily rate');
+    } else {
+      setTotalFeesError('');
+    }
+
+    // Calculate end date immediately as user types
+    if (formik.values.startDate && formik.values.vehicleDailyRentRate) {
+      calculateEndDate(formik.values.startDate);
+    }
+
+    // Trigger validation
+    setTimeout(() => {
+      formik.validateForm();
+    }, 100);
+  };
+
+  // Calculate end date based on start date and duration type
+  const calculateEndDate = (startDate: string) => {
+    if (!startDate) return;
+
+    let daysToAdd = 0;
+
+    if (durationType === 'duration') {
+      daysToAdd = parseInt(formik.values.durationInDays) || 0;
+    } else if (durationType === 'fees') {
+      const dailyRate = parseFloat(formik.values.vehicleDailyRentRate) || 0;
+      const totalFees = parseFloat(formik.values.totalFees) || 0;
+      daysToAdd = dailyRate > 0 ? Math.ceil(totalFees / dailyRate) : 0;
+    }
+
+    if (daysToAdd > 0) {
+      const start = new Date(startDate);
+      const end = new Date(start);
+      end.setDate(start.getDate() + daysToAdd);
+      const endDateString = end.toISOString().split('T')[0];
+      formik.setFieldValue('endDate', endDateString);
+    } else {
       formik.setFieldValue('endDate', '');
     }
   };
 
-  // Fetch contract statuses
-  const fetchContractStatuses = async () => {
-    try {
-      setStatusLoading(true);
-      const response = await fetch('/api/contract-configuration/statuses?limit=100');
-      const result = await response.json();
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch contract statuses');
+
+  // Sync durationType state with formik values when component mounts
+  useEffect(() => {
+    if (formik.values.durationType && formik.values.durationType !== durationType) {
+      setDurationType(formik.values.durationType);
+    }
+
+    // Calculate end date if we have start date and duration type
+    if (formik.values.startDate && formik.values.durationType) {
+      calculateEndDate(formik.values.startDate);
+    }
+
+    // Validate total fees when vehicle daily rate changes
+    if (durationType === 'fees' && formik.values.totalFees && formik.values.vehicleDailyRentRate) {
+      const fees = parseFloat(formik.values.totalFees) || 0;
+      const vehicleDailyRate = parseFloat(formik.values.vehicleDailyRentRate) || 0;
+      if (fees > 0 && vehicleDailyRate > 0 && fees < vehicleDailyRate) {
+        setTotalFeesError('Total fees must be equal or greater than vehicle daily rate');
+      } else {
+        setTotalFeesError('');
+      }
+    }
+
+  }, [formik.values.durationType, formik.values.startDate, formik.values.vehicleDailyRentRate, formik.values.totalFees, formik.values.durationInDays]);
+
+  // Calculate end date when component first loads if we have the required data
+  useEffect(() => {
+    if (formik.values.startDate && durationType) {
+      // Set default duration if not set
+      if (durationType === 'duration' && (!formik.values.durationInDays || formik.values.durationInDays === 0)) {
+        formik.setFieldValue('durationInDays', 1);
       }
 
-      // Format statuses for SearchableSelect
-      const statusOptions = result.statuses?.map((status: ContractStatus) => ({
-        key: status.name,
-        id: status.id,
-        value: (
-          <div className="flex items-center gap-2">
-            <div
-              className="w-3 h-3 rounded-full border border-gray-300"
-              style={{ backgroundColor: status.color || '#ccc' }}
-            />
-            <span>{status.name}</span>
-          </div>
-        ),
-        subValue: status.description
-      })) || [];
-
-      setContractStatuses(statusOptions);
-    } catch (err: any) {
-      console.error('Error fetching contract statuses:', err);
-    } finally {
-      setStatusLoading(false);
+      // Calculate end date
+      setTimeout(() => {
+        calculateEndDate(formik.values.startDate);
+      }, 100);
     }
-  };
+  }, []); // Run only on mount
 
-  // Handle contract number type change
-  const handleContractNumberTypeChange = (value: string) => {
-    setContractNumberType(value);
-    formik.setFieldValue('contractNumberType', value);
-
-    // Clear the opposite field when switching types
-    if (value === 'dynamic') {
-      formik.setFieldValue('tajeerNumber', '');
-    } else {
-      formik.setFieldValue('contractNumber', '');
-    }
-  };
-
-  // Fetch contract statuses on component mount
+  // Additional effect to ensure end date is calculated when step becomes active
   useEffect(() => {
-    fetchContractStatuses();
-  }, []);
+    if (formik.values.startDate && !formik.values.endDate) {
+      setTimeout(() => {
+        calculateEndDate(formik.values.startDate);
+      }, 200);
+    }
+  }, [formik.values.startDate, formik.values.durationInDays, durationType]);
+
 
   return (
     <>
@@ -115,125 +197,83 @@ export default function ContractDetailsStep() {
           />
         </div>
 
-        {/* End Date */}
+            {/* End Date */}
+            <div>
+              <CustomInput
+                label="End Date"
+                name="endDate"
+                type="date"
+                placeholder="Calculated automatically"
+                required={false}
+                disabled={true} // Always disabled as it's calculated
+                className="bg-gray-50"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                End date is calculated automatically based on your selection below
+              </p>
+            </div>
+
+      </div>
+
+      {/* Duration Type and Duration Fields */}
+      <div className="grid grid-cols-2 gap-6 mt-6">
+        {/* Duration Type */}
         <div>
-          <CustomInput
-            label="End Date"
-            name="endDate"
-            type="date"
-            placeholder="Select date"
+          <CustomSelect
+            label="Duration Type"
+            name="durationType"
+            options={[
+              { value: '', label: 'Select duration type' },
+              { value: 'duration', label: 'Duration' },
+              { value: 'fees', label: 'Fees' }
+            ]}
             required={true}
-            disabled={!startDate} // Disable until start date is selected
-            min={getMinEndDate()} // Must be at least one day after start date
+                onChange={(value: string) => handleDurationTypeChange(value)}
           />
-          {!startDate && (
+        </div>
+
+        {/* Dynamic Duration Field */}
+        {durationType === 'duration' && (
+          <div>
+            <CustomInput
+              label="Duration in Days"
+              name="durationInDays"
+              type="number"
+              placeholder="Enter number of days"
+              required={true}
+              min="1"
+              onChange={handleDurationInDaysChange}
+            />
             <p className="text-xs text-muted-foreground mt-1">
-              Please select a start date first
+              End date will be calculated as: Start Date + Duration
             </p>
-          )}
-        </div>
-
-        {/* Type */}
-        <div>
-          <CustomSelect
-            label="Type"
-            name="type"
-            options={[
-              { value: '', label: 'Eg. Daily, Monthly' },
-              { value: 'daily', label: 'Daily' },
-              { value: 'monthly', label: 'Monthly' },
-              { value: 'weekly', label: 'Weekly' },
-              { value: 'yearly', label: 'Yearly' }
-            ]}
-            required={true}
-          />
-        </div>
-
-        {/* Insurance Type */}
-        <div>
-          <CustomSelect
-            label="Insurance Type"
-            name="insuranceType"
-            options={[
-              { value: '', label: 'Select type' },
-              { value: 'comprehensive', label: 'Comprehensive' },
-              { value: 'third_party', label: 'Third Party' },
-              { value: 'none', label: 'None' }
-            ]}
-            required={true}
-          />
-        </div>
-
-        {/* Status */}
-        <div>
-          <SearchableSelect
-            label="Status"
-            name="statusId"
-            options={contractStatuses}
-            placeholder="Select status"
-            searchPlaceholder="Search statuses..."
-            required={true}
-            disabled={statusLoading}
-          />
-        </div>
-      </div>
-
-      {/* Contract Number Section */}
-      <div className="mt-8">
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-primary mb-3">
-            Contract Number
-          </label>
-          <div className="flex gap-4 mb-4">
-            <label className="flex items-center gap-2 text-primary font-medium">
-              <input
-                type="radio"
-                name="contractNumberType"
-                value="dynamic"
-                checked={contractNumberType === 'dynamic'}
-                onChange={(e) => handleContractNumberTypeChange(e.target.value)}
-                className="accent-primary w-4 h-4"
-              />
-              Dynamic Contract number
-            </label>
-            <label className="flex items-center gap-2 text-primary font-medium">
-              <input
-                type="radio"
-                name="contractNumberType"
-                value="linked"
-                checked={contractNumberType === 'linked'}
-                onChange={(e) => handleContractNumberTypeChange(e.target.value)}
-                className="accent-primary w-4 h-4"
-              />
-              Number linked to Tajeer
-            </label>
-          </div>
-        </div>
-
-        {contractNumberType === 'dynamic' && (
-          <div>
-            <CustomInput
-              label="Contract Number"
-              name="contractNumber"
-              type="text"
-              placeholder="Enter contract number"
-              required={true}
-            />
           </div>
         )}
 
-        {contractNumberType === 'linked' && (
+        {durationType === 'fees' && (
           <div>
             <CustomInput
-              label="Tajeer Number"
-              name="tajeerNumber"
-              type="text"
-              placeholder="Enter Tajeer linked number"
+              label="Total Fees"
+              name="totalFees"
+              type="number"
+              placeholder="Enter total fees"
               required={true}
+              min="0"
+              step="0.01"
+              isCurrency={true}
+              onChange={handleTotalFeesChange}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Vehicle daily rate: {formik.values.vehicleDailyRentRate || 0} SAR
+            </p>
+            {totalFeesError && (
+              <p className="mt-1 text-sm text-red-600">{totalFeesError}</p>
+            )}
           </div>
         )}
       </div>
+
     </>
   );
 }
+

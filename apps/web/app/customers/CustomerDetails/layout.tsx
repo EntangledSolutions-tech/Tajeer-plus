@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
 import * as Yup from 'yup';
+import { useHttpService } from '../../../lib/http-service';
 
 interface Customer {
   id: string;
@@ -84,6 +85,7 @@ export default function CustomerDetailsLayout() {
   const params = useParams();
   const customerId = params?.id as string;
   const router = useRouter();
+  const { getRequest, putRequest, deleteRequest } = useHttpService();
 
   // Customer data state
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -137,21 +139,13 @@ export default function CustomerDetailsLayout() {
       };
 
       // Call the API to update customer
-      const response = await fetch(`/api/customers/${customerId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(customerData),
-      });
+      const result = await putRequest(`/api/customers/${customerId}`, customerData);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update customer');
+      if (result.success && result.data) {
+        setCustomer(result.data);
+      } else {
+        throw new Error(result.error || 'Failed to update customer');
       }
-
-      const result = await response.json();
-      setCustomer(result);
     } catch (err: any) {
       throw new Error(err.message || 'Failed to update customer');
     }
@@ -160,17 +154,14 @@ export default function CustomerDetailsLayout() {
   // Handle customer deletion
   const handleCustomerDelete = async () => {
     try {
-      const response = await fetch(`/api/customers/${customerId}`, {
-        method: 'DELETE',
-      });
+      const result = await deleteRequest(`/api/customers/${customerId}`);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete customer');
+      if (result.success) {
+        // Redirect to customers list
+        router.push('/customers');
+      } else {
+        throw new Error(result.error || 'Failed to delete customer');
       }
-
-      // Redirect to customers list
-      router.push('/customers');
     } catch (err: any) {
       console.error('Error deleting customer:', err);
       // You might want to show a toast error here
@@ -181,13 +172,9 @@ export default function CustomerDetailsLayout() {
   const fetchCustomerStatuses = async () => {
     try {
       setLoading(prev => ({ ...prev, statuses: true }));
-      const response = await fetch('/api/customer-configuration/statuses?limit=100');
-      if (!response.ok) {
-        throw new Error('Failed to fetch customer statuses');
-      }
-      const data = await response.json();
-      if (data.success && Array.isArray(data.statuses)) {
-        setCustomerStatuses(data.statuses);
+      const result = await getRequest('/api/customer-configuration/statuses?limit=100');
+      if (result.success && result.data && Array.isArray(result.data.statuses)) {
+        setCustomerStatuses(result.data.statuses);
       }
     } catch (err) {
       console.error('Error fetching customer statuses:', err);
@@ -201,21 +188,14 @@ export default function CustomerDetailsLayout() {
   const updateCustomerStatus = async (statusId: string) => {
     try {
       setLoading(prev => ({ ...prev, statusUpdate: true }));
-      const response = await fetch(`/api/customers/${customerId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status_id: statusId }),
-      });
+      const result = await putRequest(`/api/customers/${customerId}`, { status_id: statusId });
 
-      if (!response.ok) {
-        throw new Error('Failed to update customer status');
+      if (result.success && result.data) {
+        setCustomer(result.data);
+        setIsStatusModalOpen(false);
+      } else {
+        throw new Error(result.error || 'Failed to update customer status');
       }
-
-      const updatedCustomer = await response.json();
-      setCustomer(updatedCustomer);
-      setIsStatusModalOpen(false);
     } catch (err) {
       console.error('Error updating customer status:', err);
       setError(err instanceof Error ? err.message : 'Failed to update customer status');
@@ -253,14 +233,13 @@ export default function CustomerDetailsLayout() {
         }
 
         // Fetch customer details
-        const response = await fetch(`/api/customers/${customerId}`);
+        const result = await getRequest(`/api/customers/${customerId}`);
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch customer details: ${response.status}`);
+        if (result.success && result.data) {
+          setCustomer(result.data);
+        } else {
+          throw new Error(result.error || 'Failed to fetch customer details');
         }
-
-        const data = await response.json();
-        setCustomer(data);
       } catch (err) {
         console.error('Error fetching customer data:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch customer data');
@@ -273,7 +252,7 @@ export default function CustomerDetailsLayout() {
       fetchCustomerData();
       fetchCustomerStatuses();
     }
-  }, [customerId]);
+  }, [customerId, getRequest]);
 
   if (loading.customer) {
     return (

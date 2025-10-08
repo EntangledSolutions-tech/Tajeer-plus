@@ -59,6 +59,7 @@ const routes = [
         label: 'Finance',
         path: '/finance',
         Icon: null, // Icons are now handled in the sidebar component
+        end: (path: string) => !path.startsWith('/finance'),
       },
     ],
   },

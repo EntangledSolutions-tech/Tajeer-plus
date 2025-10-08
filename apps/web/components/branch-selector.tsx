@@ -1,31 +1,76 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useBranches } from '../hooks/use-branches';
 import { useBranch } from '../contexts/branch-context';
 import CustomButton from '../app/reusableComponents/CustomButton';
+import { BranchModal } from '../app/reusableComponents/BranchModal';
+import { Plus } from 'lucide-react';
+import { useHttpService } from '../lib/http-service';
 
 interface BranchSelectorProps {
   variant?: 'transparent' | 'default';
+  onCreateBranch?: () => void;
 }
 
-export function BranchSelector({ variant = 'default' }: BranchSelectorProps) {
-  const { data: branches, isLoading, error } = useBranches();
+export function BranchSelector({ variant = 'default', onCreateBranch }: BranchSelectorProps) {
+  const { postRequest } = useHttpService();
+  const { data: branches, isLoading, error, refetch } = useBranches();
   const { selectedBranch, setSelectedBranch } = useBranch();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   // Transform branches to dropdown options
   const branchOptions = React.useMemo(() => {
     if (!branches) return [];
 
-    return branches.map(branch => ({
+    const options = branches.map(branch => ({
       label: branch.name,
       value: branch.id,
     }));
+
+    // Add "Create Branch" option at the end
+    options.push({
+      label: 'Create Branch',
+      value: 'create-branch',
+    });
+
+    return options;
   }, [branches]);
 
   const handleBranchSelect = (option: { label: string; value: string }) => {
+    if (option.value === 'create-branch') {
+      setIsCreateModalOpen(true);
+      return;
+    }
+
     const branch = branches?.find(b => b.id === option.value);
     setSelectedBranch(branch || null);
+  };
+
+  const handleCreateBranch = async (values: any) => {
+    setIsCreating(true);
+    try {
+      // Call the parent's onCreateBranch if provided, otherwise use the default API implementation
+      if (onCreateBranch) {
+        await onCreateBranch();
+      } else {
+        // Default API implementation
+        const response = await postRequest('/api/branches', values);
+
+        if (!response.success) {
+          throw new Error(response.error || 'Failed to create branch');
+        }
+      }
+      setIsCreateModalOpen(false);
+      // Refresh branches after creation
+      await refetch();
+    } catch (error) {
+      console.error('Error creating branch:', error);
+      throw error; // Re-throw to let the modal handle the error state
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const getSelectedLabel = () => {
@@ -60,14 +105,24 @@ export function BranchSelector({ variant = 'default' }: BranchSelectorProps) {
   };
 
   return (
-    <CustomButton
-      isDropdown
-      dropdownOptions={branchOptions}
-      onDropdownSelect={handleBranchSelect}
-      disabled={isLoading}
-      {...getButtonProps()}
-    >
-      {isLoading ? 'Loading...' : getSelectedLabel()}
-    </CustomButton>
+    <>
+      <CustomButton
+        isDropdown
+        dropdownOptions={branchOptions}
+        onDropdownSelect={handleBranchSelect}
+        disabled={isLoading}
+        {...getButtonProps()}
+      >
+        {isLoading ? 'Loading...' : getSelectedLabel()}
+      </CustomButton>
+
+      <BranchModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateBranch}
+        mode="add"
+        loading={isCreating}
+      />
+    </>
   );
 }

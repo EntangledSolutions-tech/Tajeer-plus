@@ -13,6 +13,7 @@ import { Calendar } from '@kit/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@kit/ui/popover';
 import { cn } from '@kit/ui/utils';
 import CustomModal from '../../../reusableComponents/CustomModal';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface InsurancePolicy {
   id?: string;
@@ -90,16 +91,19 @@ export default function InsuranceModal({
   const [insuranceOptions, setInsuranceOptions] = useState<InsuranceOption[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
 
+  const { getRequest } = useHttpService();
+
   // Fetch insurance options for the dropdown
   const fetchInsuranceOptions = async () => {
     try {
       setLoadingOptions(true);
-      const response = await fetch('/api/insurance-options');
-      if (!response.ok) {
-        throw new Error('Failed to fetch insurance options');
+      const response = await getRequest('/api/insurance-options');
+
+      if (response.success && response.data) {
+        setInsuranceOptions(response.data.insuranceOptions || []);
+      } else {
+        throw new Error(response.error || 'Failed to fetch insurance options');
       }
-      const data = await response.json();
-      setInsuranceOptions(data.insuranceOptions || []);
     } catch (error) {
       console.error('Error fetching insurance options:', error);
     } finally {

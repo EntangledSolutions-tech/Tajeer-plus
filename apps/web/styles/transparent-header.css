@@ -1,0 +1,28 @@
+/* Force transparent header */
+.site-header {
+  background-color: transparent !important;
+  backdrop-filter: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
+}
+
+.site-header * {
+  /* background-color: transparent !important; */
+}
+
+/* Ensure header content is visible */
+.site-header .container {
+  background-color: transparent !important;
+}
+
+.site-header .grid {
+  background-color: transparent !important;
+}
+
+/* Remove any borders or shadows */
+.site-header::before,
+.site-header::after {
+  display: none !important;
+}
+
+

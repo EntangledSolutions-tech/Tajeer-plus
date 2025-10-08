@@ -15,6 +15,7 @@ import CustomTextarea from '../../../reusableComponents/CustomTextarea';
 import CustomSwitch from '../../../reusableComponents/CustomSwitch';
 import CustomSearchableDropdown from '../../../reusableComponents/SearchableDropdown';
 import CustomModal from '../../../reusableComponents/CustomModal';
+import { useHttpService } from '../../../../lib/http-service';
 
 type VehicleModel = Database['public']['Tables']['vehicle_models']['Row'];
 type VehicleMake = Database['public']['Tables']['vehicle_makes']['Row'];
@@ -25,6 +26,7 @@ interface ModelsProps {
 }
 
 export default function Models({ loading, onDelete }: ModelsProps) {
+  const { getRequest, postRequest, putRequest } = useHttpService();
   const [models, setModels] = useState<VehicleModel[]>([]);
   const [makes, setMakes] = useState<VehicleMake[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -79,13 +81,16 @@ export default function Models({ loading, onDelete }: ModelsProps) {
         ...(debouncedSearch && { search: debouncedSearch })
       });
 
-      const response = await fetch(`/api/vehicle-configuration/models?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch models');
-      const data = await response.json();
-      setModels(data.models || []);
+      const response = await getRequest(`/api/vehicle-configuration/models?${params}`);
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      setModels(response.data.models || []);
       setPagination(prev => ({
         ...prev,
-        total: data.pagination?.total || 0
+        total: response.data.pagination?.total || 0
       }));
     } catch (error) {
       console.error('Error fetching models:', error);
@@ -97,10 +102,13 @@ export default function Models({ loading, onDelete }: ModelsProps) {
 
   const fetchMakes = async () => {
     try {
-      const response = await fetch('/api/vehicle-configuration/makes');
-      if (!response.ok) throw new Error('Failed to fetch makes');
-      const data = await response.json();
-      setMakes(data.makes || []);
+      const response = await getRequest('/api/vehicle-configuration/makes');
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      setMakes(response.data.makes || []);
     } catch (error) {
       console.error('Error fetching makes:', error);
       setMakes([]);
@@ -115,28 +123,18 @@ export default function Models({ loading, onDelete }: ModelsProps) {
 
   const handleSubmit = async (values: any, { setSubmitting, resetForm }: any) => {
     try {
-      if (editingModel) {
-        const response = await fetch('/api/vehicle-configuration/models', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...values, id: editingModel.id })
-        });
+      let response;
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update model');
+      if (editingModel) {
+        response = await putRequest('/api/vehicle-configuration/models', { ...values, id: editingModel.id });
+        if (response.error) {
+          throw new Error(response.error);
         }
         setIsEditModalOpen(false);
       } else {
-        const response = await fetch('/api/vehicle-configuration/models', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values)
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create model');
+        response = await postRequest('/api/vehicle-configuration/models', values);
+        if (response.error) {
+          throw new Error(response.error);
         }
         setIsAddModalOpen(false);
       }
@@ -172,13 +170,15 @@ export default function Models({ loading, onDelete }: ModelsProps) {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/vehicle-configuration/models');
-      if (!response.ok) throw new Error('Failed to export models');
-      const data = await response.json();
+      const response = await getRequest('/api/vehicle-configuration/models');
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
 
       const csvContent = [
         ['Code', 'Name', 'Description', 'Make ID', 'Status', 'Created At'],
-        ...(data.models || []).map((model: any) => [
+        ...(response.data.models || []).map((model: any) => [
           model.code || '',
           model.name || '',
           model.description || '',

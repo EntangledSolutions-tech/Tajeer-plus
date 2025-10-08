@@ -36,14 +36,7 @@ const links: Record<
     label: string;
     path: string;
   }
-> = {
-  /*
-    FAQ: {
-      label: 'marketing:faq',
-      path: '/faq',
-    },
-     */
-};
+> = {};
 
 export function SiteNavigation() {
   const NavItems = Object.values(links).map((item) => {

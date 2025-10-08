@@ -7,6 +7,7 @@ import CustomButton from '../../reusableComponents/CustomButton';
 import CustomModal from '../../reusableComponents/CustomModal';
 import { CollapsibleSection } from '../../reusableComponents/CollapsibleSection';
 import CustomTable, { TableColumn } from '../../reusableComponents/CustomTable';
+import { useHttpService } from '../../../lib/http-service';
 
 interface Document {
   id: string;
@@ -32,6 +33,7 @@ interface CustomerDocumentsProps {
 }
 
 export default function CustomerDocuments({ customerId }: CustomerDocumentsProps) {
+  const { getRequest, postRequest, deleteRequest } = useHttpService();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [filteredDocuments, setFilteredDocuments] = useState<Document[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -55,31 +57,27 @@ export default function CustomerDocuments({ customerId }: CustomerDocumentsProps
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/customers/${customerId}/documents`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          // Map API response to expected format
-          const mappedDocuments = data.documents?.map((doc: any) => {
-            return {
-              ...doc,
-              name: doc.document_name || '',
-              fileName: doc.file_name || doc.document_name || '',
-              fileUrl: doc.document_url || '',
-              fileSize: doc.file_size || 0,
-              mimeType: doc.document_type || 'unknown',
-              uploaded: true,
-              uploadedAt: doc.uploaded_at || doc.created_at || new Date().toISOString()
-            };
-          }) || [];
+      const result = await getRequest(`/api/customers/${customerId}/documents`);
 
-          setDocuments(mappedDocuments);
-          setFilteredDocuments(mappedDocuments);
-        } else {
-          setError('Failed to fetch documents');
-        }
+      if (result.success && result.data) {
+        // Map API response to expected format
+        const mappedDocuments = result.data.documents?.map((doc: any) => {
+          return {
+            ...doc,
+            name: doc.document_name || '',
+            fileName: doc.file_name || doc.document_name || '',
+            fileUrl: doc.document_url || '',
+            fileSize: doc.file_size || 0,
+            mimeType: doc.document_type || 'unknown',
+            uploaded: true,
+            uploadedAt: doc.uploaded_at || doc.created_at || new Date().toISOString()
+          };
+        }) || [];
+
+        setDocuments(mappedDocuments);
+        setFilteredDocuments(mappedDocuments);
       } else {
-        setError('Failed to fetch documents');
+        setError(result.error || 'Failed to fetch documents');
       }
     } catch (error) {
       setError('Error fetching documents');
@@ -146,30 +144,19 @@ export default function CustomerDocuments({ customerId }: CustomerDocumentsProps
       formData.append('file', newDocFile);
       formData.append('documentName', newDocName);
 
-      const response = await fetch(`/api/customers/${customerId}/documents`, {
-        method: 'POST',
-        body: formData,
-      });
+      const result = await postRequest(`/api/customers/${customerId}/documents`, formData);
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        setAddDocError(data.error || 'Failed to upload document.');
-        setAddDocLoading(false);
-        return;
-      }
-
-      const newDoc = await response.json();
-      if (newDoc.success) {
+      if (result.success && result.data) {
         // Map the new document to expected format
         const mappedDocument = {
-          ...newDoc.document,
-          name: newDoc.document.document_name || '',
-          fileName: newDoc.document.file_name || newDoc.document.document_name || '',
-          fileUrl: newDoc.document.document_url || '',
-          fileSize: newDoc.document.file_size || 0,
-          mimeType: newDoc.document.document_type || 'unknown',
+          ...result.data.document,
+          name: result.data.document.document_name || '',
+          fileName: result.data.document.file_name || result.data.document.document_name || '',
+          fileUrl: result.data.document.document_url || '',
+          fileSize: result.data.document.file_size || 0,
+          mimeType: result.data.document.document_type || 'unknown',
           uploaded: true,
-          uploadedAt: newDoc.document.uploaded_at || newDoc.document.created_at || new Date().toISOString()
+          uploadedAt: result.data.document.uploaded_at || result.data.document.created_at || new Date().toISOString()
         };
 
         setDocuments(prev => [mappedDocument, ...prev]);
@@ -180,7 +167,7 @@ export default function CustomerDocuments({ customerId }: CustomerDocumentsProps
         // Refresh documents list
         fetchDocuments();
       } else {
-        setAddDocError('Failed to upload document.');
+        setAddDocError(result.error || 'Failed to upload document.');
       }
     } catch (e) {
       setAddDocError('Error uploading document.');
@@ -196,16 +183,14 @@ export default function CustomerDocuments({ customerId }: CustomerDocumentsProps
     if (!documentToDelete) return;
 
     try {
-      const response = await fetch(`/api/customers/${customerId}/documents?documentId=${documentToDelete.id}`, {
-        method: 'DELETE'
-      });
+      const result = await deleteRequest(`/api/customers/${customerId}/documents?documentId=${documentToDelete.id}`);
 
-      if (response.ok) {
+      if (result.success) {
         setDocuments(prev => prev.filter((_, index) => index !== deleteIndex));
         setFilteredDocuments(prev => prev.filter((_, index) => index !== deleteIndex));
         setDeleteIndex(null);
       } else {
-        setError('Failed to delete document.');
+        setError(result.error || 'Failed to delete document.');
       }
     } catch (error) {
       setError('Error deleting document.');
@@ -284,6 +269,7 @@ export default function CustomerDocuments({ customerId }: CustomerDocumentsProps
       </div>
     );
   }
+
 
   return (
     <div className="flex flex-col">

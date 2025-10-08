@@ -7,6 +7,7 @@ import CustomButton from '../../reusableComponents/CustomButton';
 import CustomModal from '../../reusableComponents/CustomModal';
 import { CollapsibleSection } from '../../reusableComponents/CollapsibleSection';
 import CustomTable, { TableColumn } from '../../reusableComponents/CustomTable';
+import { useHttpService } from '../../../lib/http-service';
 
 interface Document {
   document_name: string;
@@ -45,6 +46,7 @@ export default function VehicleDocuments({ vehicleId }: VehicleDocumentsProps) {
   const [error, setError] = useState<string | null>(null);
   const [addDocError, setAddDocError] = useState<string | null>(null);
   const [addDocLoading, setAddDocLoading] = useState(false);
+  const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
 
   // Fetch documents from database
   const fetchDocuments = async () => {
@@ -52,11 +54,11 @@ export default function VehicleDocuments({ vehicleId }: VehicleDocumentsProps) {
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/vehicles/${vehicleId}/documents`);
-      if (response.ok) {
-        const documents = await response.json();
+      const response = await getRequest(`/api/vehicles/${vehicleId}/documents`);
+
+      if (response.success && response.data) {
         // Map API response to expected format
-        const mappedDocuments = documents?.map((doc: any, index: number) => {
+        const mappedDocuments = response.data?.map((doc: any, index: number) => {
           return {
             ...doc,
             id: `doc-${index}`, // Generate ID since vehicle docs don't have IDs
@@ -73,9 +75,14 @@ export default function VehicleDocuments({ vehicleId }: VehicleDocumentsProps) {
         setDocuments(mappedDocuments);
         setFilteredDocuments(mappedDocuments);
       } else {
+        console.error('Error fetching documents:', response.error);
         setError('Failed to fetch documents');
+        if (response.error) {
+          alert(`Error: ${response.error}`);
+        }
       }
     } catch (error) {
+      console.error('Error fetching documents:', error);
       setError('Error fetching documents');
     } finally {
       setLoading(false);
@@ -140,40 +147,35 @@ export default function VehicleDocuments({ vehicleId }: VehicleDocumentsProps) {
       formData.append('file', newDocFile);
       formData.append('documentName', newDocName);
 
-      const response = await fetch(`/api/vehicles/${vehicleId}/documents`, {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await postRequest(`/api/vehicles/${vehicleId}/documents`, formData);
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        setAddDocError(data.error || 'Failed to upload document.');
-        setAddDocLoading(false);
-        return;
+      if (response.success && response.data) {
+        const newDoc = response.data;
+        // Map the new document to expected format
+        const mappedDocument = {
+          ...newDoc,
+          id: `doc-${Date.now()}`, // Generate unique ID
+          name: newDoc.document_name || '',
+          fileName: newDoc.file_name || newDoc.document_name || '',
+          fileUrl: newDoc.document_url || '',
+          fileSize: 0, // Vehicle docs don't store file size
+          mimeType: 'unknown',
+          uploaded: true,
+          uploadedAt: newDoc.created_at || new Date().toISOString()
+        };
+
+        setDocuments(prev => [mappedDocument, ...prev]);
+        setFilteredDocuments(prev => [mappedDocument, ...prev]);
+        setNewDocName('');
+        setNewDocFile(null);
+        setUploadModalOpen(false);
+        // Refresh documents list
+        fetchDocuments();
+      } else {
+        setAddDocError(response.error || 'Failed to upload document.');
       }
-
-      const newDoc = await response.json();
-      // Map the new document to expected format
-      const mappedDocument = {
-        ...newDoc,
-        id: `doc-${Date.now()}`, // Generate unique ID
-        name: newDoc.document_name || '',
-        fileName: newDoc.file_name || newDoc.document_name || '',
-        fileUrl: newDoc.document_url || '',
-        fileSize: 0, // Vehicle docs don't store file size
-        mimeType: 'unknown',
-        uploaded: true,
-        uploadedAt: newDoc.created_at || new Date().toISOString()
-      };
-
-      setDocuments(prev => [mappedDocument, ...prev]);
-      setFilteredDocuments(prev => [mappedDocument, ...prev]);
-      setNewDocName('');
-      setNewDocFile(null);
-      setUploadModalOpen(false);
-      // Refresh documents list
-      fetchDocuments();
     } catch (e) {
+      console.error('Error uploading document:', e);
       setAddDocError('Error uploading document.');
     } finally {
       setAddDocLoading(false);
@@ -189,24 +191,25 @@ export default function VehicleDocuments({ vehicleId }: VehicleDocumentsProps) {
     try {
       // For vehicle documents, we need to remove from the JSON array
       // Since we don't have individual document IDs, we'll use the document_url to identify
-      const response = await fetch(`/api/vehicles/${vehicleId}/documents`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await deleteRequest(`/api/vehicles/${vehicleId}/documents`, {
         body: JSON.stringify({
           documentUrl: documentToDelete.fileUrl
         })
       });
 
-      if (response.ok) {
+      if (response.success) {
         setDocuments(prev => prev.filter((_, index) => index !== deleteIndex));
         setFilteredDocuments(prev => prev.filter((_, index) => index !== deleteIndex));
         setDeleteIndex(null);
       } else {
-        setError('Failed to delete document.');
+        console.error('Error deleting document:', response.error);
+        setError(response.error || 'Failed to delete document.');
+        if (response.error) {
+          alert(`Error: ${response.error}`);
+        }
       }
     } catch (error) {
+      console.error('Error deleting document:', error);
       setError('Error deleting document.');
     }
   };

@@ -71,6 +71,7 @@ const CustomInput = ({
   icon,
   iconPosition = 'left',
   isCurrency = false,
+  onChange,
   ...otherProps
 }: {
   name: string;
@@ -80,6 +81,7 @@ const CustomInput = ({
   icon?: React.ReactNode;
   iconPosition?: 'left' | 'right';
   isCurrency?: boolean;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   [key: string]: any;
 }) => {
   const { setFieldValue } = useFormikContext();
@@ -87,6 +89,11 @@ const CustomInput = ({
   const handleChange = (evt: React.ChangeEvent<HTMLInputElement>) => {
     const { value } = evt.target;
     setFieldValue(name, value);
+
+    // Call the custom onChange prop if provided
+    if (onChange) {
+      onChange(evt);
+    }
   };
 
   const [field, meta] = useField(name);

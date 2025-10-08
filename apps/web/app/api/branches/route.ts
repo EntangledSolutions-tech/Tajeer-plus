@@ -17,11 +17,12 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limitParam = searchParams.get('limit') || '10';
+    const limit = limitParam === '-1' ? -1 : parseInt(limitParam);
     const search = searchParams.get('search') || '';
 
-    // Calculate offset
-    const offset = (page - 1) * limit;
+    // Calculate offset - only apply pagination if limit is not -1
+    const offset = limit === -1 ? 0 : (page - 1) * limit;
 
     let query = (supabase as any)
       .from('branches')
@@ -40,25 +41,30 @@ export async function GET(request: NextRequest) {
       `);
     }
 
-    const { data: branches, error, count } = await query
-      .order('name')
-      .range(offset, offset + limit - 1);
+    let queryResult = query.order('name');
+
+    // Apply pagination - only if limit is not -1
+    if (limit !== -1) {
+      queryResult = queryResult.range(offset, offset + limit - 1);
+    }
+
+    const { data: branches, error, count } = await queryResult;
 
     if (error) {
       console.error('Error fetching branches:', error);
       return NextResponse.json({ error: 'Failed to fetch branches' }, { status: 500 });
     }
 
-    const totalPages = Math.ceil((count || 0) / limit);
-    const hasNextPage = page < totalPages;
-    const hasPrevPage = page > 1;
+    const totalPages = limit === -1 ? 1 : Math.ceil((count || 0) / limit);
+    const hasNextPage = limit === -1 ? false : page < totalPages;
+    const hasPrevPage = limit === -1 ? false : page > 1;
 
     return NextResponse.json({
       success: true,
       branches: branches || [],
       pagination: {
-        page,
-        limit,
+        page: limit === -1 ? 1 : page,
+        limit: limit === -1 ? count || 0 : limit,
         total: count || 0,
         totalPages,
         hasNextPage,

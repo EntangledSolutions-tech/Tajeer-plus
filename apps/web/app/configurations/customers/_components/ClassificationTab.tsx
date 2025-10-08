@@ -6,6 +6,7 @@ import { toast } from '@kit/ui/sonner';
 import CustomTable, { TableColumn, TableAction } from '../../../reusableComponents/CustomTable';
 import CustomButton from '../../../reusableComponents/CustomButton';
 import ClassificationModal from './ClassificationModal';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface Classification {
   id: string;
@@ -18,6 +19,7 @@ interface Classification {
 }
 
 export default function ClassificationTab() {
+  const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
   const [classifications, setClassifications] = useState<Classification[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -91,15 +93,14 @@ export default function ClassificationTab() {
         search: searchValue,
       });
 
-      const response = await fetch(`/api/customer-configurations/classifications?${params}`);
+      const response = await getRequest(`/api/customer-configurations/classifications?${params}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch classifications');
+      if (response.error) {
+        throw new Error(response.error);
       }
 
-      const result = await response.json();
-      setClassifications(result.data);
-      setTotalPages(result.pagination.totalPages);
+      setClassifications(response.data.data);
+      setTotalPages(response.data.pagination.totalPages);
     } catch (error) {
       console.error('Error fetching classifications:', error);
       toast.error('Failed to fetch classifications');
@@ -114,13 +115,10 @@ export default function ClassificationTab() {
     }
 
     try {
-      const response = await fetch(`/api/customer-configurations/classifications/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await deleteRequest(`/api/customer-configurations/classifications/${id}`);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete classification');
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       toast.success('Classification deleted successfully');
@@ -133,23 +131,16 @@ export default function ClassificationTab() {
 
   const handleSubmit = async (values: { classification: string; description?: string }) => {
     try {
-      const url = editingClassification
-        ? `/api/customer-configurations/classifications/${editingClassification.id}`
-        : '/api/customer-configurations/classifications';
+      let response;
 
-      const method = editingClassification ? 'PATCH' : 'POST';
+      if (editingClassification) {
+        response = await putRequest(`/api/customer-configurations/classifications/${editingClassification.id}`, values);
+      } else {
+        response = await postRequest('/api/customer-configurations/classifications', values);
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || `Failed to ${editingClassification ? 'update' : 'create'} classification`);
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       toast.success(`Classification ${editingClassification ? 'updated' : 'created'} successfully`);

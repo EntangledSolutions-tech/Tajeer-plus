@@ -16,7 +16,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const formData = await request.formData();
+    // Check content type
+    const contentType = request.headers.get('content-type');
+
+    if (!contentType || !contentType.includes('multipart/form-data')) {
+      console.error('Invalid content type:', contentType);
+      return NextResponse.json(
+        { error: 'Content-Type must be multipart/form-data' },
+        { status: 400 }
+      );
+    }
+
+    let formData;
+    try {
+      formData = await request.formData();
+    } catch (error) {
+      console.error('FormData parsing error:', error);
+      return NextResponse.json(
+        { error: 'Invalid FormData format' },
+        { status: 400 }
+      );
+    }
+
     const file = formData.get('file') as File;
     const documentName = formData.get('documentName') as string;
     const documentType = formData.get('documentType') as string;
@@ -89,10 +110,12 @@ export async function POST(request: NextRequest) {
       document_name: documentName,
       document_type: documentType,
       document_url: publicUrl,
+      file_name: file.name,
       file_size: file.size,
       mime_type: file.type,
       uploaded_at: new Date().toISOString(),
-      temp_path: fileName
+      temp_path: fileName,
+      tempPath: fileName // Add both formats for compatibility
     };
 
     return NextResponse.json({

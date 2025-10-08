@@ -19,16 +19,8 @@ export default function DocumentsStep() {
   const [docFile, setDocFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // List of added documents
-  const [documents, setDocuments] = useState<Document[]>([]);
-
-  // Update Formik values when documents change
-  useEffect(() => {
-    formik.setFieldValue('documents', documents);
-    formik.setFieldValue('documentsCount', documents.length);
-    // Trigger validation to update form validity
-    setTimeout(() => formik.validateForm(), 100);
-  }, [documents]);
+  // Get documents from Formik values
+  const documents = formik.values.documents || [];
 
   const handleAddDocument = () => {
     if (docName && docFile) {
@@ -39,7 +31,9 @@ export default function DocumentsStep() {
         uploaded: true
       };
 
-      setDocuments(prev => [...prev, newDocument]);
+      const updatedDocuments = [...documents, newDocument];
+      formik.setFieldValue('documents', updatedDocuments);
+      formik.setFieldValue('documentsCount', updatedDocuments.length);
 
       // Clear form
       setDocName('');
@@ -48,11 +42,23 @@ export default function DocumentsStep() {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+
+      // Trigger validation to enable the next button
+      setTimeout(() => {
+        formik.validateForm();
+      }, 100);
     }
   };
 
   const handleDelete = (documentId: string) => {
-    setDocuments(prev => prev.filter(doc => doc.id !== documentId));
+    const updatedDocuments = documents.filter(doc => doc.id !== documentId);
+    formik.setFieldValue('documents', updatedDocuments);
+    formik.setFieldValue('documentsCount', updatedDocuments.length);
+
+    // Trigger validation to enable the next button
+    setTimeout(() => {
+      formik.validateForm();
+    }, 100);
   };
 
   const formatFileSize = (bytes: number) => {
@@ -183,14 +189,12 @@ export default function DocumentsStep() {
         )}
       </div>
 
-      {/* Hidden inputs for form validation */}
-      <input type="hidden" name="documentsCount" value={documents.length.toString()} />
-      {documents.map((doc, index) => (
-        <div key={doc.id}>
-          <input type="hidden" name={`document_${index}_name`} value={doc.name} />
-          <input type="hidden" name={`document_${index}_uploaded`} value={doc.uploaded.toString()} />
+      {/* Validation error display */}
+      {formik.touched.documents && formik.errors.documents && (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-600 text-sm">{String(formik.errors.documents)}</p>
         </div>
-      ))}
+      )}
     </>
   );
 }

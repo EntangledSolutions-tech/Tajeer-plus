@@ -112,6 +112,7 @@ const CustomSelect = ({
   options = [],
   disabled = false,
   readOnly = false,
+  onChange,
   ...otherProps
 }: {
   name: string;
@@ -121,12 +122,18 @@ const CustomSelect = ({
   options: { value: string; label: string; color?: string }[];
   disabled?: boolean;
   readOnly?: boolean;
+  onChange?: (value: string) => void;
   [key: string]: any;
 }) => {
   const { setFieldValue } = useFormikContext();
 
   const handleChange = (value: string) => {
     setFieldValue(name, value);
+
+    // Call the custom onChange prop if provided
+    if (onChange) {
+      onChange(value);
+    }
   };
 
   const [field, meta] = useField(name);

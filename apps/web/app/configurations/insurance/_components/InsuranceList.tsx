@@ -8,6 +8,7 @@ import CustomButton from '../../../reusableComponents/CustomButton';
 import CollapsibleSection from '../../../reusableComponents/CollapsibleSection';
 import SimpleInsuranceModal from './SimpleInsuranceModal';
 import { toast } from 'sonner';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface InsuranceOption {
   id: string;
@@ -28,6 +29,7 @@ interface InsuranceListProps {
 }
 
 export default function InsuranceList({ loading, onDelete }: InsuranceListProps) {
+  const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
   const [insuranceOptions, setInsuranceOptions] = useState<InsuranceOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
@@ -40,12 +42,13 @@ export default function InsuranceList({ loading, onDelete }: InsuranceListProps)
   const fetchInsuranceOptions = async () => {
     try {
       setFetchLoading(true);
-      const response = await fetch('/api/insurance-options');
-      if (!response.ok) {
-        throw new Error('Failed to fetch insurance options');
+      const response = await getRequest('/api/insurance-options');
+
+      if (response.error) {
+        throw new Error(response.error);
       }
-      const data = await response.json();
-      setInsuranceOptions(data.insuranceOptions || []);
+
+      setInsuranceOptions(response.data.insuranceOptions || []);
     } catch (error) {
       console.error('Error fetching insurance options:', error);
       toast.error('Failed to fetch insurance options');
@@ -62,42 +65,23 @@ export default function InsuranceList({ loading, onDelete }: InsuranceListProps)
   const handleSubmit = async (values: any) => {
     try {
       setIsLoading(true);
+      let response;
 
       if (editingOption) {
         // Update existing option
-        const response = await fetch(`/api/insurance-options/${editingOption.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(values),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update insurance option');
+        response = await putRequest(`/api/insurance-options/${editingOption.id}`, values);
+        if (response.error) {
+          throw new Error(response.error);
         }
-
-        const data = await response.json();
-        setInsuranceOptions(insuranceOptions.map(o => o.id === editingOption.id ? data.insuranceOption : o));
+        setInsuranceOptions(insuranceOptions.map(o => o.id === editingOption.id ? response.data.insuranceOption : o));
         toast.success('Insurance option updated successfully');
       } else {
         // Create new option
-        const response = await fetch('/api/insurance-options', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(values),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create insurance option');
+        response = await postRequest('/api/insurance-options', values);
+        if (response.error) {
+          throw new Error(response.error);
         }
-
-        const data = await response.json();
-        setInsuranceOptions([...insuranceOptions, data.insuranceOption]);
+        setInsuranceOptions([...insuranceOptions, response.data.insuranceOption]);
         toast.success('Insurance option created successfully');
       }
 
@@ -129,12 +113,10 @@ export default function InsuranceList({ loading, onDelete }: InsuranceListProps)
 
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/insurance-options/${deleteOption.id}`, {
-        method: 'DELETE',
-      });
+      const response = await deleteRequest(`/api/insurance-options/${deleteOption.id}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to delete insurance option');
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       setInsuranceOptions(insuranceOptions.filter(o => o.id !== deleteOption.id));

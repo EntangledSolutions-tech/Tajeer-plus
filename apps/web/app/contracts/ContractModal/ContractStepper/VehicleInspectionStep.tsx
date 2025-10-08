@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useFormikContext } from 'formik';
 
 interface Inspector {
@@ -8,7 +8,6 @@ interface Inspector {
 
 export default function VehicleInspectionStep() {
   const formik = useFormikContext<any>();
-  const [selectedInspector, setSelectedInspector] = useState('');
 
   // Mock inspectors data
   const inspectors: Inspector[] = [
@@ -28,19 +27,15 @@ export default function VehicleInspectionStep() {
     { id: '14', name: 'Tariq Al-Muhtadi' }
   ];
 
-  // Update Formik values when inspector is selected
-  useEffect(() => {
-    formik.setFieldValue('selectedInspector', selectedInspector);
-    const inspector = inspectors.find(i => i.id === selectedInspector);
-    formik.setFieldValue('inspectorName', inspector?.name || '');
-    // Trigger validation to enable continue button
-    if (selectedInspector) {
-      setTimeout(() => formik.validateForm(), 100);
-    }
-  }, [selectedInspector]);
-
   const handleInspectorChange = (inspectorId: string) => {
-    setSelectedInspector(inspectorId);
+    const inspector = inspectors.find(i => i.id === inspectorId);
+    formik.setFieldValue('selectedInspector', inspectorId);
+    formik.setFieldValue('inspectorName', inspector?.name || '');
+
+    // Trigger validation to enable the next button
+    setTimeout(() => {
+      formik.validateForm();
+    }, 100);
   };
 
   return (
@@ -62,9 +57,9 @@ export default function VehicleInspectionStep() {
               <label className="flex items-center gap-3 cursor-pointer w-full group">
                 <input
                   type="radio"
-                  name="inspector"
+                  name="selectedInspector"
                   value={inspector.id}
-                  checked={selectedInspector === inspector.id}
+                  checked={formik.values.selectedInspector === inspector.id}
                   onChange={(e) => handleInspectorChange(e.target.value)}
                   className="accent-primary w-4 h-4"
                 />
@@ -77,9 +72,12 @@ export default function VehicleInspectionStep() {
         </div>
       </div>
 
-      {/* Hidden inputs for form validation */}
-      <input type="hidden" name="selectedInspector" value={selectedInspector} />
-      <input type="hidden" name="inspectorName" value={inspectors.find(i => i.id === selectedInspector)?.name || ''} />
+      {/* Validation error display */}
+      {formik.touched.selectedInspector && formik.errors.selectedInspector && (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-600 text-sm">{String(formik.errors.selectedInspector)}</p>
+        </div>
+      )}
     </>
   );
 }

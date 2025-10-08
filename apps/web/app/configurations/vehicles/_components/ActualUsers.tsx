@@ -13,6 +13,7 @@ import CustomButton from '../../../reusableComponents/CustomButton';
 import CustomInput from '../../../reusableComponents/CustomInput';
 import CustomSwitch from '../../../reusableComponents/CustomSwitch';
 import CustomModal from '../../../reusableComponents/CustomModal';
+import { useHttpService } from '../../../../lib/http-service';
 
 type VehicleActualUser = Database['public']['Tables']['vehicle_actual_users']['Row'];
 
@@ -22,6 +23,7 @@ interface ActualUsersProps {
 }
 
 export default function ActualUsers({ loading, onDelete }: ActualUsersProps) {
+  const { getRequest, postRequest, putRequest } = useHttpService();
   const [actualUsers, setActualUsers] = useState<VehicleActualUser[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add');
@@ -95,14 +97,16 @@ export default function ActualUsers({ loading, onDelete }: ActualUsersProps) {
         ...(debouncedSearch && { search: debouncedSearch })
       });
 
-      const response = await fetch(`/api/vehicle-configuration/actual-users?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch actual users');
-      const data = await response.json();
+      const response = await getRequest(`/api/vehicle-configuration/actual-users?${params}`);
 
-      setActualUsers(data.actualUsers || []);
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      setActualUsers(response.data.actualUsers || []);
       setPagination(prev => ({
         ...prev,
-        total: data.pagination?.total || 0
+        total: response.data.pagination?.total || 0
       }));
     } catch (error) {
       console.error('Error fetching actual users:', error);
@@ -114,27 +118,17 @@ export default function ActualUsers({ loading, onDelete }: ActualUsersProps) {
 
   const handleSubmit = async (values: any, { setSubmitting, resetForm }: any) => {
     try {
-      if (editingActualUser) {
-        const response = await fetch('/api/vehicle-configuration/actual-users', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...values, id: editingActualUser.id })
-        });
+      let response;
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update actual user');
+      if (editingActualUser) {
+        response = await putRequest('/api/vehicle-configuration/actual-users', { ...values, id: editingActualUser.id });
+        if (response.error) {
+          throw new Error(response.error);
         }
       } else {
-        const response = await fetch('/api/vehicle-configuration/actual-users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(values)
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create actual user');
+        response = await postRequest('/api/vehicle-configuration/actual-users', values);
+        if (response.error) {
+          throw new Error(response.error);
         }
       }
 
@@ -167,13 +161,15 @@ export default function ActualUsers({ loading, onDelete }: ActualUsersProps) {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/vehicle-configuration/actual-users');
-      if (!response.ok) throw new Error('Failed to export actual users');
-      const data = await response.json();
+      const response = await getRequest('/api/vehicle-configuration/actual-users');
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
 
       const csvContent = [
         ['Code', 'Name', 'Status', 'Created At'],
-        ...(data.actualUsers || []).map((user: any) => [
+        ...(response.data.actualUsers || []).map((user: any) => [
           user.code || '',
           user.name || '',
           user.is_active ? 'Active' : 'Inactive',

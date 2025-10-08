@@ -4,10 +4,12 @@ import React, { useState, useEffect } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import { User, Mail, Phone, Shield, Building, Camera, Save, X } from 'lucide-react';
-import CustomCard from '../reusableComponents/CustomCard';
 import CustomButton from '../reusableComponents/CustomButton';
 import CustomInput from '../reusableComponents/CustomInput';
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription } from '@kit/ui/alert-dialog';
+import { toast } from '@kit/ui/sonner';
+import { useRevalidatePersonalAccountDataQuery } from '@kit/accounts/hooks/use-personal-account-data';
+import { useHttpService } from '../../lib/http-service';
 
 interface Profile {
   id: string;
@@ -49,12 +51,13 @@ const validationSchema = Yup.object({
     .max(20, 'Phone number must not exceed 20 characters'),
 });
 
-export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
+export default function ProfileSettings({}: ProfileSettingsProps) {
+  const { getRequest, putRequest, postRequest } = useHttpService();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const revalidateAccountData = useRevalidatePersonalAccountDataQuery();
 
   useEffect(() => {
     fetchProfile();
@@ -63,20 +66,24 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/profile');
-      const result = await response.json();
+      const response = await getRequest('/api/profile');
 
-      if (!response.ok) {
-        if (response.status === 401) {
+      if (response.success && response.data) {
+        setProfile(response.data.profile);
+      } else {
+        if (response.error?.includes('log in')) {
           setError('Please log in to view your profile');
           return;
         }
-        throw new Error(result.error || 'Failed to fetch profile');
+        throw new Error(response.error || 'Failed to fetch profile');
       }
-
-      setProfile(result.profile);
     } catch (err: any) {
-      setError('Error fetching profile: ' + (err?.message || 'Unknown error'));
+      const errorMessage = 'Error fetching profile: ' + (err?.message || 'Unknown error');
+      toast.error('Failed to load profile', {
+        description: err?.message || 'Unknown error occurred',
+        duration: 5000,
+      });
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -86,27 +93,31 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
     try {
       setSaving(true);
       setError(null);
-      setSuccess(null);
 
-      const response = await fetch('/api/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
+      const response = await putRequest('/api/profile', values);
 
-      const result = await response.json();
+      if (response.success && response.data) {
+        setProfile(response.data.profile);
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to update profile');
+        // Invalidate the account data query to refresh navbar
+        if (profile?.id) {
+          revalidateAccountData(profile.id);
+        }
+
+        toast.success('Profile updated successfully!', {
+          description: 'Your profile information has been saved.',
+          duration: 4000,
+        });
+      } else {
+        throw new Error(response.error || 'Failed to update profile');
       }
-
-      setProfile(result.profile);
-      setSuccess('Profile updated successfully!');
-      setTimeout(() => setSuccess(null), 3000);
     } catch (err: any) {
-      setError('Error updating profile: ' + (err?.message || 'Unknown error'));
+      const errorMessage = 'Error updating profile: ' + (err?.message || 'Unknown error');
+      toast.error('Failed to update profile', {
+        description: err?.message || 'Unknown error occurred',
+        duration: 5000,
+      });
+      setError(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -116,18 +127,61 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // For now, we'll just show a placeholder. In a real app, you'd upload to storage
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const avatarUrl = e.target?.result as string;
-      setProfile(prev => prev ? { ...prev, avatar_url: avatarUrl } : null);
-    };
-    reader.readAsDataURL(file);
+    try {
+      setSaving(true);
+
+      // Upload to Supabase storage
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // Generate a unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${profile?.id || 'user'}-${Date.now()}.${fileExt}`;
+
+      const uploadResponse = await postRequest('/api/upload-avatar', formData);
+
+      if (uploadResponse.success && uploadResponse.data) {
+        const uploadResult = uploadResponse.data;
+
+        // Update the profile with the new avatar URL
+        const response = await putRequest('/api/profile', {
+          first_name: profile?.first_name || '',
+          last_name: profile?.last_name || '',
+          phone: profile?.phone || '',
+          avatar_url: uploadResult.url,
+        });
+
+        if (response.success && response.data) {
+          setProfile(response.data.profile);
+
+          // Invalidate the account data query to refresh navbar
+          if (profile?.id) {
+            revalidateAccountData(profile.id);
+          }
+
+          toast.success('Profile picture updated!', {
+            description: 'Your profile picture has been saved.',
+            duration: 3000,
+          });
+        } else {
+          throw new Error(response.error || 'Failed to update profile');
+        }
+      } else {
+        throw new Error(uploadResponse.error || 'Failed to upload image');
+      }
+    } catch (err: any) {
+      toast.error('Failed to update profile picture', {
+        description: err?.message || 'Unknown error occurred',
+        duration: 5000,
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-8">
         <div className="bg-white dark:bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4">
           <div className="flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -140,7 +194,7 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
 
   if (!profile && !loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-8">
         <div className="bg-white dark:bg-gray-800 rounded-xl p-8 max-w-md w-full mx-4">
           <div className="text-center">
             <p className="text-red-600 dark:text-red-400 mb-4">
@@ -155,9 +209,6 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
                   Go to Login
                 </CustomButton>
               )}
-              <CustomButton onClick={onClose} variant="outline">
-                Close
-              </CustomButton>
             </div>
           </div>
         </div>
@@ -166,8 +217,8 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="py-6">
+      <div className="max-w-4xl mx-auto">
         {/* Error AlertDialog */}
         {error && (
           <AlertDialog open={!!error}>
@@ -178,35 +229,54 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
           </AlertDialog>
         )}
 
-        {/* Success AlertDialog */}
-        {success && (
-          <AlertDialog open={!!success}>
-            <AlertDialogContent className="fixed top-4 left-1/2 -translate-x-1/2 z-[10000] w-full max-w-md">
-              <AlertDialogTitle>Success</AlertDialogTitle>
-              <AlertDialogDescription>{success}</AlertDialogDescription>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-
         {/* Profile Settings Page */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm">
+        <div className="max-w-2xl mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Profile Settings</h2>
-            {onClose && (
-              <CustomButton
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="p-2"
+          <div className="text-center mb-4">
+            <h2 className="text-3xl font-bold text-white/90 dark:text-gray-900 mb-2">Profile Settings</h2>
+            <p className="text-white/75 dark:text-gray-400">Manage your account information</p>
+          </div>
+
+          {/* Profile Picture Section */}
+          <div className="text-center mb-8">
+            <div className="relative inline-block">
+              <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 mx-auto mb-4">
+                {profile?.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <User className="w-16 h-16 text-gray-400" />
+                  </div>
+                )}
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="hidden"
+                id="avatar-upload"
+              />
+              <label
+                htmlFor="avatar-upload"
+                className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-2 cursor-pointer hover:bg-primary/90 transition-colors"
               >
-                <X className="w-5 h-5" />
-              </CustomButton>
-            )}
+                <Camera className="w-4 h-4" />
+              </label>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+              {profile?.first_name} {profile?.last_name}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              {profile?.roles?.name || 'User'}
+            </p>
           </div>
 
           {/* Content */}
-          <div className="p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
             <Formik
               initialValues={{
                 first_name: profile?.first_name || '',
@@ -219,42 +289,8 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
             >
               {({ values, setFieldValue }) => (
                 <Form className="space-y-6">
-                  {/* Avatar Section */}
-                  <div className="flex items-center space-x-6">
-                    <div className="relative">
-                      <div className="w-24 h-24 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
-                        {values.avatar_url ? (
-                          <img
-                            src={values.avatar_url}
-                            alt="Profile"
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <User className="w-12 h-12 text-gray-400" />
-                        )}
-                      </div>
-                      <label className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-2 cursor-pointer hover:bg-primary/90 transition-colors">
-                        <Camera className="w-4 h-4" />
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleAvatarChange}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {profile?.first_name} {profile?.last_name}
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {profile?.roles?.name || 'User'}
-                      </p>
-                    </div>
-                  </div>
-
                   {/* Personal Information */}
-                  <CustomCard shadow="sm" radius="lg" padding="lg">
+                  <div>
                     <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                       <User className="w-5 h-5 mr-2" />
                       Personal Information
@@ -281,10 +317,10 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
                         icon={<Phone className="w-4 h-4" />}
                       />
                     </div>
-                  </CustomCard>
+                  </div>
 
                   {/* Account Information */}
-                  <CustomCard shadow="sm" radius="lg" padding="lg">
+                  <div>
                     <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                       <Mail className="w-5 h-5 mr-2" />
                       Account Information
@@ -303,10 +339,10 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
                         </div>
                       </div>
                     </div>
-                  </CustomCard>
+                  </div>
 
                   {/* Role Information */}
-                  <CustomCard shadow="sm" radius="lg" padding="lg">
+                  <div>
                     <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                       <Shield className="w-5 h-5 mr-2" />
                       Role & Permissions
@@ -342,20 +378,10 @@ export default function ProfileSettings({ onClose }: ProfileSettingsProps) {
                         </div>
                       )}
                     </div>
-                  </CustomCard>
+                  </div>
 
                   {/* Actions */}
                   <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-                    {onClose && (
-                      <CustomButton
-                        type="button"
-                        variant="outline"
-                        onClick={onClose}
-                        disabled={saving}
-                      >
-                        Cancel
-                      </CustomButton>
-                    )}
                     <CustomButton
                       type="submit"
                       disabled={saving}

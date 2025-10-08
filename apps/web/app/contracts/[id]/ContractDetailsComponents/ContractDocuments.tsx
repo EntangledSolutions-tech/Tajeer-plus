@@ -7,6 +7,7 @@ import CustomButton from '../../../reusableComponents/CustomButton';
 import CustomModal from '../../../reusableComponents/CustomModal';
 import { CollapsibleSection } from '../../../reusableComponents/CollapsibleSection';
 import CustomTable, { TableColumn } from '../../../reusableComponents/CustomTable';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface Document {
   id: string;
@@ -24,6 +25,7 @@ interface ContractDocumentsProps {
 }
 
 export default function ContractDocuments({ contractId }: ContractDocumentsProps) {
+  const { getRequest, postRequest, deleteRequest } = useHttpService();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [filteredDocuments, setFilteredDocuments] = useState<Document[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -47,15 +49,10 @@ export default function ContractDocuments({ contractId }: ContractDocumentsProps
 
     try {
       setLoading(true);
-      const response = await fetch(`/api/contracts/${contractId}/documents`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setDocuments(data.documents || []);
-          setFilteredDocuments(data.documents || []);
-        } else {
-          setError('Failed to fetch documents');
-        }
+      const response = await getRequest(`/api/contracts/${contractId}/documents`);
+      if (response.success && response.data) {
+        setDocuments(response.data.documents || []);
+        setFilteredDocuments(response.data.documents || []);
       } else {
         setError('Failed to fetch documents');
       }
@@ -124,29 +121,17 @@ export default function ContractDocuments({ contractId }: ContractDocumentsProps
       formData.append('file', newDocFile);
       formData.append('documentName', newDocName);
 
-      const response = await fetch(`/api/contracts/${contractId}/documents`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        setAddDocError(data.error || 'Failed to upload document.');
-        setAddDocLoading(false);
-        return;
-      }
-
-      const newDoc = await response.json();
-      if (newDoc.success) {
-        setDocuments(prev => [newDoc.document, ...prev]);
-        setFilteredDocuments(prev => [newDoc.document, ...prev]);
+      const response = await postRequest(`/api/contracts/${contractId}/documents`, formData);
+      if (response.success && response.data) {
+        setDocuments(prev => [response.data.document, ...prev]);
+        setFilteredDocuments(prev => [response.data.document, ...prev]);
         setNewDocName('');
         setNewDocFile(null);
         setUploadModalOpen(false);
         // Refresh documents list
         fetchDocuments();
       } else {
-        setAddDocError('Failed to upload document.');
+        setAddDocError(response.error || 'Failed to upload document.');
       }
     } catch (e) {
       setAddDocError('Error uploading document.');
@@ -162,16 +147,13 @@ export default function ContractDocuments({ contractId }: ContractDocumentsProps
     if (!documentToDelete) return;
 
     try {
-      const response = await fetch(`/api/contracts/${contractId}/documents?documentId=${documentToDelete.id}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
+      const response = await deleteRequest(`/api/contracts/${contractId}/documents?documentId=${documentToDelete.id}`);
+      if (response.success) {
         setDocuments(prev => prev.filter((_, index) => index !== deleteIndex));
         setFilteredDocuments(prev => prev.filter((_, index) => index !== deleteIndex));
         setDeleteIndex(null);
       } else {
-        setError('Failed to delete document.');
+        setError(response.error || 'Failed to delete document.');
       }
     } catch (error) {
       setError('Error deleting document.');

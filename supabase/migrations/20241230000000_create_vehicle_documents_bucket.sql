@@ -6,7 +6,8 @@ VALUES (
   true,
   52428800, -- 50MB limit
   ARRAY['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/*']
-);
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- Create policies for vehicle-documents bucket
 CREATE POLICY "Users can upload vehicle documents" ON storage.objects

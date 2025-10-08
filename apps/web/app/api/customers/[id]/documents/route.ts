@@ -17,6 +17,78 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       );
     }
 
+    const contentType = request.headers.get('content-type');
+
+    // Check if this is a document move from temp location (JSON) or new file upload (FormData)
+    if (contentType && contentType.includes('application/json')) {
+      // Handle document move from temp location
+      const body = await request.json();
+      console.log('Document move request body:', body);
+
+      if (body.moveFromTemp && body.document) {
+        const tempDoc = body.document;
+        console.log('Moving temp document:', tempDoc);
+
+        // Move file from temp location to final location
+        const timestamp = Date.now();
+        const fileExtension = tempDoc.fileName.split('.').pop();
+        const finalFileName = `customers/${customerId}/${timestamp}_${tempDoc.document_name.replace(/\s+/g, '_')}.${fileExtension}`;
+
+        // Copy file from temp to final location in storage
+        const { data: copyData, error: copyError } = await supabase.storage
+          .from('customer-documents')
+          .copy(tempDoc.tempPath, finalFileName);
+
+        if (copyError) {
+          console.error('Error copying file from temp:', copyError);
+          return NextResponse.json(
+            { error: 'Failed to move document from temp location' },
+            { status: 500 }
+          );
+        }
+
+        // Get the new public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('customer-documents')
+          .getPublicUrl(finalFileName);
+
+        // Insert document into customer_documents table
+        const documentData = {
+          customer_id: customerId,
+          document_name: tempDoc.document_name,
+          document_type: tempDoc.document_type,
+          document_url: publicUrl,
+          file_name: tempDoc.file_name,
+          file_size: tempDoc.file_size
+        };
+
+        console.log('Inserting document data:', documentData);
+
+        const { data: newDocument, error: insertError } = await supabase
+          .from('customer_documents')
+          .insert(documentData)
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error('Error inserting moved document:', insertError);
+          return NextResponse.json(
+            { error: 'Failed to save moved document to database' },
+            { status: 500 }
+          );
+        }
+
+        console.log('Successfully inserted document:', newDocument);
+
+        return NextResponse.json({
+          success: true,
+          document: newDocument,
+          message: 'Document moved successfully'
+        });
+      }
+    }
+
+    // Handle new file upload (FormData)
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const documentName = formData.get('documentName') as string;
@@ -147,6 +219,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         { status: 500 }
       );
     }
+
 
     return NextResponse.json({
       success: true,

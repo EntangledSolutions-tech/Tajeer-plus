@@ -6,6 +6,7 @@ import { Car, Calendar, FileText, Users, AlertCircle, CheckCircle, Wrench, Dolla
 import CustomCard from '../../reusableComponents/CustomCard';
 import { SummaryCard } from '../../reusableComponents/SummaryCard';
 import Link from 'next/link';
+import { useHttpService } from '../../../lib/http-service';
 
 // Types for our data
 interface VehicleStatus {
@@ -50,6 +51,7 @@ interface DashboardStats {
 }
 
 export default function DashboardMain() {
+  const { getRequest } = useHttpService();
   const [vehicleStatuses, setVehicleStatuses] = useState<VehicleStatus[]>([]);
   const [customerData, setCustomerData] = useState<CustomerData[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
@@ -64,46 +66,44 @@ export default function DashboardMain() {
   // Fetch vehicle data
   const fetchVehicles = async () => {
     try {
-      const response = await fetch('/api/vehicles?limit=1000');
-      const data = await response.json();
+      const response = await getRequest('/api/vehicles?limit=-1');
+      if (response.success && response.data) {
+        const data = response.data;
 
-      if (data.vehicles) {
-        // Count vehicles by status
-        const statusCounts: Record<string, number> = {};
-        data.vehicles.forEach((vehicle: any) => {
-          const status = vehicle.status?.name || 'Unknown';
-          statusCounts[status] = (statusCounts[status] || 0) + 1;
-        });
+        if (data.vehicles) {
+          // Count vehicles by status and get their colors
+          const statusCounts: Record<string, { count: number; color: string }> = {};
+          data.vehicles.forEach((vehicle: any) => {
+            debugger
+            const status = vehicle.status?.name || 'Unknown';
+            const color = vehicle.status?.color || '#6B7280';
 
-        // Map to our chart format with colors matching the design
-        const statusColors: Record<string, string> = {
-          'Available': '#3B82F6',      // Blue
-          'Unavailable': '#8B5CF6',    // Purple
-          'Reserved': '#A855F7',        // Light Purple
-          'Needs Maintenance': '#EC4899', // Pink
-          'Sold': '#F472B6',            // Light Pink
-          'Accident': '#EF4444',        // Red
-          'Unknown': '#6B7280'          // Gray
-        };
+            if (!statusCounts[status]) {
+              statusCounts[status] = { count: 0, color };
+            }
+            statusCounts[status].count += 1;
+          });
 
-        const vehicleStatusData: VehicleStatus[] = Object.entries(statusCounts).map(([name, value]) => ({
-          name,
-          value,
-          color: statusColors[name] || statusColors['Unknown'] || '#6B7280'
-        }));
+          // Map to our chart format using the actual status colors
+          const vehicleStatusData: VehicleStatus[] = Object.entries(statusCounts).map(([name, data]) => ({
+            name,
+            value: data.count,
+            color: data.color
+          }));
 
-        setVehicleStatuses(vehicleStatusData);
+          setVehicleStatuses(vehicleStatusData);
 
-        // Calculate vehicle stats
-        const totalVehicles = data.vehicles.length;
-        const reserved = statusCounts['Reserved'] || 0;
-        const available = statusCounts['Available'] || 0;
-        const oilChange = statusCounts['Needs Maintenance'] || 0;
+          // Calculate vehicle stats
+          const totalVehicles = data.vehicles.length;
+          const reserved = statusCounts['Reserved']?.count || 0;
+          const available = statusCounts['Available']?.count || 0;
+          const oilChange = statusCounts['Needs Maintenance']?.count || 0;
 
-        setStats(prev => ({
-          ...prev,
-          vehicles: { total: totalVehicles, reserved, available, oilChange }
-        }));
+          setStats(prev => ({
+            ...prev,
+            vehicles: { total: totalVehicles, reserved, available, oilChange }
+          }));
+        }
       }
     } catch (error) {
       console.error('Error fetching vehicles:', error);
@@ -113,18 +113,23 @@ export default function DashboardMain() {
   // Fetch customer data
   const fetchCustomers = async () => {
     try {
-      const response = await fetch('/api/customers?limit=1000');
-      const data = await response.json();
+      const response = await getRequest('/api/customers?limit=-1');
+      if (response.success && response.data) {
+        const data = response.data;
 
-      if (data.customers) {
-        const totalCustomers = data.customers.length;
-        const blacklisted = data.customers.filter((c: any) => c.status === 'Blacklisted').length;
-        const active = data.customers.filter((c: any) => c.status === 'Active').length;
+        if (data.customers) {
+          const totalCustomers = data.customers.length;
+          const blacklisted = data.customers.filter((c: any) => c.status === 'Blacklisted').length;
+          const active = data.customers.filter((c: any) => c.status === 'Active').length;
 
-        setStats(prev => ({
-          ...prev,
-          customers: { total: totalCustomers, blacklisted, active }
-        }));
+          setStats(prev => ({
+            ...prev,
+            customers: { total: totalCustomers, blacklisted, active }
+          }));
+
+          // Generate customer chart data based on real data
+          generateCustomerChartData(data.customers);
+        }
       }
     } catch (error) {
       console.error('Error fetching customers:', error);
@@ -134,31 +139,67 @@ export default function DashboardMain() {
   // Fetch contract data
   const fetchContracts = async () => {
     try {
-      const response = await fetch('/api/contracts?limit=1000');
-      const data = await response.json();
+      const response = await getRequest('/api/contracts?limit=-1');
+      if (response.success && response.data) {
+        const data = response.data;
 
-      if (data.contracts) {
-        const totalContracts = data.contracts.length;
-        const open = data.contracts.filter((c: any) => c.status?.name === 'Active').length;
-        const closed = data.contracts.filter((c: any) => c.status?.name === 'Completed').length;
+        if (data.contracts) {
+          const totalContracts = data.contracts.length;
+          const open = data.contracts.filter((c: any) => c.status?.name === 'Active').length;
+          const closed = data.contracts.filter((c: any) => c.status?.name === 'Completed').length;
 
-        setStats(prev => ({
-          ...prev,
-          contracts: { total: totalContracts, open, closed }
-        }));
+          setStats(prev => ({
+            ...prev,
+            contracts: { total: totalContracts, open, closed }
+          }));
+        }
       }
     } catch (error) {
       console.error('Error fetching contracts:', error);
     }
   };
 
-  // Generate dummy customer chart data
-  const generateCustomerChartData = () => {
+  // Generate customer chart data based on real customer data
+  const generateCustomerChartData = (customers: any[]) => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return months.map(month => ({
-      month,
-      customers: Math.floor(Math.random() * 800) + 200 // Random between 200-1000
-    }));
+
+    // Group customers by creation month-year
+    const customersByMonthYear: Record<string, number> = {};
+
+    customers.forEach(customer => {
+      if (customer.created_at) {
+        const date = new Date(customer.created_at);
+        const monthIndex = date.getMonth();
+        const year = date.getFullYear();
+
+        if (monthIndex >= 0 && monthIndex < months.length) {
+          const month = months[monthIndex];
+          const monthYear = `${month}-${year}`;
+          customersByMonthYear[monthYear] = (customersByMonthYear[monthYear] || 0) + 1;
+        }
+      }
+    });
+
+    // Create chart data sorted by date
+    const chartData = Object.entries(customersByMonthYear)
+      .map(([monthYear, count]) => ({
+        month: monthYear,
+        customers: count
+      }))
+      .sort((a, b) => {
+        // Sort by year and month
+        const [monthA, yearA] = a.month.split('-');
+        const [monthB, yearB] = b.month.split('-');
+        const monthIndexA = months.indexOf(monthA);
+        const monthIndexB = months.indexOf(monthB);
+
+        if (yearA !== yearB) {
+          return parseInt(yearA) - parseInt(yearB);
+        }
+        return monthIndexA - monthIndexB;
+      });
+
+    setCustomerData(chartData);
   };
 
   useEffect(() => {
@@ -169,9 +210,6 @@ export default function DashboardMain() {
         fetchCustomers(),
         fetchContracts()
       ]);
-
-      // Generate dummy customer chart data
-      setCustomerData(generateCustomerChartData());
 
       // Set placeholder finance and inspection data
       setStats(prev => ({
@@ -270,11 +308,19 @@ export default function DashboardMain() {
                 <YAxis
                   tick={{ fontSize: 12 }}
                   stroke="#6b7280"
-                  domain={[0, 1000]}
+                  domain={[0, 'dataMax']}
+                  tickCount={6}
+                  allowDecimals={false}
                 />
+                <defs>
+                  <linearGradient id="customerGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#005F8E" />
+                    <stop offset="100%" stopColor="#00A8AB" />
+                  </linearGradient>
+                </defs>
                 <Bar
                   dataKey="customers"
-                  fill="#10B981"
+                  fill="url(#customerGradient)"
                   radius={[2, 2, 0, 0]}
                 />
               </BarChart>

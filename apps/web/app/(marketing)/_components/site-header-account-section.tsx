@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 import type { User } from '@supabase/supabase-js';
 
-import { PersonalAccountDropdown } from '@kit/accounts/personal-account-dropdown';
+import { EnhancedPersonalAccountDropdown } from '~/components/enhanced-personal-account-dropdown';
 import { useSignOut } from '@kit/supabase/hooks/use-sign-out';
 import { useUser } from '@kit/supabase/hooks/use-user';
 import { Button } from '@kit/ui/button';
@@ -38,17 +38,17 @@ export function SiteHeaderAccountSection({
     return <AuthButtons />;
   }
 
-  return <SuspendedPersonalAccountDropdown user={user} />;
+  return <SuspendedEnhancedPersonalAccountDropdown user={user} />;
 }
 
-function SuspendedPersonalAccountDropdown(props: { user: User | null }) {
+function SuspendedEnhancedPersonalAccountDropdown(props: { user: User | null }) {
   const signOut = useSignOut();
   const user = useUser(props.user);
   const userData = user.data ?? props.user ?? null;
 
   if (userData) {
     return (
-      <PersonalAccountDropdown
+      <EnhancedPersonalAccountDropdown
         showProfileName={false}
         paths={paths}
         features={features}
@@ -63,24 +63,14 @@ function SuspendedPersonalAccountDropdown(props: { user: User | null }) {
 
 function AuthButtons() {
   return (
-    <div className={'flex space-x-2'}>
-      <div className={'hidden space-x-0.5 md:flex'}>
-        <If condition={features.enableThemeToggle}>
-          <ModeToggle />
-        </If>
-
-        <Button asChild variant={'ghost'}>
+    <div className={'flex space-x-3'}>
+      <div className={'hidden space-x-2 md:flex'}>
+        <Button asChild variant={'outline'} className="border-white text-white bg-transparent hover:!bg-white hover:!text-primary">
           <Link href={pathsConfig.auth.signIn}>
-            <Trans i18nKey={'auth:signIn'} />
+            Sign In
           </Link>
         </Button>
       </div>
-
-      <Button asChild className="group" variant={'default'}>
-        <Link href={pathsConfig.auth.signUp}>
-          <Trans i18nKey={'auth:signUp'} />
-        </Link>
-      </Button>
     </div>
   );
 }

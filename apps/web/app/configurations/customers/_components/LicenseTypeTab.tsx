@@ -6,6 +6,7 @@ import { toast } from '@kit/ui/sonner';
 import CustomTable, { TableColumn, TableAction } from '../../../reusableComponents/CustomTable';
 import CustomButton from '../../../reusableComponents/CustomButton';
 import LicenseTypeModal from './LicenseTypeModal';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface LicenseType {
   id: string;
@@ -18,6 +19,7 @@ interface LicenseType {
 }
 
 export default function LicenseTypeTab() {
+  const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
   const [licenseTypes, setLicenseTypes] = useState<LicenseType[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -91,15 +93,14 @@ export default function LicenseTypeTab() {
         search: searchValue,
       });
 
-      const response = await fetch(`/api/customer-configurations/license-types?${params}`);
+      const response = await getRequest(`/api/customer-configurations/license-types?${params}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch license types');
+      if (response.error) {
+        throw new Error(response.error);
       }
 
-      const result = await response.json();
-      setLicenseTypes(result.data);
-      setTotalPages(result.pagination.totalPages);
+      setLicenseTypes(response.data.data);
+      setTotalPages(response.data.pagination.totalPages);
     } catch (error) {
       console.error('Error fetching license types:', error);
       toast.error('Failed to fetch license types');
@@ -114,13 +115,10 @@ export default function LicenseTypeTab() {
     }
 
     try {
-      const response = await fetch(`/api/customer-configurations/license-types/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await deleteRequest(`/api/customer-configurations/license-types/${id}`);
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete license type');
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       toast.success('License type deleted successfully');
@@ -133,23 +131,16 @@ export default function LicenseTypeTab() {
 
   const handleSubmit = async (values: { license_type: string; description?: string }) => {
     try {
-      const url = editingLicenseType
-        ? `/api/customer-configurations/license-types/${editingLicenseType.id}`
-        : '/api/customer-configurations/license-types';
+      let response;
 
-      const method = editingLicenseType ? 'PATCH' : 'POST';
+      if (editingLicenseType) {
+        response = await putRequest(`/api/customer-configurations/license-types/${editingLicenseType.id}`, values);
+      } else {
+        response = await postRequest('/api/customer-configurations/license-types', values);
+      }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(values),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || `Failed to ${editingLicenseType ? 'update' : 'create'} license type`);
+      if (response.error) {
+        throw new Error(response.error);
       }
 
       toast.success(`License type ${editingLicenseType ? 'updated' : 'created'} successfully`);
