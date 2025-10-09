@@ -9,6 +9,7 @@ import { SearchBar } from '../../../reusableComponents/SearchBar';
 import { User, Phone, MapPin, Plus } from 'lucide-react';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { useHttpService } from '../../../../lib/http-service';
+import { useBranch } from '../../../../contexts/branch-context';
 
 interface Customer {
   id: string;
@@ -63,6 +64,7 @@ export default function CustomerDetailsStep() {
   const supabase = useSupabase();
   const { getRequest } = useHttpService();
   const router = useRouter();
+  const { selectedBranch } = useBranch();
   const [searchTerm, setSearchTerm] = useState('');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchInitiated, setSearchInitiated] = useState(false);
@@ -181,6 +183,11 @@ export default function CustomerDetailsStep() {
         limit: '20' // Limit results for performance
       });
 
+      // Add branch_id filter if a branch is selected
+      if (selectedBranch) {
+        params.append('branch_id', selectedBranch.id);
+      }
+
       const response = await getRequest(`/api/customers?${params}`);
       if (response.success && response.data) {
         setCustomers(response.data.customers || []);
@@ -228,7 +235,7 @@ export default function CustomerDetailsStep() {
       setCustomers([]);
       setSearchInitiated(false);
     }
-  }, [searchTerm]);
+  }, [searchTerm, selectedBranch]);
 
   const handleCustomerSelect = (customer: Customer) => {
     // Check if customer is blacklisted

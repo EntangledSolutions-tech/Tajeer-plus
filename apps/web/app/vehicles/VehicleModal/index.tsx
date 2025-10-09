@@ -12,6 +12,7 @@ import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { useHttpService } from '../../../lib/http-service';
 import { Plus } from 'lucide-react';
 import { toast } from '@kit/ui/sonner';
+import { useBranch } from '../../../contexts/branch-context';
 
 // Define stepper steps
 const stepperSteps: StepperModalStep[] = [
@@ -144,12 +145,18 @@ export default function VehicleModal({ onVehicleAdded }: { onVehicleAdded?: () =
   const [documents, setDocuments] = React.useState<{ name: string; file: File }[]>([]);
   const supabase = useSupabase();
   const { postRequest } = useHttpService();
+  const { selectedBranch } = useBranch();
 
   const handleDocumentsChange = React.useCallback((docs: { name: string; file: File }[]) => {
     setDocuments(docs);
   }, []);
 
   const handleSubmit = async (values: any, stepData: any) => {
+    // Validate that a branch is selected
+    if (!selectedBranch) {
+      throw new Error("Please select a branch before adding a vehicle");
+    }
+
     // Upload all files
     const {
       data: { session },
@@ -176,7 +183,8 @@ export default function VehicleModal({ onVehicleAdded }: { onVehicleAdded?: () =
       expirations: values,
       depreciation: values,
       additional_details: values,
-      documents: uploadedDocs
+      documents: uploadedDocs,
+      branch_id: selectedBranch.id
     });
 
     if (result.error) {

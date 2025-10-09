@@ -23,6 +23,8 @@ import {
 } from '@kit/ui/dropdown-menu';
 import * as Yup from 'yup';
 import { useHttpService } from '../../../lib/http-service';
+import { useBranch } from '../../../contexts/branch-context';
+import { toast } from '@kit/ui/sonner';
 
 interface Customer {
   id: string;
@@ -86,6 +88,7 @@ export default function CustomerDetailsLayout() {
   const customerId = params?.id as string;
   const router = useRouter();
   const { getRequest, putRequest, deleteRequest } = useHttpService();
+  const { selectedBranch } = useBranch();
 
   // Customer data state
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -232,12 +235,25 @@ export default function CustomerDetailsLayout() {
           throw new Error('Customer ID not found');
         }
 
-        // Fetch customer details
-        const result = await getRequest(`/api/customers/${customerId}`);
+        // Fetch customer details with branch validation
+        const url = selectedBranch
+          ? `/api/customers/${customerId}?branch_id=${selectedBranch.id}`
+          : `/api/customers/${customerId}`;
+
+        const result = await getRequest(url);
 
         if (result.success && result.data) {
           setCustomer(result.data);
         } else {
+          // Check if it's an unauthorized access error
+          const isUnauthorized = result.error && result.error.includes('access denied');
+          const isForbidden = (result as any).status === 403;
+
+          if (!result.success && (isUnauthorized || isForbidden)) {
+            toast.error('Access denied: This customer belongs to a different branch or user');
+            router.push('/home');
+            return;
+          }
           throw new Error(result.error || 'Failed to fetch customer details');
         }
       } catch (err) {
@@ -252,7 +268,7 @@ export default function CustomerDetailsLayout() {
       fetchCustomerData();
       fetchCustomerStatuses();
     }
-  }, [customerId, getRequest]);
+  }, [customerId, selectedBranch, getRequest]);
 
   if (loading.customer) {
     return (

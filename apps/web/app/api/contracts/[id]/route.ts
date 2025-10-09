@@ -1,206 +1,106 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { Database } from '../../../../lib/database.types';
+import { getAuthenticatedUser, updateUserRecord, deleteUserRecord } from '../../../../lib/api-helpers';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = getSupabaseServerClient();
-    const contractId = params.id;
+    const { user, supabase } = await getAuthenticatedUser(request);
 
-    // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { id: contractId } = await params;
 
-    if (authError) {
-      console.error('Auth error:', authError);
-      return NextResponse.json(
-        { error: 'Authentication failed', details: authError.message },
-        { status: 401 }
-      );
-    }
+    // Get branch_id from query params for validation
+    const { searchParams } = new URL(request.url);
+    const branchId = searchParams.get('branch_id');
 
-    if (!user) {
-      console.error('No user found in session');
-      return NextResponse.json(
-        { error: 'No authenticated user found' },
-        { status: 401 }
-      );
-    }
-
-    // First fetch contract details with status information
-    const { data: contract, error: contractError } = await supabase
+    // Fetch contract details
+    let query = supabase
       .from('contracts')
-      .select(`
-        *,
-        contract_statuses:status_id (
-          id,
-          name,
-          color,
-          description
-        )
-      `)
+      .select('*')
       .eq('id', contractId)
-      .single();
+      .eq('user_id', user.id); // Filter by user
 
-    if (contractError) {
-      console.error('Database error:', contractError);
-      if (contractError.code === 'PGRST116') {
+    // Also filter by branch_id if provided
+    if (branchId) {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data: contract, error } = await query.single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
         return NextResponse.json(
-          { error: 'Contract not found' },
-          { status: 404 }
+          { error: 'Contract not found or access denied', code: 'UNAUTHORIZED_ACCESS' },
+          { status: 403 }
         );
       }
-      return NextResponse.json(
-        { error: 'Failed to fetch contract details' },
-        { status: 500 }
-      );
+      console.error('Database error:', error);
+      return NextResponse.json({ error: 'Database error' }, { status: 500 });
     }
 
-    if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      );
-    }
-
-    // Fetch customer details if customer_id exists
-    let customerData = null;
-    if (contract.selected_customer_id) {
-      const { data: customer, error: customerError } = await supabase
-        .from('customers')
-        .select(`
-          id,
-          name,
-          id_type,
-          id_number,
-          classification,
-          license_type,
-          date_of_birth,
-          address,
-          mobile_number,
-          nationality,
-          status,
-          membership_id,
-          membership_tier,
-          membership_points,
-          membership_valid_until
-        `)
-        .eq('id', contract.selected_customer_id)
-        .single();
-
-      if (!customerError && customer) {
-        customerData = customer;
-      }
-    }
-
-    // Format the status data for the frontend
-    const formattedContract = {
-      ...contract,
-      status: contract.contract_statuses ? {
-        name: contract.contract_statuses.name,
-        color: contract.contract_statuses.color
-      } : null,
-      customer: customerData
-    };
-
-    // Remove the raw contract_statuses object
-    delete formattedContract.contract_statuses;
-
-    return NextResponse.json({
-      success: true,
-      contract: formattedContract
-    });
+    return NextResponse.json({ success: true, contract });
 
   } catch (error) {
-    console.error('API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Error fetching contract:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = getSupabaseServerClient();
-    const contractId = params.id;
+    const { user, supabase } = await getAuthenticatedUser(request);
 
-    // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
+    const { id: contractId } = await params;
     const body = await request.json();
 
-    // Update contract in database
-    const { data: contract, error } = await supabase
-      .from('contracts')
-      .update(body)
-      .eq('id', contractId)
-      .select()
-      .single();
+    // Update contract with user ownership validation
+    const { data: updatedContract, error } = await updateUserRecord(
+      supabase,
+      'contracts',
+      contractId,
+      body,
+      user.id
+    );
 
     if (error) {
       console.error('Database error:', error);
-      return NextResponse.json(
-        { error: 'Failed to update contract' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to update contract' }, { status: 500 });
     }
 
-    return NextResponse.json({
-      success: true,
-      contract
-    });
+    return NextResponse.json({ success: true, contract: updatedContract });
 
   } catch (error) {
-    console.error('API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Error updating contract:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = getSupabaseServerClient();
-    const contractId = params.id;
+    const { user, supabase } = await getAuthenticatedUser(request);
 
-    // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { id: contractId } = await params;
 
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // Delete contract from database
-    const { error } = await supabase
-      .from('contracts')
-      .delete()
-      .eq('id', contractId);
+    // Delete contract with user ownership validation
+    const { error } = await deleteUserRecord(
+      supabase,
+      'contracts',
+      contractId,
+      user.id
+    );
 
     if (error) {
       console.error('Database error:', error);
-      return NextResponse.json(
-        { error: 'Failed to delete contract' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Failed to delete contract' }, { status: 500 });
     }
 
     return NextResponse.json({
@@ -209,10 +109,7 @@ export async function DELETE(
     });
 
   } catch (error) {
-    console.error('API error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    console.error('Error deleting contract:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

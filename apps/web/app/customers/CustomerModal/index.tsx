@@ -8,6 +8,7 @@ import CustomerDetailsStep from './CustomerStepper/CustomerDetailsStep';
 import CustomerDocumentsStep from './CustomerStepper/CustomerDocumentsStep';
 import * as Yup from 'yup';
 import { useHttpService } from '../../../lib/http-service';
+import { useBranch } from '../../../contexts/branch-context';
 
 const customerDetailsSchema = Yup.object({
   name: Yup.string().required('Name is required').min(2, 'Name must be at least 2 characters'),
@@ -73,6 +74,8 @@ const steps: StepperModalStep[] = [
 export default function CustomerModal({ onCustomerAdded }: { onCustomerAdded?: () => void }) {
   const [documents, setDocuments] = React.useState<{ name: string; file: File }[]>([]);
   const { postRequest } = useHttpService();
+  const { selectedBranch } = useBranch();
+  const supabase = useSupabase();
 
   const handleDocumentsChange = (docs: { name: string; file: File }[]) => {
     setDocuments(docs);
@@ -80,6 +83,11 @@ export default function CustomerModal({ onCustomerAdded }: { onCustomerAdded?: (
 
   const submitCustomer = async (values: any, stepData: any) => {
     try {
+      // Validate that a branch is selected
+      if (!selectedBranch) {
+        throw new Error("Please select a branch before adding a customer");
+      }
+
       // First, upload all documents to storage if any exist
       let uploadedDocuments: any[] = [];
       if (documents && documents.length > 0) {
@@ -126,7 +134,8 @@ export default function CustomerModal({ onCustomerAdded }: { onCustomerAdded?: (
         address: values.address,
         mobile_number: values.mobileNumber || '', // Add mobile number if available
         documents: uploadedDocuments,
-        documents_count: uploadedDocuments.length
+        documents_count: uploadedDocuments.length,
+        branch_id: selectedBranch.id
       };
 
       // Call the API to create customer

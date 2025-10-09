@@ -31,6 +31,8 @@ import StatusChangeModal from './StatusChangeModal';
 import * as Yup from 'yup';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { useHttpService } from '../../../lib/http-service';
+import { useBranch } from '../../../contexts/branch-context';
+import { toast } from '@kit/ui/sonner';
 
 interface Vehicle {
   id: string;
@@ -217,6 +219,7 @@ export default function VehicleDetailsLayout() {
   const vehicleId = params?.id as string;
   const supabase = useSupabase();
   const router = useRouter();
+  const { selectedBranch } = useBranch();
 
   // Vehicle data state
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
@@ -495,12 +498,25 @@ export default function VehicleDetailsLayout() {
           }
         }
 
-        // Fetch vehicle details
-        const response = await getRequest(`/api/vehicles/${actualVehicleId}`);
+        // Fetch vehicle details with branch validation
+        const url = selectedBranch
+          ? `/api/vehicles/${actualVehicleId}?branch_id=${selectedBranch.id}`
+          : `/api/vehicles/${actualVehicleId}`;
+
+        const response = await getRequest(url);
 
         if (response.success && response.data) {
           setVehicle(response.data);
         } else {
+          // Check if it's an unauthorized access error
+          const isUnauthorized = response.error && response.error.includes('access denied');
+          const isForbidden = (response as any).status === 403;
+
+          if (!response.success && (isUnauthorized || isForbidden)) {
+            toast.error('Access denied: This vehicle belongs to a different branch or user');
+            router.push('/home');
+            return;
+          }
           throw new Error(response.error || 'Failed to fetch vehicle details');
         }
       } catch (err) {
@@ -516,7 +532,7 @@ export default function VehicleDetailsLayout() {
       fetchVehicleStatuses();
       fetchExistingDocuments();
     }
-  }, [vehicleId]);
+  }, [vehicleId, selectedBranch]);
 
 
 

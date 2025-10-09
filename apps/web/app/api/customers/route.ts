@@ -4,26 +4,6 @@ import { getAuthenticatedUser, addUserIdToData, getUserData, buildPaginationResp
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
-
-    // Check authentication
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limitParam = searchParams.get('limit') || '10';
-    const limit = limitParam === '-1' ? -1 : parseInt(limitParam);
-    const search = searchParams.get('search') || '';
-    const status = searchParams.get('status') || '';
-    const classification = searchParams.get('classification') || '';
-    const blacklisted = searchParams.get('blacklisted') === 'true';
-    const withDues = searchParams.get('withDues') === 'true';
-
-    // Calculate offset - only apply pagination if limit is not -1
-    const offset = limit === -1 ? 0 : (page - 1) * limit;
     const { user, supabase } = await getAuthenticatedUser(request);
 
     const { page, limit, search, offset } = getPaginationParams(request);
@@ -31,6 +11,7 @@ export async function GET(request: NextRequest) {
     const classification = new URL(request.url).searchParams.get('classification') || '';
     const blacklisted = new URL(request.url).searchParams.get('blacklisted') === 'true';
     const withDues = new URL(request.url).searchParams.get('withDues') === 'true';
+    const branchId = new URL(request.url).searchParams.get('branch_id');
 
     // Build query with joins to get related data
     let query = supabase
@@ -43,6 +24,11 @@ export async function GET(request: NextRequest) {
         status:customer_statuses(name)
       `, { count: 'exact' })
       .eq('user_id', user.id); // Filter by user
+
+    // Filter by branch if branch_id is provided
+    if (branchId) {
+      query = query.eq('branch_id', branchId);
+    }
 
     // Apply filters
     if (search) {
@@ -85,8 +71,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Database error' }, { status: 500 });
     }
 
-    // Get summary statistics
-    const { data: summaryData, error: summaryError } = await (supabase as any)
     // Get summary statistics for this user only
     const { data: summaryData, error: summaryError } = await supabase
       .from('customers')
@@ -164,12 +148,18 @@ export async function POST(request: NextRequest) {
       address,
       mobile_number,
       nationality,
-      status
+      status,
+      branch_id
     } = body;
 
     // Validate required fields
     if (!name || !id_type || !id_number || !classification || !license_type) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Validate that branch_id is provided
+    if (!branch_id) {
+      return NextResponse.json({ error: 'Branch ID is required' }, { status: 400 });
     }
 
     // Check if ID number already exists for this user
@@ -189,22 +179,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Customer with this ID number already exists' }, { status: 400 });
     }
 
-    // Insert new customer with foreign key relationships
-    const { data: newCustomer, error: insertError } = await (supabase as any)
-      .from('customers')
-      .insert({
-        name: name,
-        id_type: id_type,
-        id_number: id_number,
-        classification_id: classification,
-        license_type_id: license_type,
-        date_of_birth: date_of_birth,
-        address: address,
-        mobile_number: mobile_number,
-        nationality_id: nationality,
-        status_id: status || (await (supabase as any).from('customer_statuses').select('id').eq('name', 'Active').single()).data?.id
-      })
-    // Prepare customer data with user_id
+    // Prepare customer data with user_id and branch_id
     const customerData = {
       name: name,
       id_type: id_type,
@@ -215,7 +190,8 @@ export async function POST(request: NextRequest) {
       address: address,
       mobile_number: mobile_number,
       nationality_id: nationality,
-      status_id: status || (await supabase.from('customer_statuses').select('id').eq('name', 'Active').single()).data?.id
+      status_id: status || (await supabase.from('customer_statuses').select('id').eq('name', 'Active').single()).data?.id,
+      branch_id: branch_id
     };
 
     // Add user_id to ensure user ownership

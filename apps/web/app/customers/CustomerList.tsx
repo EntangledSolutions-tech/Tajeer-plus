@@ -13,6 +13,7 @@ import CustomTable, { TableColumn, TableAction } from '../reusableComponents/Cus
 import Link from 'next/link';
 import { Badge } from '@kit/ui/badge';
 import { useHttpService } from '../../lib/http-service';
+import { useBranch } from '../../contexts/branch-context';
 
 interface Customer {
   id: string;
@@ -44,6 +45,7 @@ export default function CustomerList() {
   const [error, setError] = useState<string | null>(null);
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const [currentLimit, setCurrentLimit] = useState(10);
+  const { selectedBranch } = useBranch();
 
   // Column definitions for CustomTable
   const columns: TableColumn[] = [
@@ -362,6 +364,11 @@ export default function CustomerList() {
         myOfficeOnly: myOfficeOnly.toString()
       });
 
+      // Add selected branch filter if a branch is selected
+      if (selectedBranch) {
+        params.append('branch_id', selectedBranch.id);
+      }
+
       const result = await getRequest(`/api/customers?${params}`);
 
       if (result.success && result.data) {
@@ -383,7 +390,7 @@ export default function CustomerList() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, pagination.page, currentLimit, classification, status, blacklisted, withDues, myOfficeOnly, getRequest]);
+  }, [debouncedSearch, pagination.page, currentLimit, classification, status, blacklisted, withDues, myOfficeOnly, selectedBranch, getRequest]);
 
   useEffect(() => {
     fetchCustomerStatuses();

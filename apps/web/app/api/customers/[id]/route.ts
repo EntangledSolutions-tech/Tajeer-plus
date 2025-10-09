@@ -11,8 +11,12 @@ export async function GET(
 
     const { id: customerId } = await params;
 
+    // Get branch_id from query params for validation
+    const { searchParams } = new URL(request.url);
+    const branchId = searchParams.get('branch_id');
+
     // Fetch customer details with related data
-    const { data: customer, error } = await supabase
+    let query = supabase
       .from('customers')
       .select(`
         *,
@@ -22,12 +26,21 @@ export async function GET(
         status:customer_statuses(name, color)
       `)
       .eq('id', customerId)
-      .eq('user_id', user.id) // Filter by user
-      .single();
+      .eq('user_id', user.id); // Filter by user
+
+    // Also filter by branch_id if provided
+    if (branchId) {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data: customer, error } = await query.single();
 
     if (error) {
       if (error.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+        return NextResponse.json(
+          { error: 'Customer not found or access denied', code: 'UNAUTHORIZED_ACCESS' },
+          { status: 403 }
+        );
       }
       console.error('Database error:', error);
       return NextResponse.json({ error: 'Database error' }, { status: 500 });

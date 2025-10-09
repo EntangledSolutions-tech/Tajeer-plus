@@ -12,6 +12,7 @@ import SummaryStep from './ContractStepper/SummaryStep';
 import * as Yup from 'yup';
 import { useHttpService } from '../../../lib/http-service';
 import { contractValidationSchema, customerDetailsSchema, vehicleDetailsSchema, documentsSchema, pricingTermsSchema, contractDetailsSchema } from './validation-schema';
+import { useBranch } from '../../../contexts/branch-context';
 
 const steps: StepperModalStep[] = [
   {
@@ -115,6 +116,7 @@ export default function ContractModal({
 }: ContractModalProps) {
   const supabase = useSupabase();
   const { postRequest, putRequest } = useHttpService();
+  const { selectedBranch } = useBranch();
 
   // Get initial values for edit mode
   const getEditInitialValues = () => {
@@ -183,6 +185,11 @@ export default function ContractModal({
 
   const submitContract = async (values: any, stepData: any) => {
     try {
+      // Validate that a branch is selected
+      if (!selectedBranch) {
+        throw new Error("Please select a branch before creating a contract");
+      }
+
       // Prepare contract data for database insertion
       const contractData = {
         // Contract Details
@@ -216,7 +223,8 @@ export default function ContractModal({
         total_amount: parseFloat(values.totalAmount) || 0,
         deposit: parseFloat(values.deposit) || 0,
 
-
+        // Branch
+        branch_id: selectedBranch.id
       };
 
       // Log the contract data being sent for debugging

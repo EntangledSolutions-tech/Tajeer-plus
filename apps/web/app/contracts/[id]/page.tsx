@@ -26,6 +26,8 @@ import SummaryStep from '../ContractModal/ContractStepper/SummaryStep';
 import * as Yup from 'yup';
 import { contractValidationSchema, customerDetailsSchema, vehicleDetailsSchema, vehicleInspectionSchema, documentsSchema, pricingTermsSchema, contractDetailsSchema } from '../ContractModal/validation-schema';
 import { useHttpService } from '../../../lib/http-service';
+import { useBranch } from '../../../contexts/branch-context';
+import { toast } from '@kit/ui/sonner';
 
 interface Customer {
   id: string;
@@ -151,6 +153,7 @@ export default function ContractDetails() {
   const contractId = params?.id as string;
   const router = useRouter();
   const { getRequest, putRequest, deleteRequest } = useHttpService();
+  const { selectedBranch } = useBranch();
 
   // Contract data state
   const [contract, setContract] = useState<Contract | null>(null);
@@ -381,10 +384,25 @@ export default function ContractDetails() {
         setLoading(true);
         setError(null);
 
-        const response = await getRequest(`/api/contracts/${contractId}`);
+        // Fetch contract details with branch validation
+        const url = selectedBranch
+          ? `/api/contracts/${contractId}?branch_id=${selectedBranch.id}`
+          : `/api/contracts/${contractId}`;
+
+        const response = await getRequest(url);
+
         if (response.success && response.data) {
           setContract(response.data.contract);
         } else {
+          // Check if it's an unauthorized access error
+          const isUnauthorized = response.error && response.error.includes('access denied');
+          const isForbidden = (response as any).status === 403;
+
+          if (!response.success && (isUnauthorized || isForbidden)) {
+            toast.error('Access denied: This contract belongs to a different branch or user');
+            router.push('/home');
+            return;
+          }
           throw new Error(response.error || 'Invalid response format');
         }
       } catch (err) {
@@ -426,10 +444,22 @@ export default function ContractDetails() {
         setLoading(true);
         setError(null);
 
-        const response = await getRequest(`/api/contracts/${contractId}`);
+        // Fetch contract details with branch validation
+        const url = selectedBranch
+          ? `/api/contracts/${contractId}?branch_id=${selectedBranch.id}`
+          : `/api/contracts/${contractId}`;
+
+        const response = await getRequest(url);
+
         if (response.success && response.data) {
           setContract(response.data.contract);
         } else {
+          // Check if it's an unauthorized access error
+          if (response.error && (response.error.includes('access denied') || response.code === 'UNAUTHORIZED_ACCESS')) {
+            toast.error('Access denied: This contract belongs to a different branch or user');
+            router.push('/home');
+            return;
+          }
           throw new Error(response.error || 'Invalid response format');
         }
       } catch (err) {
@@ -441,7 +471,7 @@ export default function ContractDetails() {
     };
 
     fetchContractData();
-  }, [contractId]);
+  }, [contractId, selectedBranch]);
 
   // Fetch contract statuses on component mount
   useEffect(() => {

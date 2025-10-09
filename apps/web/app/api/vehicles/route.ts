@@ -70,8 +70,7 @@ export async function GET(request: NextRequest) {
       `, { count: 'exact' });
 
     // Filter by user_id for proper authentication
-    // Temporarily commented out to debug
-    // query = query.eq('user_id', user.id);
+    query = query.eq('user_id', user.id);
 
     // Apply specific filters - support both single and multiple IDs
     if (plateNumber) {
@@ -315,10 +314,19 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    // Validate that branch_id is provided
+    if (!body.branch_id) {
+      return NextResponse.json(
+        { error: 'Branch ID is required' },
+        { status: 400 }
+      );
+    }
+
     // Add user_id to the vehicle data
     const vehicleData = {
       ...body,
-      user_id: user.id
+      user_id: user.id,
+      branch_id: body.branch_id
     };
 
     const { data: vehicle, error } = await supabase

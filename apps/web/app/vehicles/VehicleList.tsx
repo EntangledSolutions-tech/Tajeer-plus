@@ -11,6 +11,7 @@ import { SearchBar } from '../reusableComponents/SearchBar';
 import { SummaryCard } from '../reusableComponents/SummaryCard';
 import VehicleModal from './VehicleModal/index';
 import { useHttpService } from '../../lib/http-service';
+import { useBranch } from '../../contexts/branch-context';
 
 interface Vehicle {
   id: string;
@@ -41,6 +42,7 @@ export default function VehicleList() {
   const [loading, setLoading] = useState(true);
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
+  const { selectedBranch } = useBranch();
 
   // Column definitions for CustomTable
   const columns: TableColumn[] = [
@@ -386,6 +388,11 @@ export default function VehicleList() {
         year: year
       });
 
+      // Add selected branch filter if a branch is selected
+      if (selectedBranch) {
+        params.append('branch_id', selectedBranch.id);
+      }
+
       // Add enhanced filters
       if (filters.make) params.append('make_id', filters.make);
       if (filters.model) params.append('model_id', filters.model);
@@ -439,7 +446,7 @@ export default function VehicleList() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, pagination.page, pagination.limit, status, model, year, filters]);
+  }, [debouncedSearch, pagination.page, pagination.limit, status, model, year, filters, selectedBranch]);
 
   useEffect(() => {
     fetchVehicleStatuses();

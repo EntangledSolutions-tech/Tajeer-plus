@@ -18,6 +18,7 @@ import CustomCard from '../reusableComponents/CustomCard';
 import CustomTable, { TableColumn, TableAction } from '../reusableComponents/CustomTable';
 import ContractModal from './ContractModal/index';
 import { useHttpService } from '../../lib/http-service';
+import { useBranch } from '../../contexts/branch-context';
 
 interface Contract {
   id: string;
@@ -79,6 +80,7 @@ export default function ContractsList() {
     hasPrevPage: false
   });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const { selectedBranch } = useBranch();
 
   const handleContractAdded = () => {
     setRefreshTrigger(prev => prev + 1);
@@ -105,6 +107,11 @@ export default function ContractsList() {
         ...(debouncedSearch && { search: debouncedSearch }),
         ...(statusFilter !== 'all' && { status: statusFilter })
       });
+
+      // Add selected branch filter if a branch is selected
+      if (selectedBranch) {
+        params.append('branch_id', selectedBranch.id);
+      }
 
       const response = await getRequest(`/api/contracts?${params}`);
       if (response.success && response.data) {
@@ -207,7 +214,7 @@ export default function ContractsList() {
 
   useEffect(() => {
     fetchContracts();
-  }, [currentPage, currentLimit, debouncedSearch, statusFilter, refreshTrigger]);
+  }, [currentPage, currentLimit, debouncedSearch, statusFilter, refreshTrigger, selectedBranch]);
 
   // Reset page to 1 when search changes
   useEffect(() => {

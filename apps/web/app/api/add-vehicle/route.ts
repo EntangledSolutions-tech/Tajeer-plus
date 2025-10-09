@@ -22,8 +22,17 @@ export async function POST(request: NextRequest) {
       expirations,
       depreciation,
       additional_details,
-      documents
+      documents,
+      branch_id
     } = body;
+
+    // Validate that branch_id is provided
+    if (!branch_id) {
+      return NextResponse.json(
+        { error: 'Branch ID is required' },
+        { status: 400 }
+      );
+    }
 
     // Helper function to convert string to date
     const parseDate = (dateString: string) => {
@@ -56,7 +65,7 @@ export async function POST(request: NextRequest) {
         car_class: vehicle.carClass,
         plate_registration_type: vehicle.plateRegistrationType,
         expected_sale_price: Math.min(parseFloat(vehicle.expectedSalePrice) || 0, 99999999.99),
-        branch_id: vehicle.branch_id, // Form sends 'branch_id' field with UUID value
+        branch_id: branch_id, // From body root level
 
         // Pricing details
         daily_rental_rate: Math.min(parseFloat(pricing.dailyRentalRate) || 0, 99999999.99),

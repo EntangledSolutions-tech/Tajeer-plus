@@ -5,26 +5,6 @@ import { getAuthenticatedUser, addUserIdToData, updateUserRecord, getUserData, b
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient<Database>();
-
-    // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError) {
-      console.error('Auth error:', authError);
-      return NextResponse.json(
-        { error: 'Authentication failed', details: authError.message },
-        { status: 401 }
-      );
-    }
-
-    if (!user) {
-      console.error('No user found in session');
-      return NextResponse.json(
-        { error: 'No authenticated user found' },
-        { status: 401 }
-      );
-    }
     const { user, supabase } = await getAuthenticatedUser(request);
 
     const body = await request.json();
@@ -34,7 +14,8 @@ export async function POST(request: NextRequest) {
       'start_date', 'end_date',
       'selected_vehicle_id', 'vehicle_plate', 'vehicle_serial_number',
       'daily_rental_rate', 'hourly_delay_rate', 'current_km', 'rental_days',
-      'permitted_daily_km', 'excess_km_rate', 'payment_method', 'total_amount'
+      'permitted_daily_km', 'excess_km_rate', 'payment_method', 'total_amount',
+      'branch_id'
     ];
 
     for (const field of requiredFields) {
@@ -146,12 +127,8 @@ export async function POST(request: NextRequest) {
       // Status (use default status)
       status_id: defaultStatusId,
 
-      // Metadata
-      created_by: user.id,
-      updated_by: user.id
-    };
-      // Status
-      status_id: body.status_id
+      // Branch
+      branch_id: body.branch_id
     };
 
     // Add user_id to ensure user ownership
@@ -194,26 +171,6 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient<Database>();
-
-    // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError) {
-      console.error('Auth error:', authError);
-      return NextResponse.json(
-        { error: 'Authentication failed', details: authError.message },
-        { status: 401 }
-      );
-    }
-
-    if (!user) {
-      console.error('No user found in session');
-      return NextResponse.json(
-        { error: 'No authenticated user found' },
-        { status: 401 }
-      );
-    }
     const { user, supabase } = await getAuthenticatedUser(request);
 
     const body = await request.json();
@@ -291,45 +248,21 @@ export async function PUT(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     console.log('Contracts API called');
-    const supabase = getSupabaseServerClient<Database>();
-
-    // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError) {
-      console.error('Auth error:', authError);
-      return NextResponse.json(
-        { error: 'Authentication failed', details: authError.message },
-        { status: 401 }
-      );
-    }
-
-    if (!user) {
-      console.error('No user found in session');
-      return NextResponse.json(
-        { error: 'No authenticated user found' },
-        { status: 401 }
-      );
-    }
-
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limitParam = searchParams.get('limit') || '10';
-    const limit = limitParam === '-1' ? -1 : parseInt(limitParam);
-    const search = searchParams.get('search') || '';
-    const status = searchParams.get('status') || '';
-
-    // Calculate offset - only apply pagination if limit is not -1
-    const offset = limit === -1 ? 0 : (page - 1) * limit;
     const { user, supabase } = await getAuthenticatedUser(request);
 
     const { page, limit, search, offset } = getPaginationParams(request);
     const status = new URL(request.url).searchParams.get('status') || '';
+    const branchId = new URL(request.url).searchParams.get('branch_id');
 
     let query = supabase
       .from('contracts')
       .select('*', { count: 'exact' })
       .eq('user_id', user.id); // Filter by user
+
+    // Filter by branch if branch_id is provided
+    if (branchId) {
+      query = query.eq('branch_id', branchId);
+    }
 
     // Add search filter
     if (search) {

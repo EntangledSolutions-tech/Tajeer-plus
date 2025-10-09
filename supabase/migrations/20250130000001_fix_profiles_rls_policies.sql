@@ -18,6 +18,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Grant execute permissions to authenticated and anon users
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO anon;
+
 -- Create simpler policies that don't cause recursion
 CREATE POLICY "Users can view their own profile" ON public.profiles
     FOR SELECT USING (auth.uid() = id);

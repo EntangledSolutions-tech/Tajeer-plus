@@ -5,23 +5,6 @@ import SearchableSelect from '../../../reusableComponents/SearchableSelect';
 import CustomButton from '../../../reusableComponents/CustomButton';
 import { useHttpService } from '../../../../lib/http-service';
 
-const vehicleFeatures = [
-  { key: 'gps', id: 'gps', value: 'GPS Navigation', subValue: 'Built-in GPS navigation system' },
-  { key: 'bluetooth', id: 'bluetooth', value: 'Bluetooth Connectivity', subValue: 'Bluetooth for phone and audio connectivity' },
-  { key: 'backup-camera', id: 'backup-camera', value: 'Backup Camera', subValue: 'Rear-view backup camera' },
-  { key: 'leather-seats', id: 'leather-seats', value: 'Leather Seats', subValue: 'Premium leather upholstery' },
-  { key: 'sunroof', id: 'sunroof', value: 'Sunroof', subValue: 'Electric or manual sunroof' },
-  { key: 'heated-seats', id: 'heated-seats', value: 'Heated Seats', subValue: 'Front and/or rear heated seats' },
-  { key: 'ventilated-seats', id: 'ventilated-seats', value: 'Ventilated Seats', subValue: 'Air-conditioned seats' },
-  { key: 'premium-sound', id: 'premium-sound', value: 'Premium Sound System', subValue: 'High-quality audio system' },
-  { key: 'wireless-charging', id: 'wireless-charging', value: 'Wireless Charging', subValue: 'Wireless phone charging pad' },
-  { key: 'adaptive-cruise', id: 'adaptive-cruise', value: 'Adaptive Cruise Control', subValue: 'Advanced cruise control with distance sensing' },
-  { key: 'lane-departure', id: 'lane-departure', value: 'Lane Departure Warning', subValue: 'System that warns when leaving lane' },
-  { key: 'blind-spot', id: 'blind-spot', value: 'Blind Spot Monitoring', subValue: 'Sensors to detect vehicles in blind spots' },
-  { key: 'parking-sensors', id: 'parking-sensors', value: 'Parking Sensors', subValue: 'Front and rear parking sensors' },
-  { key: 'keyless-entry', id: 'keyless-entry', value: 'Keyless Entry', subValue: 'Keyless entry and start system' },
-  { key: 'dual-zone-climate', id: 'dual-zone-climate', value: 'Dual Zone Climate Control', subValue: 'Separate temperature controls for driver and passenger' }
-];
 
 interface FormValues {
   carStatus: string;
@@ -220,7 +203,7 @@ export default function AdditionalDetailsStep() {
           .map((policy: any) => ({
             key: policy.policy_number,
             id: policy.id,
-            value: `${policy.policy_type} - ${policy.name}`,
+            value: policy.name,
             subValue: `Policy: ${policy.policy_number} | Amount: ${policy.policy_amount}`,
             // Store additional data for form population
             policy_type: policy.policy_type,
