@@ -21,10 +21,17 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || 'all';
     const classification = searchParams.get('classification') || 'all';
     const blacklisted = searchParams.get('blacklisted') === 'true';
+    const branchId = searchParams.get('branch_id');
 
     let query = supabase
       .from('customers')
-      .select('*');
+      .select('*')
+      .eq('user_id', user.id); // Filter by authenticated user
+
+    // Filter by branch if branch_id is provided
+    if (branchId) {
+      query = query.eq('branch_id', branchId);
+    }
 
     // Apply filters
     if (search) {

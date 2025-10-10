@@ -71,11 +71,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Database error' }, { status: 500 });
     }
 
-    // Get summary statistics for this user only
-    const { data: summaryData, error: summaryError } = await supabase
+    // Get summary statistics for this user - filter by same criteria as main query
+    let summaryQuery = supabase
       .from('customers')
       .select('status_id, customer_statuses(name)')
       .eq('user_id', user.id);
+
+    // Apply same branch filter to summary stats
+    if (branchId) {
+      summaryQuery = summaryQuery.eq('branch_id', branchId);
+    }
+
+    const { data: summaryData, error: summaryError } = await summaryQuery;
 
     if (summaryError) {
       console.error('Summary error:', summaryError);

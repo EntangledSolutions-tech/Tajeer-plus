@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || 'all';
     const model = searchParams.get('model') || '';
     const year = searchParams.get('year') || '';
+    const branchId = searchParams.get('branch_id');
 
     let query = supabase
       .from('vehicles')
@@ -32,6 +33,11 @@ export async function GET(request: NextRequest) {
 
     // Filter by user_id for proper authentication
     query = query.eq('user_id', user.id);
+
+    // Filter by branch if branch_id is provided
+    if (branchId) {
+      query = query.eq('branch_id', branchId);
+    }
 
     if (search) {
       query = query.or(`plate_number.ilike.%${search}%,make_year.ilike.%${search}%`);

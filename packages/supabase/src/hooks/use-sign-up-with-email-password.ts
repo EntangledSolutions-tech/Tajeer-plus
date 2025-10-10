@@ -19,7 +19,7 @@ export function useSignUpWithEmailAndPassword() {
 
   const mutationFn = async (params: Credentials) => {
     const { emailRedirectTo, captchaToken, ...credentials } = params;
-    debugger
+
     const response = await client.auth.signUp({
       ...credentials,
 

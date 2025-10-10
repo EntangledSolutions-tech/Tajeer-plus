@@ -44,17 +44,28 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Listen for authentication state changes and clear branch on logout/login/signup
-  // This ensures that when users log out, log in, or sign up, their previously selected branch
+  // Listen for authentication state changes and clear branch on logout/actual login
+  // This ensures that when users log out or switch accounts, their previously selected branch
   // is cleared from both state and localStorage, preventing cross-user data leakage
   useEffect(() => {
+    let previousUserId: string | null = null;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
-      // Clear selected branch on logout, login, or signup
-      // SIGNED_OUT: User logged out
-      // SIGNED_IN: User logged in (including signup)
-      if (event === 'SIGNED_OUT' || event === 'SIGNED_IN') {
+      const currentUserId = session?.user?.id || null;
+
+      // Clear selected branch only on logout or when user ID changes (actual login/account switch)
+      if (event === 'SIGNED_OUT') {
         console.log(`Auth event: ${event}, clearing selected branch`);
         clearSelectedBranch();
+        previousUserId = null;
+      } else if (event === 'SIGNED_IN' && previousUserId && previousUserId !== currentUserId) {
+        // Only clear if the user ID changed (different user logged in)
+        console.log(`Auth event: User changed from ${previousUserId} to ${currentUserId}, clearing selected branch`);
+        clearSelectedBranch();
+        previousUserId = currentUserId;
+      } else if (event === 'SIGNED_IN' && !previousUserId) {
+        // First sign in after page load, just track the user
+        previousUserId = currentUserId;
       }
     });
 

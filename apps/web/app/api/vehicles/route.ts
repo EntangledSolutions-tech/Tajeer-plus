@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     const limitParam = searchParams.get('limit') || '10';
     const limit = limitParam === '-1' ? -1 : parseInt(limitParam);
     const search = searchParams.get('search') || '';
+    const hideContractsVehicle = searchParams.get('hide_contracts_vehicle') === 'true';
 
     // Enhanced filtering parameters
     const filter = searchParams.get('filter') || '';
@@ -232,18 +233,26 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Filter out vehicles that have active contracts
+    // Filter out vehicles that have active contracts (only if hide_contracts_vehicle is true)
     let availableVehicles = vehicles || [];
 
-    if (availableVehicles.length > 0) {
+    if (hideContractsVehicle && availableVehicles.length > 0) {
       // Get all vehicle IDs
       const vehicleIds = availableVehicles.map(vehicle => vehicle.id);
 
-      // Find vehicles that have active contracts
-      const { data: activeContracts } = await supabase
+      // Find vehicles that have active contracts - filter by user to avoid security issues
+      let contractsQuery = supabase
         .from('contracts')
         .select('selected_vehicle_id, status_id')
-        .in('selected_vehicle_id', vehicleIds);
+        .in('selected_vehicle_id', vehicleIds)
+        .eq('user_id', user.id); // Only check contracts belonging to this user
+
+      // Also filter by branch if branch_id is provided
+      if (branchId) {
+        contractsQuery = contractsQuery.eq('branch_id', branchId);
+      }
+
+      const { data: activeContracts } = await contractsQuery;
 
       if (activeContracts && activeContracts.length > 0) {
         // Get active status IDs

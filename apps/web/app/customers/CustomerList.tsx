@@ -45,7 +45,7 @@ export default function CustomerList() {
   const [error, setError] = useState<string | null>(null);
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const [currentLimit, setCurrentLimit] = useState(10);
-  const { selectedBranch } = useBranch();
+  const { selectedBranch, isLoading: isBranchLoading } = useBranch();
 
   // Column definitions for CustomTable
   const columns: TableColumn[] = [
@@ -211,7 +211,7 @@ export default function CustomerList() {
   const fetchCustomerStatuses = useCallback(async () => {
     try {
       // Fetch customer classifications
-      const classificationResult = await getRequest('/api/customer-configurations/classifications?limit=100');
+      const classificationResult = await getRequest('/api/customer-configurations/classifications?limit=-1');
 
       if (classificationResult.success && classificationResult.data) {
         // Convert statuses to the format expected by CustomTable
@@ -349,6 +349,11 @@ export default function CustomerList() {
   }, [search]);
 
   const fetchCustomers = useCallback(async () => {
+    // Don't fetch if branch context is still loading
+    if (isBranchLoading) {
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -374,6 +379,7 @@ export default function CustomerList() {
       if (result.success && result.data) {
         setCustomers(result.data.customers || []);
         setPagination(result.data.pagination || pagination);
+
         setSummaryStats(result.data.summaryStats || {
           total: 0,
           active: 0,
@@ -390,7 +396,7 @@ export default function CustomerList() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, pagination.page, currentLimit, classification, status, blacklisted, withDues, myOfficeOnly, selectedBranch, getRequest]);
+  }, [debouncedSearch, pagination.page, currentLimit, classification, status, blacklisted, withDues, myOfficeOnly, selectedBranch, isBranchLoading, getRequest]);
 
   useEffect(() => {
     fetchCustomerStatuses();

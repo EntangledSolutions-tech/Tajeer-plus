@@ -140,7 +140,8 @@ export default function VehicleDetailsStep() {
       const params = new URLSearchParams({
         search: query,
         limit: '-1', // Increased limit for better search results
-        page: '1'
+        page: '1',
+        hide_contracts_vehicle: 'true' // Hide vehicles with active contracts when selecting for contracts
       });
 
       // Add branch_id filter if a branch is selected

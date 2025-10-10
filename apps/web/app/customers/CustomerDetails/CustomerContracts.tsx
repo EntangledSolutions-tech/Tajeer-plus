@@ -8,6 +8,7 @@ import CustomButton from '../../reusableComponents/CustomButton';
 import { SummaryCard } from '../../reusableComponents/SummaryCard';
 import { ArrowRight, FileText, CheckCircle, Calendar, Filter, FileSpreadsheet } from 'lucide-react';
 import { useHttpService } from '../../../lib/http-service';
+import { useBranch } from '../../../contexts/branch-context';
 
 interface Contract {
   id: string;
@@ -35,6 +36,7 @@ interface CustomerContractsProps {
 export default function CustomerContracts({ customerId }: CustomerContractsProps) {
   const router = useRouter();
   const { getRequest } = useHttpService();
+  const { selectedBranch } = useBranch();
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +83,11 @@ export default function CustomerContracts({ customerId }: CustomerContractsProps
         ...(debouncedSearch && { search: debouncedSearch }),
         ...(statusFilter !== 'all' && { status: statusFilter })
       });
+
+      // Add branch_id filter if a branch is selected
+      if (selectedBranch) {
+        params.append('branch_id', selectedBranch.id);
+      }
 
       const result = await getRequest(`/api/customers/${customerId}/contracts?${params}`);
 
@@ -139,7 +146,7 @@ export default function CustomerContracts({ customerId }: CustomerContractsProps
     } finally {
       setLoading(false);
     }
-  }, [customerId, currentPage, currentLimit, debouncedSearch, statusFilter, getRequest]);
+  }, [customerId, currentPage, currentLimit, debouncedSearch, statusFilter, selectedBranch, getRequest]);
 
   // Fetch contracts on component mount and when dependencies change
   useEffect(() => {

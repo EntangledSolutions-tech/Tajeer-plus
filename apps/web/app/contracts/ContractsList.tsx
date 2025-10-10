@@ -80,7 +80,7 @@ export default function ContractsList() {
     hasPrevPage: false
   });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const { selectedBranch } = useBranch();
+  const { selectedBranch, isLoading: isBranchLoading } = useBranch();
 
   const handleContractAdded = () => {
     setRefreshTrigger(prev => prev + 1);
@@ -97,6 +97,11 @@ export default function ContractsList() {
 
   // Fetch contracts from API
   const fetchContracts = async () => {
+    // Don't fetch if branch context is still loading
+    if (isBranchLoading) {
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -214,7 +219,7 @@ export default function ContractsList() {
 
   useEffect(() => {
     fetchContracts();
-  }, [currentPage, currentLimit, debouncedSearch, statusFilter, refreshTrigger, selectedBranch]);
+  }, [currentPage, currentLimit, debouncedSearch, statusFilter, refreshTrigger, selectedBranch, isBranchLoading]);
 
   // Reset page to 1 when search changes
   useEffect(() => {

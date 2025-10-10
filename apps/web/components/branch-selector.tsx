@@ -16,7 +16,7 @@ interface BranchSelectorProps {
 export function BranchSelector({ variant = 'default', onCreateBranch }: BranchSelectorProps) {
   const { postRequest } = useHttpService();
   const { data: branches, isLoading, error, refetch } = useBranches();
-  const { selectedBranch, setSelectedBranch } = useBranch();
+  const { selectedBranch, setSelectedBranch, isLoading: isContextLoading } = useBranch();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
@@ -110,10 +110,10 @@ export function BranchSelector({ variant = 'default', onCreateBranch }: BranchSe
         isDropdown
         dropdownOptions={branchOptions}
         onDropdownSelect={handleBranchSelect}
-        disabled={isLoading}
+        disabled={isLoading || isContextLoading}
         {...getButtonProps()}
       >
-        {isLoading ? 'Loading...' : getSelectedLabel()}
+        {(isLoading || isContextLoading) ? 'Loading...' : getSelectedLabel()}
       </CustomButton>
 
       <BranchModal

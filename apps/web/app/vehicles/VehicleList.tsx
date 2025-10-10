@@ -42,7 +42,7 @@ export default function VehicleList() {
   const [loading, setLoading] = useState(true);
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
-  const { selectedBranch } = useBranch();
+  const { selectedBranch, isLoading: isBranchLoading } = useBranch();
 
   // Column definitions for CustomTable
   const columns: TableColumn[] = [
@@ -375,6 +375,11 @@ export default function VehicleList() {
   }, [search]);
 
   const fetchVehicles = useCallback(async () => {
+    // Don't fetch if branch context is still loading
+    if (isBranchLoading) {
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -446,7 +451,7 @@ export default function VehicleList() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, pagination.page, pagination.limit, status, model, year, filters, selectedBranch]);
+  }, [debouncedSearch, pagination.page, pagination.limit, status, model, year, filters, selectedBranch, isBranchLoading]);
 
   useEffect(() => {
     fetchVehicleStatuses();

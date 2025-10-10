@@ -10,7 +10,7 @@ export async function GET(
     const supabase = getSupabaseServerClient();
 
     // Get authenticated user
-    const { data: user, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       console.error('Authentication error:', authError);
@@ -25,6 +25,7 @@ export async function GET(
     const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';
+    const branchId = searchParams.get('branch_id');
 
     // Calculate offset
     const offset = (page - 1) * limit;
@@ -35,7 +36,13 @@ export async function GET(
         *,
         status_details:contract_statuses(name, description, color)
       `, { count: 'exact' })
-      .eq('selected_customer_id', customerId);
+      .eq('selected_customer_id', customerId)
+      .eq('user_id', user.id); // Filter by authenticated user
+
+    // Filter by branch if branch_id is provided
+    if (branchId) {
+      query = query.eq('branch_id', branchId);
+    }
 
     // Add search filter
     if (search) {
