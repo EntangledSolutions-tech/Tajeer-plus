@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBranches } from '../hooks/use-branches';
 import { useBranch } from '../contexts/branch-context';
 import CustomButton from '../app/reusableComponents/CustomButton';
@@ -19,6 +19,17 @@ export function BranchSelector({ variant = 'default', onCreateBranch }: BranchSe
   const { selectedBranch, setSelectedBranch, isLoading: isContextLoading } = useBranch();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Auto-select the first branch if no branch is selected
+  useEffect(() => {
+    if (!isLoading && !isContextLoading && branches && branches.length > 0 && !selectedBranch) {
+      const firstBranch = branches[0];
+      if (firstBranch) {
+        console.log('Auto-selecting first branch:', firstBranch.name);
+        setSelectedBranch(firstBranch);
+      }
+    }
+  }, [branches, isLoading, isContextLoading, selectedBranch, setSelectedBranch]);
 
   // Transform branches to dropdown options
   const branchOptions = React.useMemo(() => {
@@ -51,6 +62,8 @@ export function BranchSelector({ variant = 'default', onCreateBranch }: BranchSe
   const handleCreateBranch = async (values: any) => {
     setIsCreating(true);
     try {
+      let createdBranch = null;
+      
       // Call the parent's onCreateBranch if provided, otherwise use the default API implementation
       if (onCreateBranch) {
         await onCreateBranch();
@@ -61,10 +74,19 @@ export function BranchSelector({ variant = 'default', onCreateBranch }: BranchSe
         if (!response.success) {
           throw new Error(response.error || 'Failed to create branch');
         }
+        
+        // Store the created branch data if available
+        createdBranch = response.data?.branch;
       }
+      
       setIsCreateModalOpen(false);
       // Refresh branches after creation
       await refetch();
+      
+      // Auto-select the newly created branch if available
+      if (createdBranch) {
+        setSelectedBranch(createdBranch);
+      }
     } catch (error) {
       console.error('Error creating branch:', error);
       throw error; // Re-throw to let the modal handle the error state
