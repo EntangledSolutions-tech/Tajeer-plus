@@ -63,7 +63,7 @@ export function BranchSelector({ variant = 'default', onCreateBranch }: BranchSe
     setIsCreating(true);
     try {
       let createdBranch = null;
-      
+
       // Call the parent's onCreateBranch if provided, otherwise use the default API implementation
       if (onCreateBranch) {
         await onCreateBranch();
@@ -74,15 +74,15 @@ export function BranchSelector({ variant = 'default', onCreateBranch }: BranchSe
         if (!response.success) {
           throw new Error(response.error || 'Failed to create branch');
         }
-        
+
         // Store the created branch data if available
         createdBranch = response.data?.branch;
       }
-      
+
       setIsCreateModalOpen(false);
       // Refresh branches after creation
       await refetch();
-      
+
       // Auto-select the newly created branch if available
       if (createdBranch) {
         setSelectedBranch(createdBranch);
