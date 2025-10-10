@@ -6,7 +6,6 @@ import { AppLogo } from '~/components/app-logo';
 
 import { SiteHeaderAccountSection } from './site-header-account-section';
 import { SiteNavigation } from './site-navigation';
-import { ProfileAccountDropdownContainer } from '~/components/personal-account-dropdown-container';
 
 export function SiteHeader(props: { user?: User | null }) {
   return (
@@ -16,7 +15,7 @@ export function SiteHeader(props: { user?: User | null }) {
         style={{ backgroundColor: 'transparent !important' }}
         logo={<AppLogo />}
         navigation={<SiteNavigation />}
-        actions={ <ProfileAccountDropdownContainer   showProfileName={false} />}
+        actions={<SiteHeaderAccountSection user={props.user ?? null} />}
       />
     </div>
   );
