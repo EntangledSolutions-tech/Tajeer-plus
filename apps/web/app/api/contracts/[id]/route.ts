@@ -90,6 +90,21 @@ export async function DELETE(
 
     const { id: contractId } = await params;
 
+    // First, get the contract to retrieve the vehicle ID
+    const { data: contract, error: fetchError } = await supabase
+      .from('contracts')
+      .select('selected_vehicle_id')
+      .eq('id', contractId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching contract:', fetchError);
+      return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
+    }
+
+    const vehicleId = contract.selected_vehicle_id;
+
     // Delete contract with user ownership validation
     const { error } = await deleteUserRecord(
       supabase,
@@ -101,6 +116,44 @@ export async function DELETE(
     if (error) {
       console.error('Database error:', error);
       return NextResponse.json({ error: 'Failed to delete contract' }, { status: 500 });
+    }
+
+    // Update vehicle status back to "Available" (code 1)
+    if (vehicleId) {
+      try {
+        // Get the vehicle status with code 1 (Available)
+        const { data: availableStatus, error: statusError } = await supabase
+          .from('vehicle_statuses')
+          .select('id')
+          .eq('code', 1)
+          .single();
+
+        if (statusError) {
+          console.error('Error fetching vehicle status with code 1:', statusError);
+        } else if (availableStatus) {
+          // Update the vehicle's status
+          const { error: vehicleUpdateError } = await supabase
+            .from('vehicles')
+            .update({
+              status_id: availableStatus.id,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', vehicleId)
+            .eq('user_id', user.id);
+
+          if (vehicleUpdateError) {
+            console.error('Error updating vehicle status:', vehicleUpdateError);
+            // Don't fail the contract deletion, just log the error
+          } else {
+            console.log(`Vehicle ${vehicleId} status updated to "Available"`);
+          }
+        } else {
+          console.warn('Vehicle status with code 1 not found');
+        }
+      } catch (statusUpdateError) {
+        console.error('Exception while updating vehicle status:', statusUpdateError);
+        // Don't fail the contract deletion, just log the error
+      }
     }
 
     return NextResponse.json({

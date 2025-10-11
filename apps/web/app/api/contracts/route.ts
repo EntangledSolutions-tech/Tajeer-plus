@@ -153,6 +153,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Update vehicle status to "In Contract" (code 11)
+    try {
+      // Get the vehicle status with code 11
+      const { data: inContractStatus, error: statusError } = await supabase
+        .from('vehicle_statuses')
+        .select('id')
+        .eq('code', 11)
+        .single();
+
+      if (statusError) {
+        console.error('Error fetching vehicle status with code 11:', statusError);
+      } else if (inContractStatus) {
+        // Update the vehicle's status
+        const { error: vehicleUpdateError } = await supabase
+          .from('vehicles')
+          .update({ 
+            status_id: inContractStatus.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', body.selected_vehicle_id)
+          .eq('user_id', user.id);
+
+        if (vehicleUpdateError) {
+          console.error('Error updating vehicle status:', vehicleUpdateError);
+          // Don't fail the contract creation, just log the error
+        } else {
+          console.log(`Vehicle ${body.selected_vehicle_id} status updated to "In Contract"`);
+        }
+      } else {
+        console.warn('Vehicle status with code 11 not found');
+      }
+    } catch (statusUpdateError) {
+      console.error('Exception while updating vehicle status:', statusUpdateError);
+      // Don't fail the contract creation, just log the error
+    }
+
     // Return success response with the created contract
     return NextResponse.json({
       success: true,
