@@ -554,7 +554,7 @@ export default function VehicleList() {
 
       // Get the blob from the response
       const blob = await response.blob();
-      
+
       // Format filename with complete date and time: DD_MM_YYYY__HH_mm_ss
       const now = new Date();
       const day = String(now.getDate()).padStart(2, '0');
@@ -564,7 +564,7 @@ export default function VehicleList() {
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const seconds = String(now.getSeconds()).padStart(2, '0');
       const filename = `vehicles_export_${day}_${month}_${fullYear}__${hours}_${minutes}_${seconds}.xlsx`;
-      
+
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

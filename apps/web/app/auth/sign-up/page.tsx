@@ -26,10 +26,6 @@ const paths = {
 function SignUpPage() {
   return (
     <>
-      <Heading level={5} className={'tracking-tight'}>
-        <Trans i18nKey={'auth:signUpHeading'} />
-      </Heading>
-
       <SignUpMethodsContainer
         providers={authConfig.providers}
         displayTermsCheckbox={authConfig.displayTermsCheckbox}

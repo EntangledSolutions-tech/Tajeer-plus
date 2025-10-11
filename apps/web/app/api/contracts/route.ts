@@ -153,22 +153,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update vehicle status to "In Contract" (code 11)
+    // Update vehicle status to "In Contract"
     try {
-      // Get the vehicle status with code 11
+      // Get the "In Contract" status by name (more reliable than code)
       const { data: inContractStatus, error: statusError } = await supabase
         .from('vehicle_statuses')
         .select('id')
-        .eq('code', 11)
+        .eq('name', 'In Contract')
         .single();
 
       if (statusError) {
-        console.error('Error fetching vehicle status with code 11:', statusError);
+        console.error('Error fetching "In Contract" vehicle status:', statusError);
       } else if (inContractStatus) {
         // Update the vehicle's status
         const { error: vehicleUpdateError } = await supabase
           .from('vehicles')
-          .update({ 
+          .update({
             status_id: inContractStatus.id,
             updated_at: new Date().toISOString()
           })
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
           console.log(`Vehicle ${body.selected_vehicle_id} status updated to "In Contract"`);
         }
       } else {
-        console.warn('Vehicle status with code 11 not found');
+        console.warn('Vehicle status "In Contract" not found');
       }
     } catch (statusUpdateError) {
       console.error('Exception while updating vehicle status:', statusUpdateError);

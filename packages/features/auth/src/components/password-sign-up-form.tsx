@@ -59,7 +59,7 @@ export function PasswordSignUpForm({
     <div className="w-full space-y-6">
       {/* Create Account heading */}
       <div className="text-center space-y-2">
-        <h1 className="text-2xl font-semibold text-gray-900">Create an account</h1>
+        <h1 className="text-2xl font-semibold text-gray-900"><Trans i18nKey={'auth:signUpHeading'} /></h1>
         <p className="text-gray-600 text-sm">Enter the following details</p>
       </div>
 

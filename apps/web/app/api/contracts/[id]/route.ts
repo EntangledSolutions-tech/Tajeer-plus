@@ -118,18 +118,18 @@ export async function DELETE(
       return NextResponse.json({ error: 'Failed to delete contract' }, { status: 500 });
     }
 
-    // Update vehicle status back to "Available" (code 1)
+    // Update vehicle status back to "Available"
     if (vehicleId) {
       try {
-        // Get the vehicle status with code 1 (Available)
+        // Get the "Available" status by name (more reliable than code)
         const { data: availableStatus, error: statusError } = await supabase
           .from('vehicle_statuses')
           .select('id')
-          .eq('code', 1)
+          .eq('name', 'Available')
           .single();
 
         if (statusError) {
-          console.error('Error fetching vehicle status with code 1:', statusError);
+          console.error('Error fetching "Available" vehicle status:', statusError);
         } else if (availableStatus) {
           // Update the vehicle's status
           const { error: vehicleUpdateError } = await supabase
@@ -148,7 +148,7 @@ export async function DELETE(
             console.log(`Vehicle ${vehicleId} status updated to "Available"`);
           }
         } else {
-          console.warn('Vehicle status with code 1 not found');
+          console.warn('Vehicle status "Available" not found');
         }
       } catch (statusUpdateError) {
         console.error('Exception while updating vehicle status:', statusUpdateError);

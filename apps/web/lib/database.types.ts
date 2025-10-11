@@ -278,6 +278,9 @@ export type Database = {
           vehicle_plate_registration_type: string | null
           vehicle_serial_number: string
           vehicle_status: string | null
+          hold_reason: string | null
+          hold_comments: string | null
+          hold_date: string | null
         }
         Insert: {
           add_ons?: Json | null
@@ -336,6 +339,9 @@ export type Database = {
           vehicle_plate_registration_type?: string | null
           vehicle_serial_number: string
           vehicle_status?: string | null
+          hold_reason?: string | null
+          hold_comments?: string | null
+          hold_date?: string | null
         }
         Update: {
           add_ons?: Json | null
@@ -394,6 +400,9 @@ export type Database = {
           vehicle_plate_registration_type?: string | null
           vehicle_serial_number?: string
           vehicle_status?: string | null
+          hold_reason?: string | null
+          hold_comments?: string | null
+          hold_date?: string | null
         }
         Relationships: [
           {
