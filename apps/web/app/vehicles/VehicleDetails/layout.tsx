@@ -244,11 +244,11 @@ export default function VehicleDetailsLayout() {
   const tabs = [
     { label: 'Overview', key: 'overview' },
     { label: 'Contracts', key: 'contracts' },
-    { label: 'Maintenance', key: 'maintenance', disabled: true, disabledReason: 'This feature is not yet implemented' },
-    { label: 'Finance', key: 'finance', disabled: true, disabledReason: 'This feature is not yet implemented' },
+    { label: 'Maintenance', key: 'maintenance'},
+    { label: 'Finance', key: 'finance'},
     { label: 'Documents', key: 'documents' },
     { label: 'Transfers & Logs', key: 'transfers-logs' },
-    { label: 'Registration & Key', key: 'registration-key', disabled: true, disabledReason: 'This feature is not yet implemented' },
+    { label: 'Registration & Key', key: 'registration-key'},
   ];
 
   const [activeTab, setActiveTab] = useState('overview');
