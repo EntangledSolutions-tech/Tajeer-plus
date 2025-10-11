@@ -534,7 +534,7 @@ export default function ContractDetails() {
                   <span>
                     {statusLoading.statuses ? 'Loading...' : contract?.status?.name || 'Draft'}
                   </span>
-                  {!statusLoading.statuses && <Pencil size={14} />}
+                  {/* {!statusLoading.statuses && <Pencil size={14} />} */}
                 </div>
               </div>
             </div>

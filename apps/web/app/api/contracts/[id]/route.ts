@@ -16,10 +16,13 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const branchId = searchParams.get('branch_id');
 
-    // Fetch contract details
+    // Fetch contract details with status
     let query = supabase
       .from('contracts')
-      .select('*')
+      .select(`
+        *,
+        status:contract_statuses!status_id(id, name, color, description)
+      `)
       .eq('id', contractId)
       .eq('user_id', user.id); // Filter by user
 
@@ -73,7 +76,24 @@ export async function PUT(
       return NextResponse.json({ error: 'Failed to update contract' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, contract: updatedContract });
+    // Fetch the updated contract with status information
+    const { data: contractWithStatus, error: fetchError } = await supabase
+      .from('contracts')
+      .select(`
+        *,
+        status:contract_statuses!status_id(id, name, color, description)
+      `)
+      .eq('id', contractId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching updated contract with status:', fetchError);
+      // Return the updated contract without status if fetch fails
+      return NextResponse.json({ success: true, contract: updatedContract });
+    }
+
+    return NextResponse.json({ success: true, contract: contractWithStatus });
 
   } catch (error) {
     console.error('Error updating contract:', error);
