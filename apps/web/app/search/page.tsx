@@ -69,7 +69,7 @@ export default function SearchPage() {
         q: searchTerm,
         limit: '50'
       });
-      
+
       if (selectedBranch) {
         params.append('branch_id', selectedBranch.id);
       }

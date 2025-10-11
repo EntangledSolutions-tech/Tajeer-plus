@@ -76,7 +76,7 @@ export function GlobalSearchDropdown({ query, onClose, searchInputRef }: GlobalS
           q: query,
           limit: '3'
         });
-        
+
         if (selectedBranch) {
           params.append('branch_id', selectedBranch.id);
         }
