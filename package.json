@@ -32,7 +32,6 @@
     "supabase:web:typegen": "pnpm --filter web supabase:typegen",
     "supabase:web:reset": "pnpm --filter web supabase:reset",
     "supabase:cloud:reset": "supabase db reset --db-url \"postgresql://postgres:EntangledSolutions123@db.cduocoouavydkenodbqn.supabase.co:5432/postgres\""
-
   },
   "prettier": "@kit/prettier-config",
   "packageManager": "pnpm@9.12.0",
