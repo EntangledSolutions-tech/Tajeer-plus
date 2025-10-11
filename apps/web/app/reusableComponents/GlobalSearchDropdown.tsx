@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Search, ChevronRight } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useHttpService } from '../../lib/http-service';
+import { useBranch } from '../../contexts/branch-context';
 
 interface SearchResult {
   id: string;
@@ -25,6 +26,7 @@ interface GlobalSearchDropdownProps {
 
 export function GlobalSearchDropdown({ query, onClose, searchInputRef }: GlobalSearchDropdownProps) {
   const { getRequest } = useHttpService();
+  const { selectedBranch } = useBranch();
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -69,7 +71,17 @@ export function GlobalSearchDropdown({ query, onClose, searchInputRef }: GlobalS
     const searchTimeout = setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await getRequest(`/api/global-search?q=${encodeURIComponent(query)}&limit=3`);
+        // Build search URL with optional branch filter
+        const params = new URLSearchParams({
+          q: query,
+          limit: '3'
+        });
+        
+        if (selectedBranch) {
+          params.append('branch_id', selectedBranch.id);
+        }
+
+        const response = await getRequest(`/api/global-search?${params}`);
 
         if (response.success && response.data) {
           setResults(response.data.allResults || []);
@@ -89,7 +101,7 @@ export function GlobalSearchDropdown({ query, onClose, searchInputRef }: GlobalS
     }, 300);
 
     return () => clearTimeout(searchTimeout);
-  }, [query]);
+  }, [query, selectedBranch]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

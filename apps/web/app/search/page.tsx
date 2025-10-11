@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
 import CustomCard from '../reusableComponents/CustomCard';
 import { useHttpService } from '../../lib/http-service';
+import { useBranch } from '../../contexts/branch-context';
 
 interface SearchResult {
   id: string;
@@ -21,6 +22,7 @@ type FilterType = 'all' | 'vehicles' | 'customers' | 'contracts';
 
 export default function SearchPage() {
   const { getRequest } = useHttpService();
+  const { selectedBranch } = useBranch();
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
@@ -36,7 +38,7 @@ export default function SearchPage() {
     if (query.trim().length >= 2) {
       performSearch(query);
     }
-  }, [query]);
+  }, [query, selectedBranch]);
 
   useEffect(() => {
     // Filter results based on selected filter
@@ -62,7 +64,17 @@ export default function SearchPage() {
 
     setLoading(true);
     try {
-      const response = await getRequest(`/api/global-search?q=${encodeURIComponent(searchTerm)}&limit=50`);
+      // Build search URL with optional branch filter
+      const params = new URLSearchParams({
+        q: searchTerm,
+        limit: '50'
+      });
+      
+      if (selectedBranch) {
+        params.append('branch_id', selectedBranch.id);
+      }
+
+      const response = await getRequest(`/api/global-search?${params}`);
 
       if (response.success && response.data) {
         setResults(response.data.allResults || []);
