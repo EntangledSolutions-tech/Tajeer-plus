@@ -36,11 +36,13 @@ export function BranchProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Helper function to clear selected branch
+  // Helper function to clear selected branch and all localStorage data
   const clearSelectedBranch = () => {
     setSelectedBranch(null);
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('selectedBranch');
+      // Clear all localStorage data on logout
+      localStorage.clear();
+      console.log('Cleared all localStorage data');
     }
   };
 
