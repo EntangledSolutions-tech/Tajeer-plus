@@ -67,6 +67,11 @@ export async function POST(request: NextRequest) {
         expected_sale_price: Math.min(parseFloat(vehicle.expectedSalePrice) || 0, 99999999.99),
         branch_id: branch_id, // From body root level
 
+        // Additional vehicle fields
+        chassis_number: vehicle.chassis_number,
+        vehicle_load_capacity: vehicle.vehicle_load_capacity,
+        technical_number: vehicle.technical_number,
+
         // Pricing details
         daily_rental_rate: Math.min(parseFloat(pricing.dailyRentalRate) || 0, 99999999.99),
         daily_minimum_rate: Math.min(parseFloat(pricing.dailyMinimumRate) || 0, 99999999.99),
@@ -102,7 +107,6 @@ export async function POST(request: NextRequest) {
         owner_id: additional_details.ownerName,
         actual_user_id: additional_details.actualUser,
         insurance_policy_id: additional_details.insuranceType,
-        chassis_number: additional_details.chassisNumber,
         insurance_value: Math.min(parseFloat(additional_details.insuranceValue) || 0, 99999999.99),
 
         // Documents (stored as JSON)
