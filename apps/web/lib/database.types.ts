@@ -2366,7 +2366,7 @@ export type Database = {
         Row: {
           acquisition_date: string | null
           actual_user_id: string | null
-          actual_user_id_arabic: string | null
+          actual_user_id_number: string | null
           actual_user_name: string | null
           age_range: string | null
           branch: string | null
@@ -2411,8 +2411,6 @@ export type Database = {
           operating_card_expiration: string | null
           operation_date: string | null
           owner_id: string | null
-          owner_id_arabic: string | null
-          owner_name: string | null
           periodic_inspection_end: string | null
           plate_number: string
           plate_registration_type: string
@@ -2429,7 +2427,7 @@ export type Database = {
         Insert: {
           acquisition_date?: string | null
           actual_user_id?: string | null
-          actual_user_id_arabic?: string | null
+          actual_user_id_number?: string | null
           actual_user_name?: string | null
           age_range?: string | null
           branch?: string | null
@@ -2474,8 +2472,6 @@ export type Database = {
           operating_card_expiration?: string | null
           operation_date?: string | null
           owner_id?: string | null
-          owner_id_arabic?: string | null
-          owner_name?: string | null
           periodic_inspection_end?: string | null
           plate_number: string
           plate_registration_type: string
@@ -2492,7 +2488,7 @@ export type Database = {
         Update: {
           acquisition_date?: string | null
           actual_user_id?: string | null
-          actual_user_id_arabic?: string | null
+          actual_user_id_number?: string | null
           actual_user_name?: string | null
           age_range?: string | null
           branch?: string | null
@@ -2537,8 +2533,6 @@ export type Database = {
           operating_card_expiration?: string | null
           operation_date?: string | null
           owner_id?: string | null
-          owner_id_arabic?: string | null
-          owner_name?: string | null
           periodic_inspection_end?: string | null
           plate_number?: string
           plate_registration_type?: string

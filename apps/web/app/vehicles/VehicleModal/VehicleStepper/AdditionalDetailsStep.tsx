@@ -17,7 +17,6 @@ interface FormValues {
   policyNumber: string;
   insuranceValue: string;
   deductiblePremium: string;
-  chassisNumber: string;
 }
 
 interface DropdownOption {
@@ -354,15 +353,6 @@ export default function AdditionalDetailsStep() {
           type="text"
           disabled={true}
           readOnly={true}
-        />
-
-        {/* Chassis Number */}
-        <CustomInput
-          label="Chassis Number"
-          name="chassisNumber"
-          required={true}
-          type="text"
-          disabled={false}
         />
       </div>
 

@@ -62,6 +62,9 @@ const vehicleDetailsSchema = Yup.object({
   plateRegistrationType: Yup.string().required('Plate registration type is required'),
   expectedSalePrice: Yup.string().required('Expected Sale Price is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
   branch_id: Yup.string().required('Branch is required'),
+  chassis_number: Yup.string().required('Chassis Number is required'),
+  vehicle_load_capacity: Yup.string().required('Vehicle Load Capacity is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
+  technical_number: Yup.string().required('Technical Number is required'),
 });
 const pricingFeeSchema = Yup.object({
   dailyRentalRate: Yup.number().typeError('Must be a number').required('Daily rental rate is required'),
@@ -111,7 +114,6 @@ const additionalDetailsSchema = Yup.object({
   policyNumber: Yup.string(), // Not required since it's auto-populated
   insuranceValue: Yup.string(), // Not required since it's auto-populated
   deductiblePremium: Yup.string(), // Not required since it's auto-populated
-  chassisNumber: Yup.string().required('Chassis Number is required'),
 });
 
 // Empty schema for documents step (no validation needed)
@@ -128,7 +130,7 @@ const stepSchemas = [
 
 const initialValues = {
   // Step 0
-  make: '', model: '', makeYear: '', color: '', ageRange: '', serialNumber: '', plateNumber: '', mileage: '', yearOfManufacture: '', carClass: '', plateRegistrationType: '', expectedSalePrice: '', branch_id: '',
+  make: '', model: '', makeYear: '', color: '', ageRange: '', serialNumber: '', plateNumber: '', mileage: '', yearOfManufacture: '', carClass: '', plateRegistrationType: '', expectedSalePrice: '', branch_id: '', chassis_number: '', vehicle_load_capacity: '', technical_number: '',
   // Step 1
   dailyRentalRate: 0, dailyMinimumRate: 0, dailyHourlyDelayRate: 0, dailyPermittedKm: 0, dailyExcessKmRate: 0, dailyOpenKmRate: 0, monthlyRentalRate: 0, monthlyMinimumRate: 0, monthlyHourlyDelayRate: 0, monthlyPermittedKm: 0, monthlyExcessKmRate: 0, monthlyOpenKmRate: 0, hourlyRentalRate: 0, hourlyPermittedKm: 0, hourlyExcessKmRate: 0,
   // Step 2
@@ -138,7 +140,7 @@ const initialValues = {
   // Step 4
   docName: '', docFile: null,
   // Step 5
-  carStatus: '', ownerName: '', ownerId: '', actualUser: '', userId: '', insuranceCompany: '', insuranceType: '', policyNumber: '', insuranceValue: '', deductiblePremium: '', chassisNumber: '',
+  carStatus: '', ownerName: '', ownerId: '', actualUser: '', userId: '', insuranceCompany: '', insuranceType: '', policyNumber: '', insuranceValue: '', deductiblePremium: '',
 };
 
 export default function VehicleModal({ onVehicleAdded }: { onVehicleAdded?: () => void }) {

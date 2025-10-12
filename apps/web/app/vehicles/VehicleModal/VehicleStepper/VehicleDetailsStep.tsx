@@ -378,39 +378,16 @@ export default function VehicleDetailsStep() {
       placeholder: 'Select Branch',
       searchPlaceholder: 'Search branches...',
       disabled: loading.branches
+    },
+    {
+      label: 'Chassis Number',
+      name: 'chassis_number',
+      type: 'text',
+      isRequired: true,
+      placeholder: 'Enter chassis number'
     }
   ];
 
-  const ownerUserFields: VehicleField[] = [
-    {
-      label: 'Owner Name',
-      name: 'owner_name',
-      type: 'text',
-      isRequired: true,
-      placeholder: 'Enter owner name'
-    },
-    {
-      label: 'User Name',
-      name: 'actual_user_name',
-      type: 'text',
-      isRequired: false,
-      placeholder: 'Enter user name'
-    },
-    {
-      label: 'Owner ID',
-      name: 'owner_id_number',
-      type: 'text',
-      isRequired: true,
-      placeholder: 'Enter owner ID'
-    },
-    {
-      label: 'User ID',
-      name: 'actual_user_id_number',
-      type: 'text',
-      isRequired: false,
-      placeholder: 'Enter user ID'
-    }
-  ];
 
   const technicalFields: VehicleField[] = [
     {
@@ -478,26 +455,6 @@ export default function VehicleDetailsStep() {
         ))}
       </div>
 
-      {/* Owner & User Information Section */}
-      <h3 className="text-xl font-bold text-primary mb-6">Owner & User Information</h3>
-      <div className="grid grid-cols-2 gap-6 mb-8">
-        {ownerUserFields.map((field, idx) => (
-          <div key={field.name} className="flex flex-col gap-4">
-            <CustomInput
-              label={field.label}
-              name={field.name}
-              required={field.isRequired}
-              type={field.type}
-              placeholder={field.placeholder}
-              min={field.min}
-              max={field.max}
-              disabled={field.disabled}
-              readOnly={field.readOnly}
-              iconPosition="left"
-            />
-          </div>
-        ))}
-      </div>
 
       {/* Vehicle Capacity & Technical Info Section */}
       <h3 className="text-xl font-bold text-primary mb-6">Vehicle Capacity & Technical Info</h3>
