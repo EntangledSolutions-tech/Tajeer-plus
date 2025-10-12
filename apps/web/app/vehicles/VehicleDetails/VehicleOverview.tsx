@@ -45,6 +45,12 @@ interface Vehicle {
   insurance_value: number;
   owner_id: string;
   actual_user_id: string;
+  owner_name: string;
+  actual_user_name: string;
+  owner_id_number: string;
+  actual_user_id_number: string;
+  vehicle_load_capacity: number;
+  technical_number: string;
   insurance_policy: {
     policy_company: string;
     policy_type: string;
@@ -361,19 +367,19 @@ export default function VehicleOverview() {
               </div>
               <div>
                 <div className="text-sm text-primary font-medium">Owner's Name</div>
-                <div className="font-bold text-primary text-base">{String(getValue(vehicle.owner))}</div>
+                <div className="font-bold text-primary text-base">{vehicle.owner_name || String(getValue(vehicle.owner)) || '-'}</div>
               </div>
               <div>
                 <div className="text-sm text-primary font-medium">Owner ID</div>
-                <div className="font-bold text-primary text-base">{(typeof vehicle.owner === 'object' ? vehicle.owner?.code : '-') || '-'}</div>
+                <div className="font-bold text-primary text-base">{vehicle.owner_id_number || (typeof vehicle.owner === 'object' ? vehicle.owner?.code : '-') || '-'}</div>
               </div>
               <div>
                 <div className="text-sm text-primary font-medium">Actual User</div>
-                <div className="font-bold text-primary text-base">{String(getValue(vehicle.actual_user))}</div>
+                <div className="font-bold text-primary text-base">{vehicle.actual_user_name || String(getValue(vehicle.actual_user)) || '-'}</div>
               </div>
               <div>
                 <div className="text-sm text-primary font-medium">User ID</div>
-                <div className="font-bold text-primary text-base">{(typeof vehicle.actual_user === 'object' ? vehicle.actual_user?.code : '-') || '-'}</div>
+                <div className="font-bold text-primary text-base">{vehicle.actual_user_id_number || (typeof vehicle.actual_user === 'object' ? vehicle.actual_user?.code : '-') || '-'}</div>
               </div>
             </div>
 
@@ -404,6 +410,14 @@ export default function VehicleOverview() {
                 <div>
                   <div className="text-sm text-primary font-medium">Deductible Premium</div>
                   <div className="font-bold text-primary text-base">{vehicle.insurance_policy?.deductible_premium !== null && vehicle.insurance_policy?.deductible_premium !== undefined ? formatCurrency(vehicle.insurance_policy.deductible_premium) : '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-primary font-medium">Vehicle Load Capacity</div>
+                  <div className="font-bold text-primary text-base">{vehicle.vehicle_load_capacity !== null && vehicle.vehicle_load_capacity !== undefined ? vehicle.vehicle_load_capacity : '-'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-primary font-medium">Technical Number</div>
+                  <div className="font-bold text-primary text-base">{vehicle.technical_number || '-'}</div>
                 </div>
               </div>
             </div>
