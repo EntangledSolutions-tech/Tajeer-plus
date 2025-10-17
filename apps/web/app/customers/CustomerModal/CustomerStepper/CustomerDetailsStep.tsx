@@ -329,10 +329,10 @@ export default function CustomerDetailsStep() {
       if (values.idType === 'Resident ID' && nationalities.length > 0) {
         // Find Saudi Arabia nationality
         const saudiArabiaOption = nationalities.find(nationality =>
-          nationality.label.toLowerCase().includes('saudi') || 
+          nationality.label.toLowerCase().includes('saudi') ||
           nationality.label.toLowerCase().includes('arabia')
         );
-        
+
         if (saudiArabiaOption && values.nationality !== saudiArabiaOption.id) {
           setFieldValue('nationality', saudiArabiaOption.id);
         }
@@ -454,7 +454,7 @@ export default function CustomerDetailsStep() {
     } else if (selectedIdType === 'Visitor') {
       return [...commonFields, ...visitorFields];
     }
-    // Add other ID type conditions here later
+    // Default to common fields only (includes Resident ID)
     return commonFields;
   };
 

@@ -16,7 +16,7 @@ const customerDetailsSchema = Yup.object({
   nationality: Yup.string().required('Nationality is required'),
   mobileNumber: Yup.string().required('Mobile number is required').min(10, 'Mobile number must be at least 10 digits'),
   email: Yup.string().email('Invalid email format').required('Email is required'),
-  
+
   // National ID specific fields (conditional validation)
   nationalIdNumber: Yup.string().when('idType', {
     is: 'National ID',
@@ -124,7 +124,7 @@ const stepSchemas = [
 const initialValues = {
   // Step 0 - Customer Details
   name: '',
-  idType: '',
+  idType: 'Resident ID', // Default to Resident ID
   nationality: '',
   mobileNumber: '',
   email: '',
@@ -151,6 +151,7 @@ const initialValues = {
   licenseExpiryDate: '',
   rentalType: '',
   hasAdditionalDriver: '',
+  address: '',
 
   // Step 1 - Documents (handled separately)
   documents: [],
@@ -231,7 +232,7 @@ export default function CustomerModal({ onCustomerAdded }: { onCustomerAdded?: (
         documents: uploadedDocuments,
         documents_count: uploadedDocuments.length,
         branch_id: selectedBranch.id,
-        
+
         // National ID specific fields
         ...(values.idType === 'National ID' && {
           national_id_number: values.nationalIdNumber,

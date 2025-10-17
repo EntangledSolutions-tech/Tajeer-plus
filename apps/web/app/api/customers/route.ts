@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getAuthenticatedUser, addUserIdToData, getUserData, buildPaginationResponse, getPaginationParams } from '../../../lib/api-helpers';
+import { validateCustomerData } from './validation';
 
 export async function GET(request: NextRequest) {
   try {
@@ -145,61 +146,104 @@ export async function POST(request: NextRequest) {
     const { user, supabase } = await getAuthenticatedUser(request);
 
     const body = await request.json();
-    const {
-      name,
-      id_type,
-      id_number,
-      classification,
-      license_type,
-      date_of_birth,
-      address,
-      mobile_number,
-      nationality,
-      status,
-      branch_id
-    } = body;
 
-    // Validate required fields
-    if (!name || !id_type || !id_number || !classification || !license_type) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    // Validate customer data with dynamic validation based on ID type
+    const validation = validateCustomerData(body);
+
+    if (!validation.success) {
+      return NextResponse.json({
+        error: 'Validation failed',
+        details: validation.errors
+      }, { status: 400 });
     }
 
-    // Validate that branch_id is provided
-    if (!branch_id) {
-      return NextResponse.json({ error: 'Branch ID is required' }, { status: 400 });
+    // At this point, validation is successful and data is guaranteed to exist
+    const validatedData = validation.data!;
+
+    // Prepare customer data based on ID type
+    let idNumber = '';
+
+    // Determine the main ID number based on ID type
+    switch (validatedData.id_type) {
+      case 'National ID':
+        idNumber = body.national_id_number;
+        break;
+      case 'GCC Countries Citizens':
+        idNumber = body.id_copy_number;
+        break;
+      case 'Visitor':
+        idNumber = body.passport_number;
+        break;
+      case 'Resident ID':
+        // For Resident ID, use mobile number as the unique identifier
+        idNumber = body.mobile_number || `RES-${Date.now()}`;
+        break;
     }
 
-    // Check if ID number already exists for this user
-    const { data: existingCustomerByID, error: idCheckError } = await supabase
+    const customerData: any = {
+      name: validatedData.name,
+      id_type: validatedData.id_type,
+      id_number: idNumber, // Map the type-specific ID to the main id_number field
+      mobile_number: validatedData.mobile_number,
+      email: validatedData.email,
+      nationality_id: validatedData.nationality,
+      branch_id: validatedData.branch_id,
+      status_id: body.status || (await supabase.from('customer_statuses').select('id').eq('name', 'Active').single()).data?.id,
+      // classification_id and license_type_id are optional (null for Resident ID)
+      classification_id: body.classification_id || null,
+      license_type_id: body.license_type_id || null,
+    };
+
+    // Add ID type specific fields dynamically
+    switch (validatedData.id_type) {
+      case 'National ID':
+        customerData.national_id_number = body.national_id_number;
+        customerData.national_id_issue_date = body.national_id_issue_date;
+        customerData.national_id_expiry_date = body.national_id_expiry_date;
+        customerData.place_of_birth = body.place_of_birth;
+        customerData.father_name = body.father_name;
+        customerData.mother_name = body.mother_name;
+        break;
+      case 'GCC Countries Citizens':
+        customerData.id_copy_number = body.id_copy_number;
+        customerData.license_expiration_date = body.license_expiration_date;
+        customerData.license_type = body.license_type;
+        customerData.place_of_id_issue = body.place_of_id_issue;
+        break;
+      case 'Visitor':
+        customerData.border_number = body.border_number;
+        customerData.passport_number = body.passport_number;
+        customerData.license_number = body.license_number;
+        customerData.id_expiry_date = body.id_expiry_date;
+        customerData.license_expiry_date = body.license_expiry_date;
+        customerData.address = body.address;
+        customerData.rental_type = body.rental_type;
+        customerData.has_additional_driver = body.has_additional_driver;
+        break;
+      case 'Resident ID':
+        // Resident ID only requires base fields
+        break;
+    }
+
+    // Check if a customer with this ID number already exists for this user
+    const { data: existingCustomer, error: existingError } = await supabase
       .from('customers')
-      .select('id')
-      .eq('id_number', id_number)
+      .select('id, name, id_type')
+      .eq('id_number', idNumber)
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (idCheckError && idCheckError.code !== 'PGRST116') {
-      console.error('Error checking existing customer by ID number:', idCheckError);
+    if (existingError && existingError.code !== 'PGRST116') {
+      console.error('Error checking existing customer:', existingError);
       return NextResponse.json({ error: 'Database error' }, { status: 500 });
     }
 
-    if (existingCustomerByID) {
-      return NextResponse.json({ error: 'Customer with this ID number already exists' }, { status: 400 });
+    if (existingCustomer) {
+      return NextResponse.json({
+        error: `A customer with this ${validatedData.id_type} number already exists`,
+        details: `Customer "${existingCustomer.name}" already has this ID number.`
+      }, { status: 400 });
     }
-
-    // Prepare customer data with user_id and branch_id
-    const customerData = {
-      name: name,
-      id_type: id_type,
-      id_number: id_number,
-      classification_id: classification,
-      license_type_id: license_type,
-      date_of_birth: date_of_birth,
-      address: address,
-      mobile_number: mobile_number,
-      nationality_id: nationality,
-      status_id: status || (await supabase.from('customer_statuses').select('id').eq('name', 'Active').single()).data?.id,
-      branch_id: branch_id
-    };
 
     // Add user_id to ensure user ownership
     const customerDataWithUserId = addUserIdToData(customerData, user.id);
