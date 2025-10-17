@@ -5,7 +5,7 @@ import CustomButton from '../../reusableComponents/CustomButton';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import CustomStepperModal, { StepperModalStep } from '../../reusableComponents/CustomStepperModal';
 import CustomerDetailsStep from './CustomerStepper/CustomerDetailsStep';
-import CustomerDocumentsStep from './CustomerStepper/CustomerDocumentsStep';
+// import CustomerDocumentsStep from './CustomerStepper/CustomerDocumentsStep';
 import * as Yup from 'yup';
 import { useHttpService } from '../../../lib/http-service';
 import { useBranch } from '../../../contexts/branch-context';
@@ -13,22 +13,105 @@ import { useBranch } from '../../../contexts/branch-context';
 const customerDetailsSchema = Yup.object({
   name: Yup.string().required('Name is required').min(2, 'Name must be at least 2 characters'),
   idType: Yup.string().required('ID Type is required'),
-  idNumber: Yup.string().required('ID Number is required'),
-  classification: Yup.string().required('Classification is required'),
-  licenseType: Yup.string().required('License type is required'),
   nationality: Yup.string().required('Nationality is required'),
-  status: Yup.string().required('Status is required'),
   mobileNumber: Yup.string().required('Mobile number is required').min(10, 'Mobile number must be at least 10 digits'),
-  dateOfBirth: Yup.string()
-    .required('Date of birth is required')
-    .test('not-future', 'Date of birth cannot be a future date', function(value) {
-      if (!value) return false;
-      const selectedDate = new Date(value);
-      const today = new Date();
-      today.setHours(23, 59, 59, 999); // Set to end of today to allow today's date
-      return selectedDate <= today;
-    }),
-  address: Yup.string().required('Address is required').min(10, 'Address must be at least 10 characters'),
+  email: Yup.string().email('Invalid email format').required('Email is required'),
+  
+  // National ID specific fields (conditional validation)
+  nationalIdNumber: Yup.string().when('idType', {
+    is: 'National ID',
+    then: (schema) => schema.required('National ID Number is required').length(10, 'National ID must be 10 digits'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  nationalIdIssueDate: Yup.string().when('idType', {
+    is: 'National ID',
+    then: (schema) => schema.required('National ID Issue Date is required'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  nationalIdExpiryDate: Yup.string().when('idType', {
+    is: 'National ID',
+    then: (schema) => schema.required('National ID Expiry Date is required'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  placeOfBirth: Yup.string().when('idType', {
+    is: 'National ID',
+    then: (schema) => schema.required('Place of Birth is required').min(2, 'Place of Birth must be at least 2 characters'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  fatherName: Yup.string().when('idType', {
+    is: 'National ID',
+    then: (schema) => schema.required('Father Name is required').min(2, 'Father Name must be at least 2 characters'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  motherName: Yup.string().when('idType', {
+    is: 'National ID',
+    then: (schema) => schema.required('Mother Name is required').min(2, 'Mother Name must be at least 2 characters'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+
+  // GCC Countries Citizens specific fields (conditional validation)
+  idCopyNumber: Yup.string().when('idType', {
+    is: 'GCC Countries Citizens',
+    then: (schema) => schema.required('ID Copy Number is required').min(1, 'ID Copy Number must be at least 1 character'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  licenseExpirationDate: Yup.string().when('idType', {
+    is: 'GCC Countries Citizens',
+    then: (schema) => schema.required('License Expiration Date is required'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  licenseType: Yup.string().when('idType', {
+    is: 'GCC Countries Citizens',
+    then: (schema) => schema.required('License Type is required'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  placeOfIdIssue: Yup.string().when('idType', {
+    is: 'GCC Countries Citizens',
+    then: (schema) => schema.required('Place of ID Issue is required').min(2, 'Place of ID Issue must be at least 2 characters'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+
+  // Visitor specific fields (conditional validation)
+  borderNumber: Yup.string().when('idType', {
+    is: 'Visitor',
+    then: (schema) => schema.required('Border Number is required').min(1, 'Border Number must be at least 1 character'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  passportNumber: Yup.string().when('idType', {
+    is: 'Visitor',
+    then: (schema) => schema.required('Passport Number is required').min(1, 'Passport Number must be at least 1 character'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  licenseNumber: Yup.string().when('idType', {
+    is: 'Visitor',
+    then: (schema) => schema.required('License Number is required').min(1, 'License Number must be at least 1 character'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  idExpiryDate: Yup.string().when('idType', {
+    is: 'Visitor',
+    then: (schema) => schema.required('ID Expiry Date is required'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  licenseExpiryDate: Yup.string().when('idType', {
+    is: 'Visitor',
+    then: (schema) => schema.required('License Expiry Date is required'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  address: Yup.string().when('idType', {
+    is: 'Visitor',
+    then: (schema) => schema.required('Address is required').min(10, 'Address must be at least 10 characters'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  rentalType: Yup.string().when('idType', {
+    is: 'Visitor',
+    then: (schema) => schema.required('Rental Type is required').min(2, 'Rental Type must be at least 2 characters'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  hasAdditionalDriver: Yup.string().when('idType', {
+    is: 'Visitor',
+    then: (schema) => schema.required('Please select if there is an additional driver'),
+    otherwise: (schema) => schema.notRequired()
+  }),
 });
 
 // Empty schema for documents step (no validation needed)
@@ -36,21 +119,38 @@ const emptySchema = Yup.object({});
 
 const stepSchemas = [
   customerDetailsSchema,
-  emptySchema, // No validation for documents step - handled manually
 ];
 
 const initialValues = {
   // Step 0 - Customer Details
   name: '',
   idType: '',
-  idNumber: '',
-  classification: '',
-  licenseType: '',
   nationality: '',
-  status: '',
   mobileNumber: '',
-  dateOfBirth: '',
-  address: '',
+  email: '',
+
+  // National ID specific fields
+  nationalIdNumber: '',
+  nationalIdIssueDate: '',
+  nationalIdExpiryDate: '',
+  placeOfBirth: '',
+  fatherName: '',
+  motherName: '',
+
+  // GCC Countries Citizens specific fields
+  idCopyNumber: '',
+  licenseExpirationDate: '',
+  licenseType: '',
+  placeOfIdIssue: '',
+
+  // Visitor specific fields
+  borderNumber: '',
+  passportNumber: '',
+  licenseNumber: '',
+  idExpiryDate: '',
+  licenseExpiryDate: '',
+  rentalType: '',
+  hasAdditionalDriver: '',
 
   // Step 1 - Documents (handled separately)
   documents: [],
@@ -63,12 +163,12 @@ const steps: StepperModalStep[] = [
     id: 'customer-details',
     name: 'Customer Details',
     component: CustomerDetailsStep
-  },
-  {
-    id: 'documents',
-    name: 'Documents',
-    component: CustomerDocumentsStep
   }
+  // {
+  //   id: 'documents',
+  //   name: 'Documents',
+  //   component: CustomerDocumentsStep
+  // }
 ];
 
 export default function CustomerModal({ onCustomerAdded }: { onCustomerAdded?: () => void }) {
@@ -125,17 +225,42 @@ export default function CustomerModal({ onCustomerAdded }: { onCustomerAdded?: (
       const customerData = {
         name: values.name,
         id_type: values.idType,
-        id_number: values.idNumber,
-        classification: values.classification,
-        license_type: values.licenseType,
         nationality: values.nationality,
-        status: values.status,
-        date_of_birth: values.dateOfBirth,
-        address: values.address,
-        mobile_number: values.mobileNumber || '', // Add mobile number if available
+        mobile_number: values.mobileNumber || '',
+        email: values.email || '',
         documents: uploadedDocuments,
         documents_count: uploadedDocuments.length,
-        branch_id: selectedBranch.id
+        branch_id: selectedBranch.id,
+        
+        // National ID specific fields
+        ...(values.idType === 'National ID' && {
+          national_id_number: values.nationalIdNumber,
+          national_id_issue_date: values.nationalIdIssueDate,
+          national_id_expiry_date: values.nationalIdExpiryDate,
+          place_of_birth: values.placeOfBirth,
+          father_name: values.fatherName,
+          mother_name: values.motherName,
+        }),
+
+        // GCC Countries Citizens specific fields
+        ...(values.idType === 'GCC Countries Citizens' && {
+          id_copy_number: values.idCopyNumber,
+          license_expiration_date: values.licenseExpirationDate,
+          license_type: values.licenseType,
+          place_of_id_issue: values.placeOfIdIssue,
+        }),
+
+        // Visitor specific fields
+        ...(values.idType === 'Visitor' && {
+          border_number: values.borderNumber,
+          passport_number: values.passportNumber,
+          license_number: values.licenseNumber,
+          id_expiry_date: values.idExpiryDate,
+          license_expiry_date: values.licenseExpiryDate,
+          address: values.address,
+          rental_type: values.rentalType,
+          has_additional_driver: values.hasAdditionalDriver,
+        })
       };
 
       // Call the API to create customer

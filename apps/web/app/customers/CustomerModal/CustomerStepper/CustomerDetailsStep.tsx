@@ -5,23 +5,70 @@ import CustomSelect from '../../../reusableComponents/CustomSelect';
 import CustomSearchableDropdown, { SearchableDropdownOption } from '../../../reusableComponents/SearchableDropdown';
 import { useHttpService } from '../../../../lib/http-service';
 
-const customerDetailsFields = [
-  { label: 'Name', name: 'name', type: 'text', isRequired: true, placeholder: 'Enter name', min: 2, max: 100 },
+  // Common fields for all ID types
+const commonFields = [
   { label: 'ID Type', name: 'idType', type: 'select', isRequired: true, options: [
     { value: '', label: 'Select ID Type' },
+    { value: 'GCC Countries Citizens', label: 'GCC Countries Citizens' },
     { value: 'National ID', label: 'National ID' },
-    { value: 'Passport', label: 'Passport' },
-    { value: 'Iqama', label: 'Iqama' },
-    { value: 'GCC ID', label: 'GCC ID' }
+    { value: 'Resident ID', label: 'Resident ID' },
+    { value: 'Visitor', label: 'Visitor' }
   ] },
-  { label: 'Classification', name: 'classification', type: 'searchable-select', isRequired: true },
-  { label: 'License type', name: 'licenseType', type: 'searchable-select', isRequired: true },
+  // { label: 'ID Number', name: 'idNumber', type: 'text', isRequired: true, placeholder: 'Enter ID number', min: 1, max: 50 },
+  { label: 'Name', name: 'name', type: 'text', isRequired: true, placeholder: 'Enter name', min: 2, max: 100 },
+  // { label: 'Classification', name: 'classification', type: 'searchable-select', isRequired: true },
+  // { label: 'License type', name: 'licenseType', type: 'searchable-select', isRequired: true },
   { label: 'Nationality', name: 'nationality', type: 'searchable-select', isRequired: true },
-  { label: 'Status', name: 'status', type: 'searchable-select', isRequired: true },
+  // { label: 'Status', name: 'status', type: 'searchable-select', isRequired: true },
   { label: 'Mobile Number', name: 'mobileNumber', type: 'text', isRequired: true, placeholder: 'Enter mobile number', min: 10, max: 15 },
+  // { label: 'Address', name: 'address', type: 'text', isRequired: true, placeholder: 'Enter address', min: 10, max: 500 },
+  { label: 'Email', name: 'email', type: 'email', isRequired: true, placeholder: 'Enter email address', min: 5, max: 100 },
+  // { label: 'Date of birth', name: 'dateOfBirth', type: 'date', isRequired: true, placeholder: 'Select date', max: new Date().toISOString().split('T')[0] },
+];
+
+// Fields specific to National ID
+const nationalIdFields = [
+  { label: 'National ID Number', name: 'nationalIdNumber', type: 'text', isRequired: true, placeholder: 'Enter National ID number', min: 10, max: 10 },
+  { label: 'National ID Issue Date', name: 'nationalIdIssueDate', type: 'date', isRequired: true, placeholder: 'Select issue date' },
+  { label: 'National ID Expiry Date', name: 'nationalIdExpiryDate', type: 'date', isRequired: true, placeholder: 'Select expiry date' },
+  { label: 'Place of Birth', name: 'placeOfBirth', type: 'text', isRequired: true, placeholder: 'Enter place of birth', min: 2, max: 100 },
+  { label: 'Father Name', name: 'fatherName', type: 'text', isRequired: true, placeholder: 'Enter father name', min: 2, max: 100 },
+  { label: 'Mother Name', name: 'motherName', type: 'text', isRequired: true, placeholder: 'Enter mother name', min: 2, max: 100 },
+];
+
+// Fields specific to GCC Countries Citizens
+const gccFields = [
+  { label: 'ID Copy Number', name: 'idCopyNumber', type: 'text', isRequired: true, placeholder: 'Enter ID copy number', min: 1, max: 50 },
+  { label: 'License Expiration Date', name: 'licenseExpirationDate', type: 'date', isRequired: true, placeholder: 'Select license expiration date' },
+  { label: 'License Type', name: 'licenseType', type: 'select', isRequired: true, options: [
+    { value: '', label: 'Select License Type' },
+    { value: 'International License', label: 'International License' },
+    { value: 'Local License', label: 'Local License' },
+    { value: 'GCC License', label: 'GCC License' }
+  ] },
+  { label: 'Place of ID Issue', name: 'placeOfIdIssue', type: 'text', isRequired: true, placeholder: 'Enter place of ID issue', min: 2, max: 100 },
+];
+
+// Fields specific to Visitor
+const visitorFields = [
+  { label: 'Border Number', name: 'borderNumber', type: 'text', isRequired: true, placeholder: 'Enter border number', min: 1, max: 50 },
+  { label: 'Passport Number', name: 'passportNumber', type: 'text', isRequired: true, placeholder: 'Enter passport number', min: 1, max: 50 },
+  { label: 'License Number', name: 'licenseNumber', type: 'text', isRequired: true, placeholder: 'Enter license number', min: 1, max: 50 },
+  { label: 'ID Expiry Date', name: 'idExpiryDate', type: 'date', isRequired: true, placeholder: 'Select ID expiry date' },
+  { label: 'Place of ID Issue', name: 'placeOfIdIssue', type: 'text', isRequired: true, placeholder: 'Enter place of ID issue', min: 2, max: 100 },
+  { label: 'License Expiry Date', name: 'licenseExpiryDate', type: 'date', isRequired: true, placeholder: 'Select license expiry date' },
+  { label: 'License Type', name: 'licenseType', type: 'select', isRequired: true, options: [
+    { value: '', label: 'Select License Type' },
+    { value: 'International License', label: 'International License' },
+    { value: 'Local License', label: 'Local License' },
+    { value: 'GCC License', label: 'GCC License' }
+  ] },
   { label: 'Address', name: 'address', type: 'text', isRequired: true, placeholder: 'Enter address', min: 10, max: 500 },
-  { label: 'ID Number', name: 'idNumber', type: 'text', isRequired: true, placeholder: 'Enter number', min: 1, max: 50 },
-  { label: 'Date of birth', name: 'dateOfBirth', type: 'date', isRequired: true, placeholder: 'Select date', max: new Date().toISOString().split('T')[0] },
+  { label: 'Rental Type', name: 'rentalType', type: 'text', isRequired: true, placeholder: 'Enter rental type', min: 2, max: 100 },
+  // { label: 'Is there an additional driver?', name: 'hasAdditionalDriver', type: 'radio', isRequired: true, options: [
+  //   { value: 'Yes', label: 'Yes' },
+  //   { value: 'No', label: 'No' }
+  // ] },
 ];
 
 interface Classification {
@@ -276,81 +323,148 @@ export default function CustomerDetailsStep() {
   }, [values.classification, values.licenseType, values.nationality, values.status,
       classifications, licenseTypes, nationalities, statuses, setFieldValue]);
 
+  // Handle ID type changes and set default nationality for Resident ID
+  useEffect(() => {
+    const handleIdTypeChange = () => {
+      if (values.idType === 'Resident ID' && nationalities.length > 0) {
+        // Find Saudi Arabia nationality
+        const saudiArabiaOption = nationalities.find(nationality =>
+          nationality.label.toLowerCase().includes('saudi') || 
+          nationality.label.toLowerCase().includes('arabia')
+        );
+        
+        if (saudiArabiaOption && values.nationality !== saudiArabiaOption.id) {
+          setFieldValue('nationality', saudiArabiaOption.id);
+        }
+      }
+    };
+
+    handleIdTypeChange();
+  }, [values.idType, nationalities, values.nationality, setFieldValue]);
+
+  // Helper function to render a field
+  const renderField = (field: any) => {
+    if (field.type === 'select') {
+      return (
+        <CustomSelect
+          label={field.label}
+          name={field.name}
+          required={field.isRequired}
+          options={field.options ?? []}
+        />
+      );
+    } else if (field.type === 'radio') {
+      return (
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-gray-700">
+            {field.label} {field.isRequired && <span className="text-red-500">*</span>}
+          </label>
+          <div className="flex gap-4">
+            {field.options?.map((option: any) => (
+              <label key={option.value} className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name={field.name}
+                  value={option.value}
+                  className="text-primary focus:ring-primary"
+                />
+                <span className="text-sm text-gray-700">{option.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      );
+    } else if (field.type === 'searchable-select') {
+      if (field.name === 'classification') {
+        return (
+          <CustomSearchableDropdown
+            name={field.name}
+            label={field.label}
+            options={classifications}
+            placeholder="Select classification"
+            searchPlaceholder="Search classifications..."
+            required={field.isRequired}
+            isLoading={loading.classificationLoading}
+            onSearch={fetchClassifications}
+          />
+        );
+      } else if (field.name === 'licenseType') {
+        return (
+          <CustomSearchableDropdown
+            name={field.name}
+            label={field.label}
+            options={licenseTypes}
+            placeholder="Select license type"
+            searchPlaceholder="Search license types..."
+            required={field.isRequired}
+            isLoading={loading.licenseTypeLoading}
+            onSearch={fetchLicenseTypes}
+          />
+        );
+      } else if (field.name === 'nationality') {
+        return (
+          <CustomSearchableDropdown
+            name={field.name}
+            label={field.label}
+            options={nationalities}
+            placeholder="Select nationality"
+            searchPlaceholder="Search nationalities..."
+            required={field.isRequired}
+            isLoading={loading.nationalityLoading}
+            onSearch={fetchNationalities}
+          />
+        );
+      } else if (field.name === 'status') {
+        return (
+          <CustomSearchableDropdown
+            name={field.name}
+            label={field.label}
+            options={statuses}
+            placeholder="Select status"
+            searchPlaceholder="Search statuses..."
+            required={field.isRequired}
+            isLoading={loading.statusLoading}
+            onSearch={fetchStatuses}
+          />
+        );
+      }
+    } else {
+      return (
+        <CustomInput
+          label={field.label}
+          name={field.name}
+          required={field.isRequired}
+          type={field.type}
+          placeholder={field.placeholder}
+          min={field.min}
+          max={field.max}
+        />
+      );
+    }
+  };
+
+  // Get fields based on selected ID type
+  const getFieldsForIdType = () => {
+    const selectedIdType = values.idType;
+    
+    if (selectedIdType === 'National ID') {
+      return [...commonFields, ...nationalIdFields];
+    } else if (selectedIdType === 'GCC Countries Citizens') {
+      return [...commonFields, ...gccFields];
+    } else if (selectedIdType === 'Visitor') {
+      return [...commonFields, ...visitorFields];
+    }
+    // Add other ID type conditions here later
+    return commonFields;
+  };
+
   return (
     <>
       <h2 className="text-2xl font-bold text-primary mb-8">Customer Details</h2>
       <div className="grid grid-cols-2 gap-6">
-        {customerDetailsFields.map((field, idx) => (
+        {getFieldsForIdType().map((field, idx) => (
           <div key={field.name} className="flex flex-col gap-4">
-            {field.type === 'select' ? (
-              <CustomSelect
-                label={field.label}
-                name={field.name}
-                required={field.isRequired}
-                options={field.options ?? []}
-              />
-            ) : field.type === 'searchable-select' ? (
-              <>
-                {field.name === 'classification' && (
-                  <CustomSearchableDropdown
-                    name={field.name}
-                    label={field.label}
-                    options={classifications}
-                    placeholder="Select classification"
-                    searchPlaceholder="Search classifications..."
-                    required={field.isRequired}
-                    isLoading={loading.classificationLoading}
-                    onSearch={fetchClassifications}
-                  />
-                )}
-                {field.name === 'licenseType' && (
-                  <CustomSearchableDropdown
-                    name={field.name}
-                    label={field.label}
-                    options={licenseTypes}
-                    placeholder="Select license type"
-                    searchPlaceholder="Search license types..."
-                    required={field.isRequired}
-                    isLoading={loading.licenseTypeLoading}
-                    onSearch={fetchLicenseTypes}
-                  />
-                )}
-                {field.name === 'nationality' && (
-                  <CustomSearchableDropdown
-                    name={field.name}
-                    label={field.label}
-                    options={nationalities}
-                    placeholder="Select nationality"
-                    searchPlaceholder="Search nationalities..."
-                    required={field.isRequired}
-                    isLoading={loading.nationalityLoading}
-                    onSearch={fetchNationalities}
-                  />
-                )}
-                {field.name === 'status' && (
-                  <CustomSearchableDropdown
-                    name={field.name}
-                    label={field.label}
-                    options={statuses}
-                    placeholder="Select status"
-                    searchPlaceholder="Search statuses..."
-                    required={field.isRequired}
-                    isLoading={loading.statusLoading}
-                    onSearch={fetchStatuses}
-                  />
-                )}
-              </>
-            ) : (
-              <CustomInput
-                label={field.label}
-                name={field.name}
-                required={field.isRequired}
-                type={field.type}
-                placeholder={field.placeholder}
-                min={field.min}
-                max={field.max}
-              />
-            )}
+            {renderField(field)}
           </div>
         ))}
       </div>
