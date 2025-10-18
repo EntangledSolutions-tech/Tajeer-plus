@@ -17,7 +17,7 @@ export default function ContractDetailsStep() {
     if (!startDate) return '';
     const date = new Date(startDate);
     date.setDate(date.getDate() + 1);
-    return date.toISOString().split('T')[0];
+    return date.toISOString().slice(0, 16); // Return datetime-local format
   };
 
   // Handle start date change to reset end date if it's invalid
@@ -116,7 +116,7 @@ export default function ContractDetailsStep() {
       const start = new Date(startDate);
       const end = new Date(start);
       end.setDate(start.getDate() + daysToAdd);
-      const endDateString = end.toISOString().split('T')[0];
+      const endDateString = end.toISOString().slice(0, 16); // Return datetime-local format
       formik.setFieldValue('endDate', endDateString);
     } else {
       formik.setFieldValue('endDate', '');
@@ -189,10 +189,10 @@ export default function ContractDetailsStep() {
           <CustomInput
             label="Start Date"
             name="startDate"
-            type="date"
-            placeholder="Select date"
+            type="datetime-local"
+            placeholder="Select date and time"
             required={true}
-            min={new Date().toISOString().split('T')[0]} // Prevent past dates
+            min={new Date().toISOString().slice(0, 16)} // Prevent past dates and times
             onChange={handleStartDateChange}
           />
         </div>
@@ -202,7 +202,7 @@ export default function ContractDetailsStep() {
               <CustomInput
                 label="End Date"
                 name="endDate"
-                type="date"
+                type="datetime-local"
                 placeholder="Calculated automatically"
                 required={false}
                 disabled={true} // Always disabled as it's calculated
