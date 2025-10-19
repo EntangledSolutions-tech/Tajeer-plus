@@ -78,6 +78,11 @@ interface Contract {
   close_comments?: string;
   close_date?: string;
 
+  // Cancel information
+  cancel_reason?: string;
+  cancel_comments?: string;
+  cancel_date?: string;
+
   // Joined data from database
   customer?: Customer | null;
   vehicle?: Vehicle | null;
@@ -103,7 +108,8 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
 
     const statusColors: { [key: string]: string } = {
       'On Hold': '#F59E0B',
-      'Closed': '#DC2626',
+      'Closed': '#10B981',
+      'Cancelled': '#EF4444',
       'Active': '#10B981',
       'Draft': '#6B7280',
       'Completed': '#3B82F6'
@@ -111,10 +117,13 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
     return statusColors[statusName] || '#6B7280';
   };
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [holdReason, setHoldReason] = useState('');
   const [holdComments, setHoldComments] = useState('');
   const [closeReason, setCloseReason] = useState('');
   const [closeComments, setCloseComments] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelComments, setCancelComments] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const holdReasons = [
@@ -133,6 +142,17 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
     { value: 'vehicle_returned', label: 'Vehicle returned' },
     { value: 'early_termination', label: 'Early termination' },
     { value: 'mutual_agreement', label: 'Mutual agreement' },
+    { value: 'other', label: 'Other' }
+  ];
+
+  const cancelReasons = [
+    { value: 'customer_request', label: 'Customer cancellation request' },
+    { value: 'payment_failure', label: 'Payment failure or non-payment' },
+    { value: 'breach_of_contract', label: 'Breach of contract terms' },
+    { value: 'vehicle_unavailable', label: 'Vehicle no longer available' },
+    { value: 'customer_no_show', label: 'Customer did not show up' },
+    { value: 'fraud_suspected', label: 'Fraud or suspicious activity' },
+    { value: 'duplicate_booking', label: 'Duplicate booking' },
     { value: 'other', label: 'Other' }
   ];
 
@@ -208,6 +228,43 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
       setIsCloseModalOpen(false);
       setCloseReason('');
       setCloseComments('');
+    }
+  };
+
+  const handleCancelContract = async () => {
+    if (!cancelReason) {
+      alert('Please select a reason for cancellation');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/contracts/${contract?.id}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cancel_reason: cancelReason,
+          cancel_comments: cancelComments
+        }),
+      });
+
+      if (response.ok) {
+        // Refresh the page to show updated contract status
+        window.location.reload();
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.error || 'Failed to cancel contract'}`);
+      }
+    } catch (error) {
+      console.error('Error cancelling contract:', error);
+      alert('Failed to cancel contract. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setIsCancelModalOpen(false);
+      setCancelReason('');
+      setCancelComments('');
     }
   };
 
@@ -446,6 +503,15 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
           { label: 'Additional Comments', value: contract.close_comments || 'No additional comments' },
         ];
         pdfContent.appendChild(createSection('Closed Details', closeData));
+      }
+
+      if (contract?.status?.name === 'Cancelled' && contract?.cancel_reason) {
+        const cancelData = [
+          { label: 'Cancellation Reason', value: cancelReasons.find(r => r.value === contract.cancel_reason)?.label || contract.cancel_reason },
+          { label: 'Cancellation Date', value: contract.cancel_date ? new Date(contract.cancel_date).toLocaleDateString('en-GB') : '-' },
+          { label: 'Additional Comments', value: contract.cancel_comments || 'No additional comments' },
+        ];
+        pdfContent.appendChild(createSection('Cancellation Details', cancelData));
       }
 
       // Generate PDF
@@ -727,6 +793,91 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
         </div>
       </CustomModal>
 
+      {/* Cancel Contract Modal */}
+      <CustomModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        title="Cancel Contract"
+        subtitle="Cancel this contract and update vehicle status"
+        maxWidth="max-w-lg"
+      >
+        <div className="p-6 space-y-6">
+          {/* Cancel Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-primary">Cancellation Information</h3>
+
+            <SimpleSelect
+              label="Reason for Cancellation"
+              required
+              options={cancelReasons}
+              value={cancelReason}
+              onChange={setCancelReason}
+              placeholder="Select a reason for cancellation"
+            />
+
+            <SimpleTextarea
+              label="Additional Comments"
+              value={cancelComments}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCancelComments(e.target.value)}
+              placeholder="Enter any additional details about the cancellation..."
+              rows={4}
+            />
+          </div>
+
+          {/* Contract Summary */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-primary">Contract Summary</h3>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium text-gray-600">Contract ID:</span>
+                  <div className="font-semibold text-primary">#{contract?.contract_number || contract?.id}</div>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Customer:</span>
+                  <div className="font-semibold text-primary">{contract?.customer?.name || contract?.customer_name}</div>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Vehicle:</span>
+                  <div className="font-semibold text-primary">
+                    {contract?.vehicle?.plate_number ? `${contract.vehicle.plate_number} - ${contract.vehicle.serial_number}` :
+                     contract?.vehicle_plate ? `${contract.vehicle_plate} - ${contract.vehicle_serial_number}` : '-'}
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Current Status:</span>
+                  <div className="font-semibold text-primary">{contract?.status?.name || 'Active'}</div>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Total Amount:</span>
+                  <div className="font-semibold text-primary">
+                    SAR {contract?.total_amount?.toLocaleString() || '0'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4 border-t">
+            <CustomButton
+              variant="outline"
+              onClick={() => setIsCancelModalOpen(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </CustomButton>
+            <CustomButton
+              variant="primary"
+              onClick={handleCancelContract}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Processing...' : 'Confirm Cancellation'}
+            </CustomButton>
+          </div>
+        </div>
+      </CustomModal>
+
       {/* Main Content */}
       <div className="flex flex-col gap-6">
         <div className="w-full max-w-none">
@@ -792,6 +943,37 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
             </CollapsibleSection>
           )}
 
+          {/* Cancelled Reason Section - Show only if contract is cancelled */}
+          {contract?.status?.name === 'Cancelled' && contract?.cancel_reason && (
+            <CollapsibleSection
+              title="Cancellation Details"
+              defaultOpen={true}
+              className="mb-6 mx-0"
+              headerClassName="bg-red-50"
+            >
+              <div className="grid grid-cols-5 gap-y-2 gap-x-6 text-base">
+                <div>
+                  <div className="text-sm text-primary font-medium">Cancellation Reason</div>
+                  <div className="font-bold text-primary text-base">
+                    {cancelReasons.find(r => r.value === contract.cancel_reason)?.label || contract.cancel_reason}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-primary font-medium">Cancellation Date</div>
+                  <div className="font-bold text-primary text-base">
+                    {contract.cancel_date ? new Date(contract.cancel_date).toLocaleDateString('en-GB') : '-'}
+                  </div>
+                </div>
+                <div className="col-span-3">
+                  <div className="text-sm text-primary font-medium">Additional Comments</div>
+                  <div className="font-bold text-primary text-base">
+                    {contract.cancel_comments || 'No additional comments'}
+                  </div>
+                </div>
+              </div>
+            </CollapsibleSection>
+          )}
+
           {/* Contract Details */}
           <CollapsibleSection
             title="Contract details"
@@ -804,7 +986,7 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
                   variant="outline"
                   size="sm"
                   onClick={() => setIsHoldModalOpen(true)}
-                  disabled={contract?.status?.name === 'On Hold' || contract?.status?.name === 'Closed'}
+                  disabled={contract?.status?.name === 'On Hold' || contract?.status?.name === 'Closed' || contract?.status?.name === 'Cancelled'}
                   style={{
                     color: getStatusColor('On Hold'),
                     borderColor: getStatusColor('On Hold'),
@@ -817,7 +999,7 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
                   variant="outline"
                   size="sm"
                   onClick={() => setIsCloseModalOpen(true)}
-                  disabled={contract?.status?.name === 'Closed'}
+                  disabled={contract?.status?.name === 'Closed' || contract?.status?.name === 'Cancelled'}
                   style={{
                     color: getStatusColor('Closed'),
                     borderColor: getStatusColor('Closed'),
@@ -825,6 +1007,19 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
                   }}
                 >
                   Close Contract
+                </CustomButton>
+                <CustomButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsCancelModalOpen(true)}
+                  disabled={contract?.status?.name === 'Cancelled'}
+                  style={{
+                    color: getStatusColor('Cancelled'),
+                    borderColor: getStatusColor('Cancelled'),
+                    backgroundColor: '#ffffff'
+                  }}
+                >
+                  Cancel Contract
                 </CustomButton>
                 <CustomButton
                   variant="outline"
