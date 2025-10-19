@@ -54,3 +54,4 @@ COMMENT ON COLUMN public.contracts.selected_vehicle_id IS 'Foreign key reference
 
 COMMENT ON TABLE public.contracts IS 'Rental contracts linking customers and vehicles. Customer and vehicle details should be fetched via joins using selected_customer_id and selected_vehicle_id foreign keys.';
 
+

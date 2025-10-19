@@ -461,8 +461,6 @@ export default function ContractDetails() {
         const response = await getRequest(url);
 
         if (response.success && response.data) {
-          console.log('Full API response:', response.data);
-          console.log('Contract data received:', response.data.data?.contract);
           setContract(response.data.data?.contract);
         } else {
           // Check if it's an unauthorized access error

@@ -92,8 +92,24 @@ interface ContractOverviewProps {
 }
 
 export default function ContractOverview({ contract }: ContractOverviewProps) {
-  console.log('ContractOverview received contract:', contract);
   const [isHoldModalOpen, setIsHoldModalOpen] = useState(false);
+
+  // Get status colors for buttons - use actual backend colors
+  const getStatusColor = (statusName: string) => {
+    // Try to get color from contract status first, then fallback to defaults
+    if (contract?.status?.name === statusName && contract?.status?.color) {
+      return contract.status.color;
+    }
+
+    const statusColors: { [key: string]: string } = {
+      'On Hold': '#F59E0B',
+      'Closed': '#DC2626',
+      'Active': '#10B981',
+      'Draft': '#6B7280',
+      'Completed': '#3B82F6'
+    };
+    return statusColors[statusName] || '#6B7280';
+  };
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [holdReason, setHoldReason] = useState('');
   const [holdComments, setHoldComments] = useState('');
@@ -211,7 +227,133 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
       // Use primary color from theme
       const primaryColor = '#005F8E';
 
-      // Create a temporary container for PDF content
+      // Helper function to create header for each page
+      const createHeader = () => {
+        const header = document.createElement('div');
+        header.style.cssText = `
+          margin-bottom: 15px;
+          border-bottom: 2px solid ${primaryColor};
+          padding-bottom: 8px;
+          background-color: #ffffff;
+          color: #000000;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        `;
+
+        // Left side - Logo
+        const logoContainer = document.createElement('div');
+        logoContainer.style.cssText = `
+          flex: 0 0 auto;
+          background-color: #ffffff;
+        `;
+        const logoImg = document.createElement('img');
+        logoImg.src = '/images/Logo/logo-color.png';
+        logoImg.style.cssText = `
+          height: 40px;
+          width: auto;
+          display: block;
+        `;
+        logoContainer.appendChild(logoImg);
+
+        // Center - Contract details
+        const centerContainer = document.createElement('div');
+        centerContainer.style.cssText = `
+          flex: 1;
+          text-align: center;
+          background-color: #ffffff;
+          color: #000000;
+          padding: 0 20px;
+        `;
+        centerContainer.innerHTML = `
+          <h1 style="color: ${primaryColor}; font-size: 22px; margin: 0 0 3px 0; font-weight: bold; font-family: Arial, sans-serif; background-color: transparent;">Contract Details</h1>
+          <p style="color: #666666; font-size: 14px; margin: 0; font-family: Arial, sans-serif; background-color: transparent;">
+            ${contract?.contract_number || contract?.tajeer_number || `Contract #${contract?.id?.slice(0, 8)}` || 'Contract'}
+          </p>
+        `;
+
+        // Right side - Date/Time
+        const dateContainer = document.createElement('div');
+        dateContainer.style.cssText = `
+          flex: 0 0 auto;
+          text-align: right;
+          background-color: #ffffff;
+          color: #000000;
+        `;
+        const currentDate = new Date();
+        dateContainer.innerHTML = `
+          <div style="color: #666666; font-size: 11px; font-family: Arial, sans-serif; background-color: transparent; line-height: 1.3;">
+            <div style="font-weight: 600; color: ${primaryColor}; margin-bottom: 2px;">Generated On</div>
+            <div>${currentDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+            <div>${currentDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+          </div>
+        `;
+
+        header.appendChild(logoContainer);
+        header.appendChild(centerContainer);
+        header.appendChild(dateContainer);
+        return header;
+      };
+
+      // Helper function to create section for individual pages
+
+      // Helper function to create section for individual pages
+      const createSection = (title: string, data: { label: string; value: string; color?: string }[]) => {
+        const section = document.createElement('div');
+        section.style.cssText = `
+          margin-bottom: 10px;
+          background-color: #ffffff;
+          color: #000000;
+          height: auto;
+          display: block;
+        `;
+
+        const sectionTitle = document.createElement('h2');
+        sectionTitle.textContent = title;
+        sectionTitle.style.cssText = `
+          color: ${primaryColor};
+          font-size: 18px;
+          margin-bottom: 8px;
+          font-weight: bold;
+          border-bottom: 1px solid #E5E7EB;
+          padding-bottom: 4px;
+          font-family: Arial, sans-serif;
+          background-color: transparent;
+        `;
+        section.appendChild(sectionTitle);
+
+        const grid = document.createElement('div');
+        grid.style.cssText = `
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+          font-size: 13px;
+          background-color: #ffffff;
+          color: #000000;
+          padding: 5px 0;
+        `;
+
+        data.forEach(item => {
+          const field = document.createElement('div');
+          field.style.cssText = `
+            background-color: #ffffff;
+            color: #000000;
+            margin-bottom: 8px;
+            padding: 4px 0;
+          `;
+          const valueColor = item.color || primaryColor;
+          field.innerHTML = `
+            <div style="color: #6B7280; font-weight: 500; margin-bottom: 2px; font-family: Arial, sans-serif; background-color: transparent;">${item.label}</div>
+            <div style="color: ${valueColor}; font-weight: bold; font-family: Arial, sans-serif; background-color: transparent;">${item.value}</div>
+          `;
+          grid.appendChild(field);
+        });
+
+        section.appendChild(grid);
+        return section;
+      };
+
+      // Create PDF content container
       const pdfContent = document.createElement('div');
       pdfContent.style.cssText = `
         position: absolute;
@@ -224,129 +366,22 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
         box-sizing: border-box;
       `;
       document.body.appendChild(pdfContent);
-      console.log('PDF content container created');
 
-      // Create header with logo and date-time
-      const header = document.createElement('div');
-      header.style.cssText = `
-        margin-bottom: 20px;
-        border-bottom: 2px solid ${primaryColor};
-        padding-bottom: 15px;
-        background-color: #ffffff;
-        color: #000000;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      `;
-
-      // Left side - Logo
-      const logoContainer = document.createElement('div');
-      logoContainer.style.cssText = `
-        flex: 0 0 auto;
-        background-color: #ffffff;
-      `;
-      const logoImg = document.createElement('img');
-      logoImg.src = '/images/Logo/logo-color.png';
-      logoImg.style.cssText = `
-        height: 60px;
-        width: auto;
-        display: block;
-      `;
-      logoContainer.appendChild(logoImg);
-
-      // Center - Contract details
-      const centerContainer = document.createElement('div');
-      centerContainer.style.cssText = `
-        flex: 1;
-        text-align: center;
-        background-color: #ffffff;
-        color: #000000;
-        padding: 0 20px;
-      `;
-      centerContainer.innerHTML = `
-        <h1 style="color: ${primaryColor}; font-size: 28px; margin: 0 0 5px 0; font-weight: bold; font-family: Arial, sans-serif; background-color: transparent;">Contract Details</h1>
-        <p style="color: #666666; font-size: 16px; margin: 0; font-family: Arial, sans-serif; background-color: transparent;">
-          ${contract?.contract_number || contract?.tajeer_number || `Contract #${contract?.id?.slice(0, 8)}` || 'Contract'}
-        </p>
-      `;
-
-      // Right side - Date/Time
-      const dateContainer = document.createElement('div');
-      dateContainer.style.cssText = `
-        flex: 0 0 auto;
-        text-align: right;
-        background-color: #ffffff;
-        color: #000000;
-      `;
-      const currentDate = new Date();
-      dateContainer.innerHTML = `
-        <div style="color: #666666; font-size: 13px; font-family: Arial, sans-serif; background-color: transparent; line-height: 1.5;">
-          <div style="font-weight: 600; color: ${primaryColor}; margin-bottom: 4px;">Generated On</div>
-          <div>${currentDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-          <div>${currentDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
-        </div>
-      `;
-
-      header.appendChild(logoContainer);
-      header.appendChild(centerContainer);
-      header.appendChild(dateContainer);
-      pdfContent.appendChild(header);
-
-      // Helper function to create section
-      const createSection = (title: string, data: { label: string; value: string }[]) => {
-        const section = document.createElement('div');
-        section.style.cssText = `
-          margin-bottom: 25px;
-          page-break-inside: avoid;
-          background-color: #ffffff;
-          color: #000000;
-        `;
-
-        const sectionTitle = document.createElement('h2');
-        sectionTitle.textContent = title;
-        sectionTitle.style.cssText = `
-          color: ${primaryColor};
-          font-size: 20px;
-          margin-bottom: 15px;
-          font-weight: bold;
-          border-bottom: 1px solid #E5E7EB;
-          padding-bottom: 8px;
-          font-family: Arial, sans-serif;
-          background-color: transparent;
-        `;
-        section.appendChild(sectionTitle);
-
-        const grid = document.createElement('div');
-        grid.style.cssText = `
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 15px;
-          font-size: 14px;
-          background-color: #ffffff;
-          color: #000000;
-        `;
-
-        data.forEach(item => {
-          const field = document.createElement('div');
-          field.style.cssText = 'background-color: #ffffff; color: #000000;';
-          field.innerHTML = `
-            <div style="color: #6B7280; font-weight: 500; margin-bottom: 4px; font-family: Arial, sans-serif; background-color: transparent;">${item.label}</div>
-            <div style="color: ${primaryColor}; font-weight: bold; font-family: Arial, sans-serif; background-color: transparent;">${item.value}</div>
-          `;
-          grid.appendChild(field);
-        });
-
-        section.appendChild(grid);
-        return section;
-      };
+      // Add header
+      pdfContent.appendChild(createHeader());
 
       // Contract Details
       const contractData = [
+        { label: 'Contract Number', value: contract?.contract_number || '-' },
+        {
+          label: 'Status',
+          value: contract?.status?.name || 'Draft',
+          color: contract?.status?.color || '#6B7280'
+        },
         { label: 'Total Amount', value: `SAR ${contract?.total_amount?.toLocaleString() || '0'}` },
         { label: 'Start Date', value: contract?.start_date ? new Date(contract.start_date).toLocaleDateString('en-GB') : '-' },
         { label: 'End Date', value: contract?.end_date ? new Date(contract.end_date).toLocaleDateString('en-GB') : '-' },
         { label: 'Created On', value: contract?.created_at ? new Date(contract.created_at).toLocaleDateString('en-GB') : '-' },
-        { label: 'Contract Number', value: contract?.contract_number || '-' },
         { label: 'Payment Method', value: contract?.payment_method ? contract.payment_method.charAt(0).toUpperCase() + contract.payment_method.slice(1) : '-' },
         { label: 'Membership Enabled', value: contract?.membership_enabled ? 'Yes' : 'No' },
         { label: 'Hourly Delay Rate', value: `SAR ${contract?.hourly_delay_rate?.toLocaleString() || '0'}` },
@@ -354,7 +389,6 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
         { label: 'Rental Days', value: contract?.rental_days?.toString() || '0' },
       ];
       pdfContent.appendChild(createSection('Contract Details', contractData));
-      console.log('Contract details section added');
 
       // Customer Details
       const customerData = [
@@ -370,7 +404,6 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
         { label: 'Membership Tier', value: contract?.customer?.membership_tier || '-' },
       ];
       pdfContent.appendChild(createSection('Customer Details', customerData));
-      console.log('Customer details section added');
 
       // Vehicle Details
       const vehicleData = [
@@ -385,7 +418,6 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
         { label: 'Excess KM Rate', value: `SAR ${contract?.excess_km_rate?.toLocaleString() || '0'}` },
       ];
       pdfContent.appendChild(createSection('Vehicle Details', vehicleData));
-      console.log('Vehicle details section added');
 
       // Inspection Details
       const inspectionData = [
@@ -396,7 +428,6 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
         { label: 'Total Amount', value: `SAR ${contract?.total_amount?.toLocaleString() || '0'}` },
       ];
       pdfContent.appendChild(createSection('Inspection Details', inspectionData));
-      console.log('Inspection details section added');
 
       // Add Hold/Close information if applicable
       if (contract?.status?.name === 'On Hold' && contract?.hold_reason) {
@@ -422,14 +453,13 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
       const canvas = await html2canvas(pdfContent, {
         scale: 2,
         useCORS: true,
-        logging: true, // Enable logging to see errors
+        logging: false,
         backgroundColor: '#ffffff',
         removeContainer: false,
         allowTaint: true,
         foreignObjectRendering: false,
         imageTimeout: 0,
         windowWidth: 794,
-        windowHeight: 1123,
         onclone: (clonedDoc: Document) => {
           console.log('Cloning document for html2canvas...');
           // Remove all elements with oklch colors from the cloned document
@@ -775,6 +805,11 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
                   size="sm"
                   onClick={() => setIsHoldModalOpen(true)}
                   disabled={contract?.status?.name === 'On Hold' || contract?.status?.name === 'Closed'}
+                  style={{
+                    color: getStatusColor('On Hold'),
+                    borderColor: getStatusColor('On Hold'),
+                    backgroundColor: '#ffffff'
+                  }}
                 >
                   Hold Contract
                 </CustomButton>
@@ -783,6 +818,11 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
                   size="sm"
                   onClick={() => setIsCloseModalOpen(true)}
                   disabled={contract?.status?.name === 'Closed'}
+                  style={{
+                    color: getStatusColor('Closed'),
+                    borderColor: getStatusColor('Closed'),
+                    backgroundColor: '#ffffff'
+                  }}
                 >
                   Close Contract
                 </CustomButton>

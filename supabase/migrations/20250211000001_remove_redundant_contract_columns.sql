@@ -44,3 +44,4 @@ COMMENT ON COLUMN public.contracts.customer_name IS 'DEPRECATED: Use join with c
 COMMENT ON COLUMN public.contracts.vehicle_plate IS 'DEPRECATED: Use join with vehicles table via selected_vehicle_id';
 COMMENT ON COLUMN public.contracts.vehicle_serial_number IS 'DEPRECATED: Use join with vehicles table via selected_vehicle_id';
 
+
