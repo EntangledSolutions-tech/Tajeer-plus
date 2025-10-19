@@ -410,6 +410,37 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
             </CollapsibleSection>
           )}
 
+          {/* Close Reason Section - Show only if contract is closed */}
+          {contract?.status?.name === 'Closed' && contract?.close_reason && (
+            <CollapsibleSection
+              title="Closed Details"
+              defaultOpen={true}
+              className="mb-6 mx-0"
+              headerClassName="bg-gray-100"
+            >
+              <div className="grid grid-cols-5 gap-y-2 gap-x-6 text-base">
+                <div>
+                  <div className="text-sm text-primary font-medium">Close Reason</div>
+                  <div className="font-bold text-primary text-base">
+                    {closeReasons.find(r => r.value === contract.close_reason)?.label || contract.close_reason}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-primary font-medium">Close Date</div>
+                  <div className="font-bold text-primary text-base">
+                    {contract.close_date ? new Date(contract.close_date).toLocaleDateString('en-GB') : '-'}
+                  </div>
+                </div>
+                <div className="col-span-3">
+                  <div className="text-sm text-primary font-medium">Additional Comments</div>
+                  <div className="font-bold text-primary text-base">
+                    {contract.close_comments || 'No additional comments'}
+                  </div>
+                </div>
+              </div>
+            </CollapsibleSection>
+          )}
+
           {/* Contract Details */}
           <CollapsibleSection
             title="Contract details"
