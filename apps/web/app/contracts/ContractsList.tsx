@@ -134,75 +134,6 @@ export default function ContractsList() {
     }
   };
 
-  // Fetch contract statuses from database
-  const fetchContractStatuses = useCallback(async () => {
-    try {
-      const response = await getRequest('/api/contract-statuses?limit=100');
-      if (response.success && response.data) {
-        // Convert statuses to the format expected by CustomTable
-        const statusConfigData: any = { status: {} };
-
-        response.data.statuses?.forEach((status: any) => {
-          // Use inline styles instead of dynamic CSS classes to avoid parsing issues
-          statusConfigData.status[status.name] = {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: status.name,
-            style: {
-              backgroundColor: `${status.color}20`, // 20% opacity
-              color: status.color,
-              border: `1px solid ${status.color}40` // 40% opacity for border
-            }
-          };
-        });
-
-        setStatusConfig(statusConfigData);
-      }
-    } catch (err: any) {
-      console.error('Error fetching contract statuses:', err);
-      // Fallback to default status config if API fails
-      setStatusConfig({
-        status: {
-          'active': {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: 'Active',
-            style: {
-              backgroundColor: '#3B82F620',
-              color: '#3B82F6',
-              border: '1px solid #3B82F640'
-            }
-          },
-          'completed': {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: 'Completed',
-            style: {
-              backgroundColor: '#10B98120',
-              color: '#10B981',
-              border: '1px solid #10B98140'
-            }
-          },
-          'draft': {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: 'Draft',
-            style: {
-              backgroundColor: '#F59E0B20',
-              color: '#F59E0B',
-              border: '1px solid #F59E0B40'
-            }
-          },
-          'cancelled': {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: 'Cancelled',
-            style: {
-              backgroundColor: '#EF444420',
-              color: '#EF4444',
-              border: '1px solid #EF444440'
-            }
-          }
-        }
-      });
-    }
-  }, [getRequest]);
-
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -213,10 +144,6 @@ export default function ContractsList() {
   }, [search]);
 
   // Fetch contracts on component mount and when dependencies change
-  useEffect(() => {
-    fetchContractStatuses();
-  }, [fetchContractStatuses]);
-
   useEffect(() => {
     fetchContracts();
   }, [currentPage, currentLimit, debouncedSearch, statusFilter, refreshTrigger, selectedBranch, isBranchLoading]);
@@ -330,22 +257,26 @@ export default function ContractsList() {
       label: 'Status',
       type: 'badge',
       render: (value: any, row: any) => {
-        // Handle new status structure: row.status.name or fallback to value
+        // Use status color directly from backend join
         const statusName = row.status?.name || value || 'Unknown';
-        const statusInfo = statusConfig.status[statusName];
+        const statusColor = row.status?.color;
 
-        if (statusInfo) {
+        if (statusColor) {
           return (
             <span
-              className={statusInfo.className}
-              style={statusInfo.style}
+              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+              style={{
+                backgroundColor: `${statusColor}20`, // 20% opacity
+                color: statusColor,
+                border: `1px solid ${statusColor}40` // 40% opacity for border
+              }}
             >
-              {statusInfo.label}
+              {statusName}
             </span>
           );
         }
 
-        // Fallback for unknown status
+        // Fallback for unknown status (no color from backend)
         return (
           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-600 dark:bg-gray-900/20 dark:text-gray-400">
             {statusName}
@@ -380,9 +311,6 @@ export default function ContractsList() {
       className: 'text-primary flex items-center'
     }
   ];
-
-  // Status configuration for CustomTable - will be populated from database
-  const [statusConfig, setStatusConfig] = useState<any>({ status: {} });
 
   // Calculate summary data
   const summaryData = [
@@ -493,7 +421,6 @@ export default function ContractsList() {
               ? 'Try adjusting your search or filters.'
               : 'Get started by creating your first contract.'
           }
-          statusConfig={statusConfig}
           searchable={false}
           pagination={true}
           currentPage={pagination.page}

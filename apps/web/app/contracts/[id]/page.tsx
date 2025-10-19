@@ -54,11 +54,28 @@ interface ContractStatus {
   description?: string;
 }
 
+interface Vehicle {
+  id: string;
+  serial_number: string;
+  plate_number: string;
+  plate_registration_type: string;
+  make_year: string;
+  mileage: number;
+  make: string;
+  model: string;
+  color: string;
+  status: string;
+  daily_rental_rate?: number;
+  daily_hourly_delay_rate?: number;
+  daily_permitted_km?: number;
+  daily_excess_km_rate?: number;
+}
+
 interface Contract {
   id: string;
   contract_number?: string;
   tajeer_number?: string;
-  customer_name: string;
+  customer_name?: string;
   start_date: string;
   end_date: string;
   status_id?: string;
@@ -79,6 +96,19 @@ interface Contract {
   membership_enabled?: boolean;
   selected_customer_id?: string;
   selected_vehicle_id?: string;
+  selected_inspector?: string;
+  inspector_name?: string;
+
+  // Contract details
+  duration_type?: string;
+  duration_in_days?: number;
+  total_fees?: number;
+
+  // Joined data from database
+  customer?: Customer | null;
+  vehicle?: Vehicle | null;
+
+  // Backward compatibility fields (deprecated)
   vehicle_plate?: string;
   vehicle_serial_number?: string;
   vehicle_plate_registration_type?: string;
@@ -92,16 +122,6 @@ interface Contract {
   vehicle_hourly_delay_rate?: number;
   vehicle_permitted_daily_km?: number;
   vehicle_excess_km_rate?: number;
-  selected_inspector?: string;
-  inspector_name?: string;
-
-  // Contract details
-  duration_type?: string;
-  duration_in_days?: number;
-  total_fees?: number;
-
-  // Customer data from join
-  customer?: Customer | null;
 }
 
 // Define stepper steps
@@ -240,29 +260,18 @@ export default function ContractDetails() {
   // Handle contract edit submission
   const handleContractEditSubmit = async (values: any, stepData: any) => {
     try {
-      // Prepare contract data for database update
+      // Prepare contract data for database update - only foreign keys and contract-specific data
       const contractData = {
         // Contract Details
         start_date: values.startDate,
         end_date: values.endDate,
         contract_number: values.contractNumber || null,
 
-        // Customer Details
+        // Foreign Keys - Link to customer and vehicle
         selected_customer_id: values.selectedCustomerId || null,
-        customer_name: values.customerName || null,
-        customer_id_type: values.customerIdType || null,
-        customer_id_number: values.customerIdNumber || null,
-        customer_classification: values.customerClassification || null,
-        customer_date_of_birth: values.customerDateOfBirth && values.customerDateOfBirth.trim() ? values.customerDateOfBirth : null,
-        customer_license_type: values.customerLicenseType || null,
-        customer_address: values.customerAddress || null,
-
-        // Vehicle Details
         selected_vehicle_id: values.selectedVehicleId,
-        vehicle_plate: values.vehiclePlate,
-        vehicle_serial_number: values.vehicleSerialNumber,
 
-        // Pricing & Terms
+        // Pricing & Terms (contract-specific pricing, may differ from vehicle base rates)
         daily_rental_rate: parseFloat(values.dailyRentalRate) || 0,
         hourly_delay_rate: parseFloat(values.hourlyDelayRate) || 0,
         current_km: values.currentKm || '0',
@@ -304,7 +313,7 @@ export default function ContractDetails() {
 
           const response = await getRequest(`/api/contracts/${contractId}`);
           if (response.success && response.data) {
-            setContract(response.data.contract);
+            setContract(response.data.data?.contract);
           } else {
             throw new Error(response.error || 'Invalid response format');
           }
@@ -358,7 +367,7 @@ export default function ContractDetails() {
 
       if (response.success && response.data) {
         // Update the contract status in local state
-        setContract(response.data.contract);
+        setContract(response.data.data?.contract);
       } else {
         throw new Error(response.error || 'Failed to update contract status');
       }
@@ -392,7 +401,7 @@ export default function ContractDetails() {
         const response = await getRequest(url);
 
         if (response.success && response.data) {
-          setContract(response.data.contract);
+          setContract(response.data.data?.contract);
         } else {
           // Check if it's an unauthorized access error
           const isUnauthorized = response.error && response.error.includes('access denied');
@@ -452,10 +461,12 @@ export default function ContractDetails() {
         const response = await getRequest(url);
 
         if (response.success && response.data) {
-          setContract(response.data.contract);
+          console.log('Full API response:', response.data);
+          console.log('Contract data received:', response.data.data?.contract);
+          setContract(response.data.data?.contract);
         } else {
           // Check if it's an unauthorized access error
-          if (response.error && (response.error.includes('access denied') || response.code === 'UNAUTHORIZED_ACCESS')) {
+          if (response.error && response.error.includes('access denied')) {
             toast.error('Access denied: This contract belongs to a different branch or user');
             router.push('/home');
             return;
@@ -514,9 +525,6 @@ export default function ContractDetails() {
                 <div className="text-3xl font-bold text-white">
                   {contract?.contract_number || contract?.tajeer_number || `Contract #${contract?.id?.slice(0, 8)}` || 'Contract'}
                 </div>
-                <div className="text-lg text-blue-100 font-medium">
-                  Contract ID: {contract?.id || '-'}
-                </div>
               </div>
               <div className="ml-4">
                 <div
@@ -552,24 +560,6 @@ export default function ContractDetails() {
                   </CustomButton>
                 }
               />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <CustomButton isSecondary className="bg-transparent text-white border-white hover:bg-white hover:text-primary hover:border-white">
-                    <MoreHorizontal className="w-4 h-4 mr-2" />
-                    More Actions
-                    <ChevronDown className="w-4 h-4 ml-2" />
-                  </CustomButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem
-                    onClick={handleContractDelete}
-                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Contract
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
         </div>

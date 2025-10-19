@@ -9,10 +9,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // Validate required fields
+    // Validate required fields - only foreign keys and essential contract data
     const requiredFields = [
       'start_date', 'end_date',
-      'selected_vehicle_id', 'vehicle_plate', 'vehicle_serial_number',
+      'selected_vehicle_id', 'selected_customer_id',
       'daily_rental_rate', 'hourly_delay_rate', 'current_km', 'rental_days',
       'permitted_daily_km', 'excess_km_rate', 'payment_method', 'total_amount',
       'branch_id'
@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
     };
     const contractNumber = generateContractNumber();
 
-    // Prepare contract data
+    // Prepare contract data - only foreign keys and essential contract data
     const contractData = {
       // Contract Details
       start_date: body.start_date,
@@ -90,22 +90,11 @@ export async function POST(request: NextRequest) {
       contract_number: contractNumber,
       tajeer_number: body.tajeer_number || null,
 
-      // Customer Details
-      selected_customer_id: body.selected_customer_id || null,
-      customer_name: body.customer_name || null,
-      customer_id_type: body.customer_id_type || null,
-      customer_id_number: body.customer_id_number || null,
-      customer_classification: body.customer_classification || null,
-      customer_date_of_birth: body.customer_date_of_birth || null,
-      customer_license_type: body.customer_license_type || null,
-      customer_address: body.customer_address || null,
-
-      // Vehicle Details
+      // Foreign Keys - Link to customer and vehicle
+      selected_customer_id: body.selected_customer_id,
       selected_vehicle_id: body.selected_vehicle_id,
-      vehicle_plate: body.vehicle_plate,
-      vehicle_serial_number: body.vehicle_serial_number,
 
-      // Pricing & Terms
+      // Pricing & Terms (contract-specific pricing, may differ from vehicle base rates)
       daily_rental_rate: parseFloat(body.daily_rental_rate) || 0,
       hourly_delay_rate: parseFloat(body.hourly_delay_rate) || 0,
       current_km: body.current_km || '0',
@@ -219,14 +208,11 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Remove any fields that shouldn't be updated
+    // Remove any fields that shouldn't be updated - only foreign keys and contract-specific data
     const allowedFields = [
       'start_date', 'end_date', 'status_id',
       'contract_number_type', 'contract_number', 'tajeer_number',
-      'selected_customer_id', 'customer_name',
-      'customer_id_type', 'customer_id_number', 'customer_classification',
-      'customer_date_of_birth', 'customer_license_type', 'customer_address',
-      'selected_vehicle_id', 'vehicle_plate', 'vehicle_serial_number',
+      'selected_customer_id', 'selected_vehicle_id',
       'daily_rental_rate', 'hourly_delay_rate', 'current_km', 'rental_days',
       'permitted_daily_km', 'excess_km_rate', 'payment_method', 'deposit',
       'membership_enabled', 'total_amount', 'selected_inspector',
@@ -290,9 +276,17 @@ export async function GET(request: NextRequest) {
     const status = new URL(request.url).searchParams.get('status') || '';
     const branchId = new URL(request.url).searchParams.get('branch_id');
 
+    // Use a JOIN to fetch contracts with status information in one query
+    // Keep it simple - only join what's needed for the list view
     let query = supabase
       .from('contracts')
-      .select('*', { count: 'exact' })
+      .select(`
+        *,
+        contract_statuses (
+          name,
+          color
+        )
+      `, { count: 'exact' })
       .eq('user_id', user.id); // Filter by user
 
     // Filter by branch if branch_id is provided
@@ -353,30 +347,18 @@ export async function GET(request: NextRequest) {
     const hasNextPage = limit === -1 ? false : page < totalPages;
     const hasPrevPage = limit === -1 ? false : page > 1;
 
-    // Format contracts to include status object
-    const formattedContracts = await Promise.all((contracts || []).map(async (contract: any) => {
-      let statusInfo = null;
-
-      if (contract.status_id) {
-        const { data: statusData } = await (supabase as any)
-          .from('contract_statuses')
-          .select('id, name, color, description')
-          .eq('id', contract.status_id)
-          .single();
-
-        if (statusData) {
-          statusInfo = {
-            name: statusData.name,
-            color: statusData.color
-          };
-        }
-      }
+    // Format contracts to flatten the status object
+    const formattedContracts = (contracts || []).map((contract: any) => {
+      const { contract_statuses, ...restContract } = contract;
 
       return {
-        ...contract,
-        status: statusInfo
+        ...restContract,
+        status: contract_statuses ? {
+          name: contract_statuses.name,
+          color: contract_statuses.color
+        } : null
       };
-    }));
+    });
 
     return NextResponse.json({
       success: true,

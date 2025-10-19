@@ -24,11 +24,28 @@ interface Customer {
   membership_valid_until?: string;
 }
 
+interface Vehicle {
+  id: string;
+  serial_number: string;
+  plate_number: string;
+  plate_registration_type: string;
+  make_year: string;
+  mileage: number;
+  make: string;
+  model: string;
+  color: string;
+  status: string;
+  daily_rental_rate?: number;
+  daily_hourly_delay_rate?: number;
+  daily_permitted_km?: number;
+  daily_excess_km_rate?: number;
+}
+
 interface Contract {
   id: string;
   contract_number?: string;
   tajeer_number?: string;
-  customer_name: string;
+  customer_name?: string;
   start_date: string;
   end_date: string;
   status_id?: string;
@@ -48,8 +65,6 @@ interface Contract {
   payment_method?: string;
   membership_enabled?: boolean;
   selected_vehicle_id?: string;
-  vehicle_plate?: string;
-  vehicle_serial_number?: string;
   selected_inspector?: string;
   inspector_name?: string;
 
@@ -58,8 +73,18 @@ interface Contract {
   hold_comments?: string;
   hold_date?: string;
 
-  // Customer data from join
+  // Close information
+  close_reason?: string;
+  close_comments?: string;
+  close_date?: string;
+
+  // Joined data from database
   customer?: Customer | null;
+  vehicle?: Vehicle | null;
+
+  // Backward compatibility fields (deprecated)
+  vehicle_plate?: string;
+  vehicle_serial_number?: string;
 }
 
 interface ContractOverviewProps {
@@ -67,9 +92,13 @@ interface ContractOverviewProps {
 }
 
 export default function ContractOverview({ contract }: ContractOverviewProps) {
+  console.log('ContractOverview received contract:', contract);
   const [isHoldModalOpen, setIsHoldModalOpen] = useState(false);
+  const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [holdReason, setHoldReason] = useState('');
   const [holdComments, setHoldComments] = useState('');
+  const [closeReason, setCloseReason] = useState('');
+  const [closeComments, setCloseComments] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const holdReasons = [
@@ -79,6 +108,15 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
     { value: 'customer_request', label: 'Customer request' },
     { value: 'legal_issues', label: 'Legal issues' },
     { value: 'payment_delays', label: 'Payment delays' },
+    { value: 'other', label: 'Other' }
+  ];
+
+  const closeReasons = [
+    { value: 'contract_completed', label: 'Contract completed successfully' },
+    { value: 'customer_request', label: 'Customer request' },
+    { value: 'vehicle_returned', label: 'Vehicle returned' },
+    { value: 'early_termination', label: 'Early termination' },
+    { value: 'mutual_agreement', label: 'Mutual agreement' },
     { value: 'other', label: 'Other' }
   ];
 
@@ -117,6 +155,373 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
       setIsHoldModalOpen(false);
       setHoldReason('');
       setHoldComments('');
+    }
+  };
+
+  const handleCloseContract = async () => {
+    if (!closeReason) {
+      alert('Please select a reason for closing');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/contracts/${contract?.id}/close`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          close_reason: closeReason,
+          close_comments: closeComments
+        }),
+      });
+
+      if (response.ok) {
+        // Refresh the page to show updated contract status
+        window.location.reload();
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.error || 'Failed to close contract'}`);
+      }
+    } catch (error) {
+      console.error('Error closing contract:', error);
+      alert('Failed to close contract. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setIsCloseModalOpen(false);
+      setCloseReason('');
+      setCloseComments('');
+    }
+  };
+
+  const handlePrintContract = async () => {
+    console.log('Print contract clicked, starting PDF generation...');
+    try {
+      setIsLoading(true);
+
+      // Dynamically import jsPDF and html2canvas to avoid SSR issues
+      console.log('Loading PDF libraries...');
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas')
+      ]);
+      console.log('PDF libraries loaded successfully');
+
+      // Use primary color from theme
+      const primaryColor = '#005F8E';
+
+      // Create a temporary container for PDF content
+      const pdfContent = document.createElement('div');
+      pdfContent.style.cssText = `
+        position: absolute;
+        left: -9999px;
+        width: 794px;
+        background-color: #ffffff;
+        padding: 40px;
+        font-family: Arial, sans-serif;
+        color: #000000;
+        box-sizing: border-box;
+      `;
+      document.body.appendChild(pdfContent);
+      console.log('PDF content container created');
+
+      // Create header with logo and date-time
+      const header = document.createElement('div');
+      header.style.cssText = `
+        margin-bottom: 20px;
+        border-bottom: 2px solid ${primaryColor};
+        padding-bottom: 15px;
+        background-color: #ffffff;
+        color: #000000;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      `;
+
+      // Left side - Logo
+      const logoContainer = document.createElement('div');
+      logoContainer.style.cssText = `
+        flex: 0 0 auto;
+        background-color: #ffffff;
+      `;
+      const logoImg = document.createElement('img');
+      logoImg.src = '/images/Logo/logo-color.png';
+      logoImg.style.cssText = `
+        height: 60px;
+        width: auto;
+        display: block;
+      `;
+      logoContainer.appendChild(logoImg);
+
+      // Center - Contract details
+      const centerContainer = document.createElement('div');
+      centerContainer.style.cssText = `
+        flex: 1;
+        text-align: center;
+        background-color: #ffffff;
+        color: #000000;
+        padding: 0 20px;
+      `;
+      centerContainer.innerHTML = `
+        <h1 style="color: ${primaryColor}; font-size: 28px; margin: 0 0 5px 0; font-weight: bold; font-family: Arial, sans-serif; background-color: transparent;">Contract Details</h1>
+        <p style="color: #666666; font-size: 16px; margin: 0; font-family: Arial, sans-serif; background-color: transparent;">
+          ${contract?.contract_number || contract?.tajeer_number || `Contract #${contract?.id?.slice(0, 8)}` || 'Contract'}
+        </p>
+      `;
+
+      // Right side - Date/Time
+      const dateContainer = document.createElement('div');
+      dateContainer.style.cssText = `
+        flex: 0 0 auto;
+        text-align: right;
+        background-color: #ffffff;
+        color: #000000;
+      `;
+      const currentDate = new Date();
+      dateContainer.innerHTML = `
+        <div style="color: #666666; font-size: 13px; font-family: Arial, sans-serif; background-color: transparent; line-height: 1.5;">
+          <div style="font-weight: 600; color: ${primaryColor}; margin-bottom: 4px;">Generated On</div>
+          <div>${currentDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+          <div>${currentDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
+        </div>
+      `;
+
+      header.appendChild(logoContainer);
+      header.appendChild(centerContainer);
+      header.appendChild(dateContainer);
+      pdfContent.appendChild(header);
+
+      // Helper function to create section
+      const createSection = (title: string, data: { label: string; value: string }[]) => {
+        const section = document.createElement('div');
+        section.style.cssText = `
+          margin-bottom: 25px;
+          page-break-inside: avoid;
+          background-color: #ffffff;
+          color: #000000;
+        `;
+
+        const sectionTitle = document.createElement('h2');
+        sectionTitle.textContent = title;
+        sectionTitle.style.cssText = `
+          color: ${primaryColor};
+          font-size: 20px;
+          margin-bottom: 15px;
+          font-weight: bold;
+          border-bottom: 1px solid #E5E7EB;
+          padding-bottom: 8px;
+          font-family: Arial, sans-serif;
+          background-color: transparent;
+        `;
+        section.appendChild(sectionTitle);
+
+        const grid = document.createElement('div');
+        grid.style.cssText = `
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 15px;
+          font-size: 14px;
+          background-color: #ffffff;
+          color: #000000;
+        `;
+
+        data.forEach(item => {
+          const field = document.createElement('div');
+          field.style.cssText = 'background-color: #ffffff; color: #000000;';
+          field.innerHTML = `
+            <div style="color: #6B7280; font-weight: 500; margin-bottom: 4px; font-family: Arial, sans-serif; background-color: transparent;">${item.label}</div>
+            <div style="color: ${primaryColor}; font-weight: bold; font-family: Arial, sans-serif; background-color: transparent;">${item.value}</div>
+          `;
+          grid.appendChild(field);
+        });
+
+        section.appendChild(grid);
+        return section;
+      };
+
+      // Contract Details
+      const contractData = [
+        { label: 'Total Amount', value: `SAR ${contract?.total_amount?.toLocaleString() || '0'}` },
+        { label: 'Start Date', value: contract?.start_date ? new Date(contract.start_date).toLocaleDateString('en-GB') : '-' },
+        { label: 'End Date', value: contract?.end_date ? new Date(contract.end_date).toLocaleDateString('en-GB') : '-' },
+        { label: 'Created On', value: contract?.created_at ? new Date(contract.created_at).toLocaleDateString('en-GB') : '-' },
+        { label: 'Contract Number', value: contract?.contract_number || '-' },
+        { label: 'Payment Method', value: contract?.payment_method ? contract.payment_method.charAt(0).toUpperCase() + contract.payment_method.slice(1) : '-' },
+        { label: 'Membership Enabled', value: contract?.membership_enabled ? 'Yes' : 'No' },
+        { label: 'Hourly Delay Rate', value: `SAR ${contract?.hourly_delay_rate?.toLocaleString() || '0'}` },
+        { label: 'Daily Rate', value: `SAR ${contract?.daily_rental_rate?.toLocaleString() || '0'}` },
+        { label: 'Rental Days', value: contract?.rental_days?.toString() || '0' },
+      ];
+      pdfContent.appendChild(createSection('Contract Details', contractData));
+      console.log('Contract details section added');
+
+      // Customer Details
+      const customerData = [
+        { label: 'Customer Name', value: contract?.customer?.name || contract?.customer_name || '-' },
+        { label: 'Nationality', value: contract?.customer?.nationality || 'Saudi' },
+        { label: 'ID Type', value: contract?.customer?.id_type || 'National ID' },
+        { label: 'ID Number', value: contract?.customer?.id_number || '-' },
+        { label: 'Classification', value: contract?.customer?.classification || 'Individual' },
+        { label: 'Mobile Number', value: contract?.customer?.mobile_number || '-' },
+        { label: 'Date of Birth', value: contract?.customer?.date_of_birth ? new Date(contract.customer.date_of_birth).toLocaleDateString('en-GB') : '-' },
+        { label: 'License Type', value: contract?.customer?.license_type || 'Private' },
+        { label: 'Address', value: contract?.customer?.address || '-' },
+        { label: 'Membership Tier', value: contract?.customer?.membership_tier || '-' },
+      ];
+      pdfContent.appendChild(createSection('Customer Details', customerData));
+      console.log('Customer details section added');
+
+      // Vehicle Details
+      const vehicleData = [
+        { label: 'Serial Number', value: contract?.vehicle?.serial_number || contract?.vehicle_serial_number || '-' },
+        { label: 'Plate', value: contract?.vehicle?.plate_number || contract?.vehicle_plate || '-' },
+        { label: 'Make', value: contract?.vehicle?.make || '-' },
+        { label: 'Model', value: contract?.vehicle?.model || '-' },
+        { label: 'Year', value: contract?.vehicle?.make_year || '-' },
+        { label: 'Color', value: contract?.vehicle?.color || '-' },
+        { label: 'Current KM', value: contract?.current_km || '-' },
+        { label: 'Permitted Daily KM', value: contract?.permitted_daily_km?.toString() || '-' },
+        { label: 'Excess KM Rate', value: `SAR ${contract?.excess_km_rate?.toLocaleString() || '0'}` },
+      ];
+      pdfContent.appendChild(createSection('Vehicle Details', vehicleData));
+      console.log('Vehicle details section added');
+
+      // Inspection Details
+      const inspectionData = [
+        { label: 'Inspector ID', value: contract?.selected_inspector || '-' },
+        { label: 'Inspector Name', value: contract?.inspector_name || '-' },
+        { label: 'Contract Start Date', value: contract?.start_date ? new Date(contract.start_date).toLocaleDateString('en-GB') : '-' },
+        { label: 'Contract End Date', value: contract?.end_date ? new Date(contract.end_date).toLocaleDateString('en-GB') : '-' },
+        { label: 'Total Amount', value: `SAR ${contract?.total_amount?.toLocaleString() || '0'}` },
+      ];
+      pdfContent.appendChild(createSection('Inspection Details', inspectionData));
+      console.log('Inspection details section added');
+
+      // Add Hold/Close information if applicable
+      if (contract?.status?.name === 'On Hold' && contract?.hold_reason) {
+        const holdData = [
+          { label: 'Hold Reason', value: holdReasons.find(r => r.value === contract.hold_reason)?.label || contract.hold_reason },
+          { label: 'Hold Date', value: contract.hold_date ? new Date(contract.hold_date).toLocaleDateString('en-GB') : '-' },
+          { label: 'Additional Comments', value: contract.hold_comments || 'No additional comments' },
+        ];
+        pdfContent.appendChild(createSection('Hold Information', holdData));
+      }
+
+      if (contract?.status?.name === 'Closed' && contract?.close_reason) {
+        const closeData = [
+          { label: 'Close Reason', value: closeReasons.find(r => r.value === contract.close_reason)?.label || contract.close_reason },
+          { label: 'Close Date', value: contract.close_date ? new Date(contract.close_date).toLocaleDateString('en-GB') : '-' },
+          { label: 'Additional Comments', value: contract.close_comments || 'No additional comments' },
+        ];
+        pdfContent.appendChild(createSection('Closed Details', closeData));
+      }
+
+      // Generate PDF
+      console.log('Starting html2canvas conversion...');
+      const canvas = await html2canvas(pdfContent, {
+        scale: 2,
+        useCORS: true,
+        logging: true, // Enable logging to see errors
+        backgroundColor: '#ffffff',
+        removeContainer: false,
+        allowTaint: true,
+        foreignObjectRendering: false,
+        imageTimeout: 0,
+        windowWidth: 794,
+        windowHeight: 1123,
+        onclone: (clonedDoc: Document) => {
+          console.log('Cloning document for html2canvas...');
+          // Remove all elements with oklch colors from the cloned document
+          const allElements = clonedDoc.querySelectorAll('*');
+          allElements.forEach((el) => {
+            const element = el as HTMLElement;
+            const computedStyle = window.getComputedStyle(element);
+
+            // Override any oklch colors with fallback colors
+            if (computedStyle.color && computedStyle.color.includes('oklch')) {
+              element.style.color = '#000000';
+            }
+            if (computedStyle.backgroundColor && computedStyle.backgroundColor.includes('oklch')) {
+              element.style.backgroundColor = '#ffffff';
+            }
+            if (computedStyle.borderColor && computedStyle.borderColor.includes('oklch')) {
+              element.style.borderColor = '#E5E7EB';
+            }
+          });
+          console.log('Cloned document cleaned');
+        }
+      });
+      console.log('html2canvas conversion completed');
+
+      const imgData = canvas.toDataURL('image/png');
+      console.log('Creating jsPDF instance...');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      console.log('jsPDF instance created');
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      // Add additional pages if needed
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+
+      // Save PDF
+      const fileName = `Contract_${contract?.contract_number || contract?.id?.slice(0, 8) || 'Document'}_${new Date().getTime()}.pdf`;
+      console.log('Saving PDF as:', fileName);
+      pdf.save(fileName);
+      console.log('PDF saved successfully');
+
+      // Cleanup
+      document.body.removeChild(pdfContent);
+      console.log('Cleanup completed');
+
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to generate PDF: ${errorMessage}\n\nPlease check the console for more details.`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRefreshPayment = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/contracts/${contract?.id}/refresh-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert('Payment information refreshed successfully');
+        // Refresh the page to show updated payment data
+        window.location.reload();
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.error || 'Failed to refresh payment'}`);
+      }
+    } catch (error) {
+      console.error('Error refreshing payment:', error);
+      alert('Failed to refresh payment. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -169,7 +574,8 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
                 <div>
                   <span className="font-medium text-gray-600">Vehicle:</span>
                   <div className="font-semibold text-primary">
-                    {contract?.vehicle_plate ? `${contract.vehicle_plate} - ${contract.vehicle_serial_number}` : '-'}
+                    {contract?.vehicle?.plate_number ? `${contract.vehicle.plate_number} - ${contract.vehicle.serial_number}` :
+                     contract?.vehicle_plate ? `${contract.vehicle_plate} - ${contract.vehicle_serial_number}` : '-'}
                   </div>
                 </div>
                 <div>
@@ -201,6 +607,91 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
               disabled={isLoading}
             >
               {isLoading ? 'Processing...' : 'Confirm Hold'}
+            </CustomButton>
+          </div>
+        </div>
+      </CustomModal>
+
+      {/* Close Contract Modal */}
+      <CustomModal
+        isOpen={isCloseModalOpen}
+        onClose={() => setIsCloseModalOpen(false)}
+        title="Close Contract"
+        subtitle="Close this contract and update vehicle status"
+        maxWidth="max-w-lg"
+      >
+        <div className="p-6 space-y-6">
+          {/* Close Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-primary">Close Information</h3>
+
+            <SimpleSelect
+              label="Reason for Closing"
+              required
+              options={closeReasons}
+              value={closeReason}
+              onChange={setCloseReason}
+              placeholder="Select a reason for closing"
+            />
+
+            <SimpleTextarea
+              label="Additional Comments"
+              value={closeComments}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCloseComments(e.target.value)}
+              placeholder="Enter any additional details about closing the contract..."
+              rows={4}
+            />
+          </div>
+
+          {/* Contract Summary */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-primary">Contract Summary</h3>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium text-gray-600">Contract ID:</span>
+                  <div className="font-semibold text-primary">#{contract?.contract_number || contract?.id}</div>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Customer:</span>
+                  <div className="font-semibold text-primary">{contract?.customer?.name || contract?.customer_name}</div>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Vehicle:</span>
+                  <div className="font-semibold text-primary">
+                    {contract?.vehicle?.plate_number ? `${contract.vehicle.plate_number} - ${contract.vehicle.serial_number}` :
+                     contract?.vehicle_plate ? `${contract.vehicle_plate} - ${contract.vehicle_serial_number}` : '-'}
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Current Status:</span>
+                  <div className="font-semibold text-primary">{contract?.status?.name || 'Active'}</div>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Total Amount:</span>
+                  <div className="font-semibold text-primary">
+                    SAR {contract?.total_amount?.toLocaleString() || '0'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4 border-t">
+            <CustomButton
+              variant="outline"
+              onClick={() => setIsCloseModalOpen(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </CustomButton>
+            <CustomButton
+              variant="primary"
+              onClick={handleCloseContract}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Processing...' : 'Confirm Close'}
             </CustomButton>
           </div>
         </div>
@@ -240,6 +731,37 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
             </CollapsibleSection>
           )}
 
+          {/* Close Reason Section - Show only if contract is closed */}
+          {contract?.status?.name === 'Closed' && contract?.close_reason && (
+            <CollapsibleSection
+              title="Closed Details"
+              defaultOpen={true}
+              className="mb-6 mx-0"
+              headerClassName="bg-gray-100"
+            >
+              <div className="grid grid-cols-5 gap-y-2 gap-x-6 text-base">
+                <div>
+                  <div className="text-sm text-primary font-medium">Close Reason</div>
+                  <div className="font-bold text-primary text-base">
+                    {closeReasons.find(r => r.value === contract.close_reason)?.label || contract.close_reason}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm text-primary font-medium">Close Date</div>
+                  <div className="font-bold text-primary text-base">
+                    {contract.close_date ? new Date(contract.close_date).toLocaleDateString('en-GB') : '-'}
+                  </div>
+                </div>
+                <div className="col-span-3">
+                  <div className="text-sm text-primary font-medium">Additional Comments</div>
+                  <div className="font-bold text-primary text-base">
+                    {contract.close_comments || 'No additional comments'}
+                  </div>
+                </div>
+              </div>
+            </CollapsibleSection>
+          )}
+
           {/* Contract Details */}
           <CollapsibleSection
             title="Contract details"
@@ -252,9 +774,33 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
                   variant="outline"
                   size="sm"
                   onClick={() => setIsHoldModalOpen(true)}
-                  disabled={contract?.status?.name === 'On Hold'}
+                  disabled={contract?.status?.name === 'On Hold' || contract?.status?.name === 'Closed'}
                 >
                   Hold Contract
+                </CustomButton>
+                <CustomButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsCloseModalOpen(true)}
+                  disabled={contract?.status?.name === 'Closed'}
+                >
+                  Close Contract
+                </CustomButton>
+                <CustomButton
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintContract}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Generating PDF...' : 'Print Contract'}
+                </CustomButton>
+                <CustomButton
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshPayment}
+                  disabled={isLoading}
+                >
+                  Refresh Payment
                 </CustomButton>
                 <CustomButton variant="primary" size="sm">
                   Extend Contract
@@ -409,11 +955,37 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
             <div className="grid grid-cols-5 gap-y-2 gap-x-6 text-base">
               <div>
                 <div className="text-sm text-primary font-medium">Serial Number</div>
-                <div className="font-bold text-primary text-base">{contract?.vehicle_serial_number || '-'}</div>
+                <div className="font-bold text-primary text-base">
+                  {contract?.vehicle?.serial_number || contract?.vehicle_serial_number || '-'}
+                </div>
               </div>
               <div>
                 <div className="text-sm text-primary font-medium">Plate</div>
-                <div className="font-bold text-primary text-base">{contract?.vehicle_plate || '-'}</div>
+                <div className="font-bold text-primary text-base">
+                  {contract?.vehicle?.plate_number || contract?.vehicle_plate || '-'}
+                </div>
+              </div>
+              <div>
+                <div className="text-sm text-primary font-medium">Make</div>
+                <div className="font-bold text-primary text-base">{contract?.vehicle?.make || '-'}</div>
+              </div>
+              <div>
+                <div className="text-sm text-primary font-medium">Model</div>
+                <div className="font-bold text-primary text-base">{contract?.vehicle?.model || '-'}</div>
+              </div>
+              <div>
+                <div className="text-sm text-primary font-medium">Year</div>
+                <div className="font-bold text-primary text-base">{contract?.vehicle?.make_year || '-'}</div>
+              </div>
+              <div>
+                <div className="text-sm text-primary font-medium">Color</div>
+                <div className="font-bold text-primary text-base">{contract?.vehicle?.color || '-'}</div>
+              </div>
+              <div>
+                <div className="text-sm text-primary font-medium">Mileage</div>
+                <div className="font-bold text-primary text-base">
+                  {contract?.vehicle?.mileage?.toLocaleString() || '-'} KM
+                </div>
               </div>
               <div>
                 <div className="text-sm text-primary font-medium">Current KM</div>
