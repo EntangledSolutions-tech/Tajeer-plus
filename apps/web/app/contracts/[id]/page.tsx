@@ -552,24 +552,6 @@ export default function ContractDetails() {
                   </CustomButton>
                 }
               />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <CustomButton isSecondary className="bg-transparent text-white border-white hover:bg-white hover:text-primary hover:border-white">
-                    <MoreHorizontal className="w-4 h-4 mr-2" />
-                    More Actions
-                    <ChevronDown className="w-4 h-4 ml-2" />
-                  </CustomButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem
-                    onClick={handleContractDelete}
-                    className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Contract
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
         </div>

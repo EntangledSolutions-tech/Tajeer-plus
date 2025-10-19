@@ -58,6 +58,11 @@ interface Contract {
   hold_comments?: string;
   hold_date?: string;
 
+  // Close information
+  close_reason?: string;
+  close_comments?: string;
+  close_date?: string;
+
   // Customer data from join
   customer?: Customer | null;
 }
@@ -68,8 +73,11 @@ interface ContractOverviewProps {
 
 export default function ContractOverview({ contract }: ContractOverviewProps) {
   const [isHoldModalOpen, setIsHoldModalOpen] = useState(false);
+  const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [holdReason, setHoldReason] = useState('');
   const [holdComments, setHoldComments] = useState('');
+  const [closeReason, setCloseReason] = useState('');
+  const [closeComments, setCloseComments] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const holdReasons = [
@@ -79,6 +87,15 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
     { value: 'customer_request', label: 'Customer request' },
     { value: 'legal_issues', label: 'Legal issues' },
     { value: 'payment_delays', label: 'Payment delays' },
+    { value: 'other', label: 'Other' }
+  ];
+
+  const closeReasons = [
+    { value: 'contract_completed', label: 'Contract completed successfully' },
+    { value: 'customer_request', label: 'Customer request' },
+    { value: 'vehicle_returned', label: 'Vehicle returned' },
+    { value: 'early_termination', label: 'Early termination' },
+    { value: 'mutual_agreement', label: 'Mutual agreement' },
     { value: 'other', label: 'Other' }
   ];
 
@@ -117,6 +134,75 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
       setIsHoldModalOpen(false);
       setHoldReason('');
       setHoldComments('');
+    }
+  };
+
+  const handleCloseContract = async () => {
+    if (!closeReason) {
+      alert('Please select a reason for closing');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/contracts/${contract?.id}/close`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          close_reason: closeReason,
+          close_comments: closeComments
+        }),
+      });
+
+      if (response.ok) {
+        // Refresh the page to show updated contract status
+        window.location.reload();
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.error || 'Failed to close contract'}`);
+      }
+    } catch (error) {
+      console.error('Error closing contract:', error);
+      alert('Failed to close contract. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setIsCloseModalOpen(false);
+      setCloseReason('');
+      setCloseComments('');
+    }
+  };
+
+  const handlePrintContract = () => {
+    // Trigger browser print dialog
+    window.print();
+  };
+
+  const handleRefreshPayment = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/contracts/${contract?.id}/refresh-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert('Payment information refreshed successfully');
+        // Refresh the page to show updated payment data
+        window.location.reload();
+      } else {
+        const errorData = await response.json();
+        alert(`Error: ${errorData.error || 'Failed to refresh payment'}`);
+      }
+    } catch (error) {
+      console.error('Error refreshing payment:', error);
+      alert('Failed to refresh payment. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -206,6 +292,90 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
         </div>
       </CustomModal>
 
+      {/* Close Contract Modal */}
+      <CustomModal
+        isOpen={isCloseModalOpen}
+        onClose={() => setIsCloseModalOpen(false)}
+        title="Close Contract"
+        subtitle="Close this contract and update vehicle status"
+        maxWidth="max-w-lg"
+      >
+        <div className="p-6 space-y-6">
+          {/* Close Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-primary">Close Information</h3>
+
+            <SimpleSelect
+              label="Reason for Closing"
+              required
+              options={closeReasons}
+              value={closeReason}
+              onChange={setCloseReason}
+              placeholder="Select a reason for closing"
+            />
+
+            <SimpleTextarea
+              label="Additional Comments"
+              value={closeComments}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCloseComments(e.target.value)}
+              placeholder="Enter any additional details about closing the contract..."
+              rows={4}
+            />
+          </div>
+
+          {/* Contract Summary */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-primary">Contract Summary</h3>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium text-gray-600">Contract ID:</span>
+                  <div className="font-semibold text-primary">#{contract?.contract_number || contract?.id}</div>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Customer:</span>
+                  <div className="font-semibold text-primary">{contract?.customer?.name || contract?.customer_name}</div>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Vehicle:</span>
+                  <div className="font-semibold text-primary">
+                    {contract?.vehicle_plate ? `${contract.vehicle_plate} - ${contract.vehicle_serial_number}` : '-'}
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Current Status:</span>
+                  <div className="font-semibold text-primary">{contract?.status?.name || 'Active'}</div>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Total Amount:</span>
+                  <div className="font-semibold text-primary">
+                    SAR {contract?.total_amount?.toLocaleString() || '0'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-3 pt-4 border-t">
+            <CustomButton
+              variant="outline"
+              onClick={() => setIsCloseModalOpen(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </CustomButton>
+            <CustomButton
+              variant="primary"
+              onClick={handleCloseContract}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Processing...' : 'Confirm Close'}
+            </CustomButton>
+          </div>
+        </div>
+      </CustomModal>
+
       {/* Main Content */}
       <div className="flex flex-col gap-6">
         <div className="w-full max-w-none">
@@ -252,9 +422,32 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
                   variant="outline"
                   size="sm"
                   onClick={() => setIsHoldModalOpen(true)}
-                  disabled={contract?.status?.name === 'On Hold'}
+                  disabled={contract?.status?.name === 'On Hold' || contract?.status?.name === 'Closed'}
                 >
                   Hold Contract
+                </CustomButton>
+                <CustomButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsCloseModalOpen(true)}
+                  disabled={contract?.status?.name === 'Closed'}
+                >
+                  Close Contract
+                </CustomButton>
+                <CustomButton
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrintContract}
+                >
+                  Print Contract
+                </CustomButton>
+                <CustomButton
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshPayment}
+                  disabled={isLoading}
+                >
+                  Refresh Payment
                 </CustomButton>
                 <CustomButton variant="primary" size="sm">
                   Extend Contract
