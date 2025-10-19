@@ -16,12 +16,42 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const branchId = searchParams.get('branch_id');
 
-    // Fetch contract details with status
+    // Fetch contract details with joins for customer and vehicle data
+    // Use explicit foreign key names to ensure proper joins
     let query = supabase
       .from('contracts')
       .select(`
         *,
-        status:contract_statuses!status_id(id, name, color, description)
+        contract_status:contract_statuses!status_id(id, name, color, description),
+        customer:customers!selected_customer_id(
+          id,
+          name,
+          id_type,
+          id_number,
+          date_of_birth,
+          address,
+          mobile_number,
+          membership_id,
+          membership_tier,
+          membership_points,
+          membership_valid_until
+        ),
+        vehicle:vehicles!selected_vehicle_id(
+          id,
+          serial_number,
+          plate_number,
+          plate_registration_type,
+          make_year,
+          mileage,
+          vehicle_makes(name),
+          vehicle_models(name),
+          vehicle_colors(name),
+          vehicle_statuses(name, color),
+          daily_rental_rate,
+          daily_hourly_delay_rate,
+          daily_permitted_km,
+          daily_excess_km_rate
+        )
       `)
       .eq('id', contractId)
       .eq('user_id', user.id); // Filter by user
@@ -44,7 +74,67 @@ export async function GET(
       return NextResponse.json({ error: 'Database error' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, contract });
+    // Flatten nested customer and vehicle data for easier access
+    const formattedContract = {
+      ...contract,
+      // Map contract_status to status for backward compatibility
+      status: contract.contract_status ? {
+        id: contract.contract_status.id,
+        name: contract.contract_status.name,
+        color: contract.contract_status.color,
+        description: contract.contract_status.description
+      } : null,
+      // Flatten customer data - keep simple fields
+      customer: contract.customer ? {
+        id: contract.customer.id,
+        name: contract.customer.name,
+        id_type: contract.customer.id_type || 'National ID',
+        id_number: contract.customer.id_number,
+        date_of_birth: contract.customer.date_of_birth,
+        address: contract.customer.address,
+        mobile_number: contract.customer.mobile_number,
+        membership_id: contract.customer.membership_id,
+        membership_tier: contract.customer.membership_tier,
+        membership_points: contract.customer.membership_points,
+        membership_valid_until: contract.customer.membership_valid_until,
+        // Use default values for lookup fields
+        classification: 'Individual',
+        license_type: 'Private',
+        nationality: 'Saudi',
+        status: 'Active'
+      } : null,
+      // Flatten vehicle data
+      vehicle: contract.vehicle ? {
+        id: contract.vehicle.id,
+        serial_number: contract.vehicle.serial_number,
+        plate_number: contract.vehicle.plate_number,
+        plate_registration_type: contract.vehicle.plate_registration_type,
+        make_year: contract.vehicle.make_year,
+        mileage: contract.vehicle.mileage,
+        make: Array.isArray(contract.vehicle.vehicle_makes) && contract.vehicle.vehicle_makes[0]
+          ? contract.vehicle.vehicle_makes[0].name
+          : contract.vehicle.vehicle_makes?.name || '',
+        model: Array.isArray(contract.vehicle.vehicle_models) && contract.vehicle.vehicle_models[0]
+          ? contract.vehicle.vehicle_models[0].name
+          : contract.vehicle.vehicle_models?.name || '',
+        color: Array.isArray(contract.vehicle.vehicle_colors) && contract.vehicle.vehicle_colors[0]
+          ? contract.vehicle.vehicle_colors[0].name
+          : contract.vehicle.vehicle_colors?.name || '',
+        status: Array.isArray(contract.vehicle.vehicle_statuses) && contract.vehicle.vehicle_statuses[0]
+          ? contract.vehicle.vehicle_statuses[0].name
+          : contract.vehicle.vehicle_statuses?.name || '',
+        daily_rental_rate: contract.vehicle.daily_rental_rate,
+        daily_hourly_delay_rate: contract.vehicle.daily_hourly_delay_rate,
+        daily_permitted_km: contract.vehicle.daily_permitted_km,
+        daily_excess_km_rate: contract.vehicle.daily_excess_km_rate
+      } : null,
+      // Add backward compatibility fields
+      customer_name: contract.customer?.name || null,
+      vehicle_plate: contract.vehicle?.plate_number || null,
+      vehicle_serial_number: contract.vehicle?.serial_number || null
+    };
+
+    return NextResponse.json({ success: true, data: { contract: formattedContract } });
 
   } catch (error) {
     console.error('Error fetching contract:', error);
@@ -76,24 +166,114 @@ export async function PUT(
       return NextResponse.json({ error: 'Failed to update contract' }, { status: 500 });
     }
 
-    // Fetch the updated contract with status information
-    const { data: contractWithStatus, error: fetchError } = await supabase
+    // Fetch the updated contract with joins for customer and vehicle data
+    // Use explicit foreign key names to ensure proper joins
+    const { data: contractWithRelations, error: fetchError } = await supabase
       .from('contracts')
       .select(`
         *,
-        status:contract_statuses!status_id(id, name, color, description)
+        contract_status:contract_statuses!status_id(id, name, color, description),
+        customer:customers!selected_customer_id(
+          id,
+          name,
+          id_type,
+          id_number,
+          date_of_birth,
+          address,
+          mobile_number,
+          membership_id,
+          membership_tier,
+          membership_points,
+          membership_valid_until
+        ),
+        vehicle:vehicles!selected_vehicle_id(
+          id,
+          serial_number,
+          plate_number,
+          plate_registration_type,
+          make_year,
+          mileage,
+          vehicle_makes(name),
+          vehicle_models(name),
+          vehicle_colors(name),
+          vehicle_statuses(name, color),
+          daily_rental_rate,
+          daily_hourly_delay_rate,
+          daily_permitted_km,
+          daily_excess_km_rate
+        )
       `)
       .eq('id', contractId)
       .eq('user_id', user.id)
       .single();
 
     if (fetchError) {
-      console.error('Error fetching updated contract with status:', fetchError);
-      // Return the updated contract without status if fetch fails
+      console.error('Error fetching updated contract with relations:', fetchError);
+      // Return the updated contract without relations if fetch fails
       return NextResponse.json({ success: true, contract: updatedContract });
     }
 
-    return NextResponse.json({ success: true, contract: contractWithStatus });
+    // Flatten nested customer and vehicle data for easier access
+    const formattedContract = {
+      ...contractWithRelations,
+      // Map contract_status to status for backward compatibility
+      status: contractWithRelations.contract_status ? {
+        id: contractWithRelations.contract_status.id,
+        name: contractWithRelations.contract_status.name,
+        color: contractWithRelations.contract_status.color,
+        description: contractWithRelations.contract_status.description
+      } : null,
+      // Flatten customer data - keep simple fields
+      customer: contractWithRelations.customer ? {
+        id: contractWithRelations.customer.id,
+        name: contractWithRelations.customer.name,
+        id_type: contractWithRelations.customer.id_type || 'National ID',
+        id_number: contractWithRelations.customer.id_number,
+        date_of_birth: contractWithRelations.customer.date_of_birth,
+        address: contractWithRelations.customer.address,
+        mobile_number: contractWithRelations.customer.mobile_number,
+        membership_id: contractWithRelations.customer.membership_id,
+        membership_tier: contractWithRelations.customer.membership_tier,
+        membership_points: contractWithRelations.customer.membership_points,
+        membership_valid_until: contractWithRelations.customer.membership_valid_until,
+        // Use default values for lookup fields
+        classification: 'Individual',
+        license_type: 'Private',
+        nationality: 'Saudi',
+        status: 'Active'
+      } : null,
+      // Flatten vehicle data
+      vehicle: contractWithRelations.vehicle ? {
+        id: contractWithRelations.vehicle.id,
+        serial_number: contractWithRelations.vehicle.serial_number,
+        plate_number: contractWithRelations.vehicle.plate_number,
+        plate_registration_type: contractWithRelations.vehicle.plate_registration_type,
+        make_year: contractWithRelations.vehicle.make_year,
+        mileage: contractWithRelations.vehicle.mileage,
+        make: Array.isArray(contractWithRelations.vehicle.vehicle_makes) && contractWithRelations.vehicle.vehicle_makes[0]
+          ? contractWithRelations.vehicle.vehicle_makes[0].name
+          : contractWithRelations.vehicle.vehicle_makes?.name || '',
+        model: Array.isArray(contractWithRelations.vehicle.vehicle_models) && contractWithRelations.vehicle.vehicle_models[0]
+          ? contractWithRelations.vehicle.vehicle_models[0].name
+          : contractWithRelations.vehicle.vehicle_models?.name || '',
+        color: Array.isArray(contractWithRelations.vehicle.vehicle_colors) && contractWithRelations.vehicle.vehicle_colors[0]
+          ? contractWithRelations.vehicle.vehicle_colors[0].name
+          : contractWithRelations.vehicle.vehicle_colors?.name || '',
+        status: Array.isArray(contractWithRelations.vehicle.vehicle_statuses) && contractWithRelations.vehicle.vehicle_statuses[0]
+          ? contractWithRelations.vehicle.vehicle_statuses[0].name
+          : contractWithRelations.vehicle.vehicle_statuses?.name || '',
+        daily_rental_rate: contractWithRelations.vehicle.daily_rental_rate,
+        daily_hourly_delay_rate: contractWithRelations.vehicle.daily_hourly_delay_rate,
+        daily_permitted_km: contractWithRelations.vehicle.daily_permitted_km,
+        daily_excess_km_rate: contractWithRelations.vehicle.daily_excess_km_rate
+      } : null,
+      // Add backward compatibility fields
+      customer_name: contractWithRelations.customer?.name || null,
+      vehicle_plate: contractWithRelations.vehicle?.plate_number || null,
+      vehicle_serial_number: contractWithRelations.vehicle?.serial_number || null
+    };
+
+    return NextResponse.json({ success: true, data: { contract: formattedContract } });
 
   } catch (error) {
     console.error('Error updating contract:', error);

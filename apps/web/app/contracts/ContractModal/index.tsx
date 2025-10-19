@@ -190,29 +190,18 @@ export default function ContractModal({
         throw new Error("Please select a branch before creating a contract");
       }
 
-      // Prepare contract data for database insertion
+      // Prepare contract data for database insertion - only foreign keys and contract-specific data
       const contractData = {
         // Contract Details
         start_date: values.startDate,
         end_date: values.endDate,
         contract_number: values.contractNumber || null,
 
-        // Customer Details
+        // Foreign Keys - Link to customer and vehicle
         selected_customer_id: values.selectedCustomerId || null,
-        customer_name: values.customerName || null,
-        customer_id_type: values.customerIdType || null,
-        customer_id_number: values.customerIdNumber || null,
-        customer_classification: values.customerClassification || null,
-        customer_date_of_birth: values.customerDateOfBirth && values.customerDateOfBirth.trim() ? values.customerDateOfBirth : null,
-        customer_license_type: values.customerLicenseType || null,
-        customer_address: values.customerAddress || null,
-
-        // Vehicle Details
         selected_vehicle_id: values.selectedVehicleId,
-        vehicle_plate: values.vehiclePlate,
-        vehicle_serial_number: values.vehicleSerialNumber,
 
-        // Pricing & Terms
+        // Pricing & Terms (contract-specific pricing, may differ from vehicle base rates)
         daily_rental_rate: parseFloat(values.dailyRentalRate) || 0,
         hourly_delay_rate: parseFloat(values.hourlyDelayRate) || 0,
         current_km: values.currentKm || '0',
