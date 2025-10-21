@@ -276,8 +276,35 @@ export async function GET(request: NextRequest) {
     const status = new URL(request.url).searchParams.get('status') || '';
     const branchId = new URL(request.url).searchParams.get('branch_id');
 
-    // Use a JOIN to fetch contracts with status information in one query
-    // Keep it simple - only join what's needed for the list view
+    // If search is provided, find matching customer and vehicle IDs
+    let matchingCustomerIds: string[] = [];
+    let matchingVehicleIds: string[] = [];
+
+    if (search) {
+      // Search for customers
+      const { data: customers } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('user_id', user.id)
+        .ilike('name', `%${search}%`);
+
+      if (customers) {
+        matchingCustomerIds = customers.map((c: any) => c.id);
+      }
+
+      // Search for vehicles
+      const { data: vehicles } = await supabase
+        .from('vehicles')
+        .select('id')
+        .eq('user_id', user.id)
+        .ilike('plate_number', `%${search}%`);
+
+      if (vehicles) {
+        matchingVehicleIds = vehicles.map((v: any) => v.id);
+      }
+    }
+
+    // Use a JOIN to fetch contracts with status, customer, and vehicle information
     let query = supabase
       .from('contracts')
       .select(`
@@ -285,6 +312,14 @@ export async function GET(request: NextRequest) {
         contract_statuses (
           name,
           color
+        ),
+        customer:customers!selected_customer_id (
+          name,
+          id_number
+        ),
+        vehicle:vehicles!selected_vehicle_id (
+          plate_number,
+          serial_number
         )
       `, { count: 'exact' })
       .eq('user_id', user.id); // Filter by user
@@ -294,14 +329,26 @@ export async function GET(request: NextRequest) {
       query = query.eq('branch_id', branchId);
     }
 
-    // Add search filter
+    // Add search filter - search across contracts, customers, and vehicles
     if (search) {
-      query = query.or(`
-        contract_number.ilike.%${search}%,
-        tajeer_number.ilike.%${search}%,
-        customer_name.ilike.%${search}%,
-        vehicle_plate.ilike.%${search}%
-      `);
+      // Build OR conditions for contract fields, customer IDs, and vehicle IDs
+      const conditions: string[] = [];
+      conditions.push(`contract_number.ilike.%${search}%`);
+      conditions.push(`tajeer_number.ilike.%${search}%`);
+
+      // Add customer ID matches
+      if (matchingCustomerIds.length > 0) {
+        conditions.push(`selected_customer_id.in.(${matchingCustomerIds.join(',')})`);
+      }
+
+      // Add vehicle ID matches
+      if (matchingVehicleIds.length > 0) {
+        conditions.push(`selected_vehicle_id.in.(${matchingVehicleIds.join(',')})`);
+      }
+
+      if (conditions.length > 0) {
+        query = query.or(conditions.join(','));
+      }
     }
 
     // Add status filter - need to find status_id by status name
