@@ -1,13 +1,12 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Filter, FileSpreadsheet, Plus, Eye, ArrowRight, Calendar, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Filter, FileSpreadsheet, ArrowRight, Calendar, CheckCircle, AlertTriangle } from 'lucide-react';
 import { SummaryCard } from '../reusableComponents/SummaryCard';
 import { SearchBar } from '../reusableComponents/SearchBar';
 import CustomButton from '../reusableComponents/CustomButton';
 import CustomTable, { TableColumn, TableAction } from '../reusableComponents/CustomTable';
 import CustomCard from '../reusableComponents/CustomCard';
-import { CollapsibleSection } from '../reusableComponents/CollapsibleSection';
 import InspectionModal from './InspectionModal';
 
 interface Inspection {
@@ -36,17 +35,21 @@ interface PaginationInfo {
   hasPrevPage: boolean;
 }
 
+interface InspectionWithDamages extends Inspection {
+  total_damages?: number;
+  exterior_damages?: number;
+  interior_damages?: number;
+}
+
 export default function InspectionsList() {
   const router = useRouter();
 
   // State management
-  const [inspections, setInspections] = useState<Inspection[]>([]);
+  const [inspections, setInspections] = useState<InspectionWithDamages[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [vehicleFilter, setVehicleFilter] = useState('all');
-  const [inspectorFilter, setInspectorFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pagination, setPagination] = useState<PaginationInfo>({
     page: 1,
@@ -58,129 +61,76 @@ export default function InspectionsList() {
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Mock data for demonstration
-  const mockInspections: Inspection[] = [
-    {
-      id: '1',
-      inspection_id: 'INSP-1234',
-      inspection_date: '2024-01-15',
-      inspection_type: 'Check-out',
-      status: 'Pending',
-      inspector: 'Omar Al-Farsi',
-      vehicle: {
-        id: 'v1',
-        plate_number: 'Z27846',
-        make: 'Toyota',
-        model: 'Camry',
-        branch: 'Branch #1'
-      },
-      created_at: '2024-01-15T10:00:00Z'
-    },
-    {
-      id: '2',
-      inspection_id: 'INSP-5678',
-      inspection_date: '2024-01-14',
-      inspection_type: 'Check-in',
-      status: 'Done',
-      inspector: 'Bilal Al-Hakim',
-      vehicle: {
-        id: 'v2',
-        plate_number: 'Z27847',
-        make: 'Honda',
-        model: 'Civic',
-        branch: 'Branch #1'
-      },
-      created_at: '2024-01-14T14:30:00Z'
-    },
-    {
-      id: '3',
-      inspection_id: 'INSP-9101',
-      inspection_date: '2024-01-13',
-      inspection_type: 'Check-out',
-      status: 'With Damages',
-      inspector: 'Hassan Al-Jabari',
-      vehicle: {
-        id: 'v3',
-        plate_number: 'Z27848',
-        make: 'Ford',
-        model: 'Focus',
-        branch: 'Branch #2'
-      },
-      created_at: '2024-01-13T09:15:00Z'
-    },
-    {
-      id: '4',
-      inspection_id: 'INSP-1121',
-      inspection_date: '2024-01-12',
-      inspection_type: 'Check-in',
-      status: 'Done',
-      inspector: 'Yusuf Al-Sayed',
-      vehicle: {
-        id: 'v4',
-        plate_number: 'Z27849',
-        make: 'Nissan',
-        model: 'Altima',
-        branch: 'Branch #1'
-      },
-      created_at: '2024-01-12T16:45:00Z'
-    },
-    {
-      id: '5',
-      inspection_id: 'INSP-3141',
-      inspection_date: '2024-01-11',
-      inspection_type: 'Check-out',
-      status: 'Pending',
-      inspector: 'Khalid Al-Rashid',
-      vehicle: {
-        id: 'v5',
-        plate_number: 'Z27850',
-        make: 'Hyundai',
-        model: 'Elantra',
-        branch: 'Branch #2'
-      },
-      created_at: '2024-01-11T11:20:00Z'
+  // Summary state
+  const [summaryData, setSummaryData] = useState([
+    { label: 'Inspections', value: '0', icon: <Calendar className="w-6 h-6" /> },
+    { label: 'Completed', value: '0', icon: <CheckCircle className="w-6 h-6" /> },
+    { label: 'With Damages', value: '0', icon: <AlertTriangle className="w-6 h-6" /> }
+  ]);
+
+  // Fetch inspections from API
+  const fetchInspections = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: pagination.limit.toString(),
+      });
+
+      if (searchTerm) {
+        params.append('search', searchTerm);
+      }
+
+      if (statusFilter && statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+
+      const response = await fetch(`/api/inspections?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch inspections');
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        setInspections(result.data);
+        setPagination(result.pagination);
+
+        // Calculate summary statistics
+        const totalInspections = result.pagination.total;
+        const completedCount = result.data.filter((i: InspectionWithDamages) => i.status === 'Completed').length;
+        const withDamagesCount = result.data.filter((i: InspectionWithDamages) => 
+          i.total_damages !== undefined && i.total_damages > 0
+        ).length;
+
+        setSummaryData([
+          { label: 'Inspections', value: totalInspections.toString(), icon: <Calendar className="w-6 h-6" /> },
+          { label: 'Completed', value: completedCount.toString(), icon: <CheckCircle className="w-6 h-6" /> },
+          { label: 'With Damages', value: withDamagesCount.toString(), icon: <AlertTriangle className="w-6 h-6" /> }
+        ]);
+      }
+    } catch (err) {
+      console.error('Error fetching inspections:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch inspections';
+      setError(errorMessage);
+      setInspections([]);
+    } finally {
+      setLoading(false);
     }
-  ];
-
-  // Mock summary data
-  const summaryData = [
-    { label: 'Inspections', value: '120', icon: <Calendar className="w-6 h-6" /> },
-    { label: 'Completed', value: '108', icon: <CheckCircle className="w-6 h-6" /> },
-    { label: 'With Damages', value: '54', icon: <AlertTriangle className="w-6 h-6" /> }
-  ];
-
-  // Filter inspections based on current filters
-  const filteredInspections = mockInspections.filter(inspection => {
-    const matchesSearch = !searchTerm ||
-      inspection.inspection_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inspection.vehicle.plate_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      inspection.inspector.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus = statusFilter === 'all' || inspection.status === statusFilter;
-    const matchesVehicle = vehicleFilter === 'all' || inspection.vehicle.id === vehicleFilter;
-    const matchesInspector = inspectorFilter === 'all' || inspection.inspector === inspectorFilter;
-
-    return matchesSearch && matchesStatus && matchesVehicle && matchesInspector;
-  });
-
-  // Pagination
-  const startIndex = (currentPage - 1) * pagination.limit;
-  const endIndex = startIndex + pagination.limit;
-  const paginatedInspections = filteredInspections.slice(startIndex, endIndex);
+  }, [currentPage, statusFilter, searchTerm, pagination.limit]);
 
   useEffect(() => {
-    // Simulate loading
-    setLoading(true);
-    setTimeout(() => {
-      setInspections(paginatedInspections);
-      setPagination(prev => ({
-        ...prev,
-        total: filteredInspections.length,
-        totalPages: Math.ceil(filteredInspections.length / prev.limit)
-      }));
-      setLoading(false);
-    }, 500);
-  }, [currentPage, statusFilter, vehicleFilter, inspectorFilter, searchTerm]);
+    fetchInspections();
+  }, [fetchInspections]);
 
   // Table columns
   const columns: TableColumn[] = [
@@ -202,7 +152,7 @@ export default function InspectionsList() {
       key: 'vehicle',
       label: 'Vehicle',
       type: 'text',
-      render: (value: any) => (
+      render: (value: Inspection['vehicle']) => (
         <span className="text-primary underline cursor-pointer hover:text-primary/80">
           {value.plate_number}
         </span>
@@ -219,9 +169,8 @@ export default function InspectionsList() {
       type: 'status',
       render: (value: string) => {
         const statusColors: { [key: string]: string } = {
-          'Pending': 'bg-yellow-100 text-yellow-800',
-          'Done': 'bg-green-100 text-green-800',
-          'With Damages': 'bg-red-100 text-red-800'
+          'In Progress': 'bg-yellow-100 text-yellow-800',
+          'Completed': 'bg-green-100 text-green-800'
         };
 
         return (
@@ -270,7 +219,7 @@ export default function InspectionsList() {
   const handleInspectionAdded = () => {
     // Refresh the list
     setIsModalOpen(false);
-    // In a real app, you would refetch the data here
+    fetchInspections();
   };
 
   return (
@@ -279,6 +228,13 @@ export default function InspectionsList() {
       <div className="flex items-center gap-4 mb-6">
         <h1 className="text-3xl font-bold text-white">Vehicle Inspections</h1>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-800 text-sm">{error}</p>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="mb-8">
@@ -302,28 +258,19 @@ export default function InspectionsList() {
             isSecondary
             isOval
             size="sm"
-            className={statusFilter === 'Pending' ? 'bg-primary text-white border-primary' : ''}
-            onClick={() => handleStatusFilter('Pending')}
+            className={statusFilter === 'In Progress' ? 'bg-primary text-white border-primary' : ''}
+            onClick={() => handleStatusFilter('In Progress')}
           >
-            Pending
+            In Progress
           </CustomButton>
           <CustomButton
             isSecondary
             isOval
             size="sm"
-            className={statusFilter === 'Done' ? 'bg-primary text-white border-primary' : ''}
-            onClick={() => handleStatusFilter('Done')}
+            className={statusFilter === 'Completed' ? 'bg-primary text-white border-primary' : ''}
+            onClick={() => handleStatusFilter('Completed')}
           >
-            Done
-          </CustomButton>
-          <CustomButton
-            isSecondary
-            isOval
-            size="sm"
-            className={statusFilter === 'With Damages' ? 'bg-primary text-white border-primary' : ''}
-            onClick={() => handleStatusFilter('With Damages')}
-          >
-            With Damages
+            Completed
           </CustomButton>
 
           <div className="flex-1 flex justify-end gap-2">
@@ -345,7 +292,7 @@ export default function InspectionsList() {
 
         {/* CustomTable */}
         <CustomTable
-          data={paginatedInspections}
+          data={inspections}
           columns={columns}
           actions={actions}
           loading={loading}
