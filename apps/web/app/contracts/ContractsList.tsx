@@ -24,26 +24,23 @@ interface Contract {
   id: string;
   contract_number: string;
   tajeer_number?: string;
-  customer_name: string;
-  customer_type: 'existing' | 'new';
-  vehicle_plate: string;
+  customer_name?: string; // Deprecated field, use customer.name
+  customer_type?: 'existing' | 'new';
+  vehicle_plate?: string; // Deprecated field, use vehicle.plate_number
   start_date: string;
   end_date: string;
   status_id?: string;
   status?: { name: string; color?: string };
   total_amount: number;
   created_at: string;
-  // Relations
-  customers?: {
-    id: string;
+  // Relations from API joins
+  customer?: {
     name: string;
     id_number: string;
   };
-  vehicles?: {
-    id: string;
+  vehicle?: {
     plate_number: string;
-    make: string;
-    model: string;
+    serial_number: string;
   };
 }
 
@@ -182,8 +179,8 @@ export default function ContractsList() {
       ['Contract No.', 'Customer Name', 'Vehicle', 'Start Date', 'End Date', 'Status', 'Price'],
       ...contracts.map(contract => [
         contract.contract_number || contract.tajeer_number || contract.id.slice(0, 8),
-        contract.customer_name || contract.customers?.name || 'N/A',
-        contract.vehicle_plate || contract.vehicles?.plate_number || 'N/A',
+        contract.customer?.name || contract.customer_name || 'N/A',
+        contract.vehicle?.plate_number || contract.vehicle_plate || 'N/A',
         formatDate(contract.start_date),
         formatDate(contract.end_date),
         contract.status?.name || contract.status || 'Unknown',
@@ -218,7 +215,7 @@ export default function ContractsList() {
       type: 'text',
       render: (value, row) => (
         <span className=" font-medium">
-          {value || row.customers?.name || 'N/A'}
+          {row.customer?.name || value || 'N/A'}
         </span>
       )
     },
@@ -228,7 +225,7 @@ export default function ContractsList() {
       type: 'text',
       render: (value, row) => (
         <span className=" font-medium">
-          {value || row.vehicles?.plate_number || 'N/A'}
+          {row.vehicle?.plate_number || value || 'N/A'}
         </span>
       )
     },
