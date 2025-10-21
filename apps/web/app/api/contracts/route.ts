@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       const { data: activeStatus, error: activeStatusError } = await supabase
         .from('contract_statuses')
         .select('id')
-        .eq('name', 'Active')
+        .eq('name', 'On Hold')
         .eq('is_active', true)
         .single();
 
