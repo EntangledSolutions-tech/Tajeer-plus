@@ -1,7 +1,5 @@
 import React from 'react';
 import CustomInput from '../../../reusableComponents/CustomInput';
-import CustomButton from '../../../reusableComponents/CustomButton';
-import { useFormikContext } from 'formik';
 
 const dailyFields = [
   { label: 'Daily rental rate', name: 'dailyRentalRate', type: 'number', isRequired: true, min: 0, max: undefined, disabled: false, readOnly: false, isCurrency: true },
@@ -26,150 +24,67 @@ const hourlyFields = [
 ];
 
 export default function PricingFeeStep() {
-  const { values, setFieldValue } = useFormikContext<any>();
-  
-  const paymentType = values.paymentType || 'cash';
-
-  const handlePaymentTypeChange = (type: 'cash' | 'LeaseToOwn') => {
-    setFieldValue('paymentType', type);
-  };
-
   return (
     <>
       <h2 className="text-2xl font-bold text-primary mb-8">Pricing/Fee</h2>
       
-      {/* Payment Type Toggle */}
+      {/* Daily rent section */}
       <div className="mb-8">
-        <div className="font-semibold text-primary mb-4">Payment Type</div>
-        <div className="flex gap-4">
-          <button
-            type="button"
-            onClick={() => handlePaymentTypeChange('cash')}
-            className={`px-6 py-3 rounded-lg border-2 transition-all duration-200 ${
-              paymentType === 'cash'
-                ? 'border-primary bg-primary text-white'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-primary hover:text-primary'
-            }`}
-          >
-            Cash Payment
-          </button>
-          <button
-            type="button"
-            onClick={() => handlePaymentTypeChange('LeaseToOwn')}
-            className={`px-6 py-3 rounded-lg border-2 transition-all duration-200 ${
-              paymentType === 'LeaseToOwn'
-                ? 'border-primary bg-primary text-white'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-primary hover:text-primary'
-            }`}
-          >
-            Lease-to-own
-          </button>
+        <div className="font-semibold text-primary mb-2">Daily rent</div>
+        <div className="grid grid-cols-3 gap-6">
+          {dailyFields.map(field => (
+            <CustomInput
+              key={field.name}
+              label={field.label}
+              name={field.name}
+              required={field.isRequired}
+              type={field.type}
+              min={field.min}
+              max={field.max}
+              disabled={field.disabled}
+              readOnly={field.readOnly}
+              isCurrency={field.isCurrency}
+              iconPosition="left"
+            />
+          ))}
         </div>
       </div>
 
-      {/* Cash Payment Fields */}
-      {paymentType === 'cash' && (
-        <>
-          <div className="mb-8">
-            <div className="font-semibold text-primary mb-2">Daily rent</div>
-            <div className="grid grid-cols-3 gap-6">
-              {dailyFields.map(field => (
-                <CustomInput
-                  key={field.name}
-                  label={field.label}
-                  name={field.name}
-                  required={field.isRequired}
-                  type={field.type}
-                  min={field.min}
-                  max={field.max}
-                  disabled={field.disabled}
-                  readOnly={field.readOnly}
-                  isCurrency={field.isCurrency}
-                  iconPosition="left"
-                />
-              ))}
-            </div>
-          </div>
-          <div className="mb-8">
-            <div className="font-semibold text-primary mb-2">Monthly rent</div>
-            <div className="grid grid-cols-3 gap-6">
-              {monthlyFields.map(field => (
-                <CustomInput
-                  key={field.name}
-                  label={field.label}
-                  name={field.name}
-                  required={field.isRequired}
-                  type={field.type}
-                  isCurrency={field.isCurrency}
-                  iconPosition="left"
-                />
-              ))}
-            </div>
-          </div>
-          <div className="mb-8">
-            <div className="font-semibold text-primary mb-2">Hourly rent</div>
-            <div className="grid grid-cols-3 gap-6">
-              {hourlyFields.map(field => (
-                <CustomInput
-                  key={field.name}
-                  label={field.label}
-                  name={field.name}
-                  required={field.isRequired}
-                  type={field.type}
-                  isCurrency={field.isCurrency}
-                  iconPosition="left"
-                />
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Lease-to-own Payment Fields */}
-      {paymentType === 'LeaseToOwn' && (
-        <div className="mb-8">
-          <div className="font-semibold text-primary mb-4">Lease-to-own Configuration</div>
-          <div className="grid grid-cols-2 gap-6">
+      {/* Monthly rent section */}
+      <div className="mb-8">
+        <div className="font-semibold text-primary mb-2">Monthly rent</div>
+        <div className="grid grid-cols-3 gap-6">
+          {monthlyFields.map(field => (
             <CustomInput
-              label="Installment Value"
-              name="installmentValue"
-              type="number"
-              required={true}
-              isCurrency={true}
+              key={field.name}
+              label={field.label}
+              name={field.name}
+              required={field.isRequired}
+              type={field.type}
+              isCurrency={field.isCurrency}
               iconPosition="left"
-              min={0}
             />
-            <CustomInput
-              label="Interest Rate (%)"
-              name="interestRate"
-              type="number"
-              required={true}
-              iconPosition="left"
-              min={0}
-              max={100}
-              step={0.01}
-            />
-            <CustomInput
-              label="Total Price"
-              name="totalPrice"
-              type="number"
-              required={true}
-              isCurrency={true}
-              iconPosition="left"
-              min={0}
-            />
-            <CustomInput
-              label="Number of Installments"
-              name="numberOfInstallments"
-              type="number"
-              required={true}
-              iconPosition="left"
-              min={1}
-              max={120}
-            />
-          </div>
+          ))}
         </div>
-      )}
+      </div>
+
+      {/* Hourly rent section */}
+      <div className="mb-8">
+        <div className="font-semibold text-primary mb-2">Hourly rent</div>
+        <div className="grid grid-cols-3 gap-6">
+          {hourlyFields.map(field => (
+            <CustomInput
+              key={field.name}
+              label={field.label}
+              name={field.name}
+              required={field.isRequired}
+              type={field.type}
+              isCurrency={field.isCurrency}
+              iconPosition="left"
+            />
+          ))}
+        </div>
+      </div>
     </>
   );
 }

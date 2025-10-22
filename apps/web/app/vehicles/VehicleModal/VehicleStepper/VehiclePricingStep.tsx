@@ -1,7 +1,7 @@
 import React from 'react';
 import CustomSelect from '../../../reusableComponents/CustomSelect';
 import CustomInput from '../../../reusableComponents/CustomInput';
-import CustomButton from '../../../reusableComponents/CustomButton';
+import { useFormikContext } from 'formik';
 
 type PricingField = {
   label: string;
@@ -15,6 +15,11 @@ type PricingField = {
   isCurrency?: boolean;
 };
 
+type FormValues = {
+  paymentType?: 'cash' | 'LeaseToOwn';
+  [key: string]: unknown;
+};
+
 const depreciationYearsOptions = Array.from({ length: 20 }, (_, i) => (i + 1).toString());
 
 const vehiclePricingFields: PricingField[] = [
@@ -26,9 +31,47 @@ const vehiclePricingFields: PricingField[] = [
 ];
 
 export default function VehiclePricingStep() {
+  const { values, setFieldValue } = useFormikContext<FormValues>();
+  
+  const paymentType = values.paymentType || 'cash';
+
+  const handlePaymentTypeChange = (type: 'cash' | 'LeaseToOwn') => {
+    setFieldValue('paymentType', type);
+  };
+
   return (
     <>
       <h2 className="text-2xl font-bold text-primary mb-8">Vehicle Pricing & Depreciation</h2>
+      
+      {/* Payment Type Toggle */}
+      <div className="mb-8">
+        <div className="font-semibold text-primary mb-4">Payment Type</div>
+        <div className="flex gap-4">
+          <button
+            type="button"
+            onClick={() => handlePaymentTypeChange('cash')}
+            className={`px-6 py-3 rounded-lg border-2 transition-all duration-200 ${
+              paymentType === 'cash'
+                ? 'border-primary bg-primary text-white'
+                : 'border-gray-300 bg-white text-gray-700 hover:border-primary hover:text-primary'
+            }`}
+          >
+            Cash Payment
+          </button>
+          <button
+            type="button"
+            onClick={() => handlePaymentTypeChange('LeaseToOwn')}
+            className={`px-6 py-3 rounded-lg border-2 transition-all duration-200 ${
+              paymentType === 'LeaseToOwn'
+                ? 'border-primary bg-primary text-white'
+                : 'border-gray-300 bg-white text-gray-700 hover:border-primary hover:text-primary'
+            }`}
+          >
+            Lease-to-own
+          </button>
+        </div>
+      </div>
+
       <div className="flex flex-col gap-6">
         {vehiclePricingFields.map(field =>
           field.type === 'select' ? (
@@ -49,6 +92,52 @@ export default function VehiclePricingStep() {
           )
         )}
       </div>
+
+      {/* Lease-to-own specific fields */}
+      {paymentType === 'LeaseToOwn' && (
+        <div className="mt-8">
+          <div className="font-semibold text-primary mb-4">Lease-to-own Configuration</div>
+          <div className="grid grid-cols-2 gap-6">
+            <CustomInput
+              label="Installment amount"
+              name="installmentAmount"
+              type="number"
+              required={true}
+              isCurrency={true}
+              iconPosition="left"
+              min={0}
+            />
+            <CustomInput
+              label="Interest rate"
+              name="interestRate"
+              type="number"
+              required={true}
+              iconPosition="left"
+              min={0}
+              max={100}
+              step={0.01}
+            />
+            <CustomInput
+              label="Total price"
+              name="totalPrice"
+              type="number"
+              required={true}
+              isCurrency={true}
+              iconPosition="left"
+              min={0}
+            />
+            <CustomInput
+              label="Number of installments"
+              name="numberOfInstallments"
+              type="number"
+              required={true}
+              iconPosition="left"
+              min={1}
+              max={120}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }
