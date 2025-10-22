@@ -47,6 +47,21 @@ export async function POST(request: NextRequest) {
       created_at: doc.created_at || new Date().toISOString(),
     }));
 
+    // Fetch the "Available" status ID dynamically
+    const { data: availableStatus, error: statusError } = await supabase
+      .from('vehicle_statuses')
+      .select('id')
+      .eq('name', 'Available')
+      .single();
+
+    if (statusError || !availableStatus) {
+      console.error('Error fetching Available status:', statusError);
+      return NextResponse.json(
+        { error: 'Failed to fetch vehicle status', details: statusError?.message },
+        { status: 500 }
+      );
+    }
+
     // Insert vehicle data into the database
     const { data, error } = await supabase
       .from('vehicles')
@@ -103,7 +118,7 @@ export async function POST(request: NextRequest) {
         depreciation_years: parseInt(depreciation.depreciationYears) || 0,
 
         // Additional details
-        status_id: additional_details.carStatus,
+        status_id: availableStatus.id,
         owner_id: additional_details.ownerName,
         actual_user_id: additional_details.actualUser,
         insurance_policy_id: additional_details.insuranceType,

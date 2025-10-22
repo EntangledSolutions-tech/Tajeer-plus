@@ -2,12 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useFormikContext } from 'formik';
 import CustomInput from '../../../reusableComponents/CustomInput';
 import SearchableSelect from '../../../reusableComponents/SearchableSelect';
-import CustomButton from '../../../reusableComponents/CustomButton';
 import { useHttpService } from '../../../../lib/http-service';
 
 
 interface FormValues {
-  carStatus: string;
   ownerName: string;
   ownerId: string;
   actualUser: string;
@@ -38,7 +36,6 @@ export default function AdditionalDetailsStep() {
 
   // State for dropdown options
   const [loading, setLoading] = useState({
-    statuses: false,
     owners: false,
     actualUsers: false,
     insuranceCompanies: false,
@@ -46,55 +43,16 @@ export default function AdditionalDetailsStep() {
   });
 
   const [options, setOptions] = useState<{
-    statuses: DropdownOption[];
     owners: DropdownOption[];
     actualUsers: DropdownOption[];
     insuranceCompanies: DropdownOption[];
     insuranceTypes: DropdownOption[];
   }>({
-    statuses: [],
     owners: [],
     actualUsers: [],
     insuranceCompanies: [],
     insuranceTypes: [],
   });
-
-  // Fetch vehicle statuses
-  const fetchStatuses = async () => {
-    try {
-      setLoading(prev => ({ ...prev, statuses: true }));
-      const result = await getRequest('/api/vehicle-configuration/statuses?page=1&limit=100');
-      console.log('Statuses API response:', result);
-      if (result.success && result.data) {
-        // Map the data to the format needed for SearchableSelect
-        const mappedStatuses = result.data.statuses?.map((status: any) => {
-          console.log('Mapping status:', status);
-          // Ensure all values are strings and not undefined
-          const code = status.code || '';
-          const id = status.id || '';
-          const name = status.name || '';
-
-          if (!code || !id || !name) {
-            console.warn('Invalid status data:', status);
-            return null;
-          }
-
-          return {
-            key: code,
-            id: id,
-            value: name,
-            subValue: `Code: ${code}`
-          };
-        }).filter(Boolean) || [];
-        console.log('Mapped statuses:', mappedStatuses);
-        setOptions(prev => ({ ...prev, statuses: mappedStatuses }));
-      }
-    } catch (error) {
-      console.error('Error fetching statuses:', error);
-    } finally {
-      setLoading(prev => ({ ...prev, statuses: false }));
-    }
-  };
 
   // Fetch vehicle owners
   const fetchOwners = async () => {
@@ -223,7 +181,6 @@ export default function AdditionalDetailsStep() {
   // Load data on component mount
   useEffect(() => {
     console.log('AdditionalDetailsStep mounted, fetching data...');
-    fetchStatuses();
     fetchOwners();
     fetchActualUsers();
     fetchInsuranceCompanies();
@@ -302,17 +259,6 @@ export default function AdditionalDetailsStep() {
 
       {/* Main Details Section */}
       <div className="grid grid-cols-2 gap-6 mb-8">
-        {/* Car Status */}
-        <SearchableSelect
-          label="Car Status"
-          name="carStatus"
-          required={true}
-          options={Array.isArray(options.statuses) ? options.statuses : []}
-          placeholder="Select car status..."
-          searchPlaceholder="Search statuses..."
-          disabled={loading.statuses}
-        />
-
         {/* Owner Name */}
         <SearchableSelect
           label="Owner's Name"

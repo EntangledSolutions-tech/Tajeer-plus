@@ -104,7 +104,6 @@ const documentsSchema = Yup.object({
   documents: Yup.array(documentSchema).min(1, 'At least one document is required'),
 });
 const additionalDetailsSchema = Yup.object({
-  carStatus: Yup.string().required('Car Status is required'),
   ownerName: Yup.string().required('Owner Name is required'),
   ownerId: Yup.string(), // Not required since it's auto-populated
   actualUser: Yup.string().required('Actual User is required'),
@@ -191,7 +190,6 @@ const initialValues = {
   docFile: null,
   
   // Step 5 - Additional Details
-  carStatus: 'Available', 
   ownerName: 'Company Fleet', 
   ownerId: '', 
   actualUser: 'Fleet Manager', 

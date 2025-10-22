@@ -157,7 +157,6 @@ const vehiclePricingSchema = Yup.object({
 });
 
 const additionalDetailsSchema = Yup.object({
-  carStatus: Yup.string().required('Car Status is required'),
   ownerName: Yup.string().required('Owner Name is required'),
   ownerId: Yup.string(),
   actualUser: Yup.string().required('Actual User is required'),
@@ -398,7 +397,6 @@ export default function VehicleDetailsLayout() {
       depreciationYears: vehicle.depreciation_years ? vehicle.depreciation_years.toString() : '',
 
       // Additional details
-      carStatus: vehicle.status_id || '',
       ownerName: typeof vehicle.owner === 'object' ? vehicle.owner?.name : vehicle.owner || '',
       ownerId: vehicle.owner_id || '',
       actualUser: typeof vehicle.actual_user === 'object' ? vehicle.actual_user?.name : vehicle.actual_user || '',
