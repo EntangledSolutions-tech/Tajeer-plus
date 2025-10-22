@@ -128,7 +128,7 @@ export default function AccidentModal({ isOpen, onClose, vehicleId, onSuccess }:
         console.error('Error fetching vehicle:', response.error);
         setError('Failed to load vehicle details');
         if (response.error) {
-          alert(`Error: ${response.error}`);
+          toast.error(`Error: ${response.error}`);
         }
       }
     } catch (error) {

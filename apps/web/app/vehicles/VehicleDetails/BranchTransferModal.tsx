@@ -92,7 +92,7 @@ export default function BranchTransferModal({ isOpen, onClose, vehicleId, onSucc
         console.error('Error fetching vehicle:', response.error);
         setError('Failed to load vehicle details');
         if (response.error) {
-          alert(`Error: ${response.error}`);
+          toast.error(`Error: ${response.error}`);
         }
       }
     } catch (error) {

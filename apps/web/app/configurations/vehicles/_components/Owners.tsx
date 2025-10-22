@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, FileSpreadsheet } from 'lucide-react';
+import { toast } from '@kit/ui/sonner';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import { Database } from '../../../../lib/database.types';
@@ -113,9 +114,9 @@ export default function Owners({ loading, onDelete }: OwnersProps) {
     } catch (error) {
       console.error('Error saving owner:', error);
       if (error instanceof Error) {
-        alert(`Error: ${error.message}`);
+        toast.error(`Error: ${error.message}`);
       } else {
-        alert('An unexpected error occurred while saving the owner');
+        toast.error('An unexpected error occurred while saving the owner');
       }
     } finally {
       setSubmitting(false);

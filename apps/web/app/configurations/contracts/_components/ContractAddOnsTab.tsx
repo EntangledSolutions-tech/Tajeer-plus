@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kit/ui/dialog';
+import { toast } from '@kit/ui/sonner';
 import { Plus, Pencil, Trash2, FileSpreadsheet } from 'lucide-react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
@@ -93,7 +94,7 @@ export default function ContractAddOnsTab({ loading, onDelete }: ContractAddOnsT
         console.error('Error fetching add-ons:', response.error);
         setAddOns([]);
         if (response.error) {
-          alert(`Error: ${response.error}`);
+          toast.error(`Error: ${response.error}`);
         }
       }
     } catch (error) {
@@ -129,9 +130,9 @@ export default function ContractAddOnsTab({ loading, onDelete }: ContractAddOnsT
     } catch (error) {
       console.error('Error saving add-on:', error);
       if (error instanceof Error) {
-        alert(`Error: ${error.message}`);
+        toast.error(`Error: ${error.message}`);
       } else {
-        alert('An unexpected error occurred while saving the add-on');
+        toast.error('An unexpected error occurred while saving the add-on');
       }
     } finally {
       setSubmitting(false);
@@ -180,12 +181,12 @@ export default function ContractAddOnsTab({ loading, onDelete }: ContractAddOnsT
       } else {
         console.error('Export error:', response.error);
         if (response.error) {
-          alert(`Export failed: ${response.error}`);
+          toast.error(`Export failed: ${response.error}`);
         }
       }
     } catch (error) {
       console.error('Export error:', error);
-      alert('Export failed due to an unexpected error');
+      toast.error('Export failed due to an unexpected error');
     }
   };
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@kit/ui/alert-dialog';
+import { toast } from '@kit/ui/sonner';
 import Link from 'next/link';
 import ContractStatusTab from './_components/ContractStatusTab';
 import ContractAddOnsTab from './_components/ContractAddOnsTab';
@@ -50,15 +51,16 @@ export default function ContractConfigurationsPage() {
 
       if (response.success) {
         console.log(`${deleteItem.name} deleted successfully`);
+        toast.success(`${deleteItem.name} deleted successfully`);
       } else {
         throw new Error(response.error || `Failed to delete ${deleteItem.type}`);
       }
     } catch (error) {
       console.error(`Error deleting ${deleteItem.type}:`, error);
       if (error instanceof Error) {
-        alert(`Error: ${error.message}`);
+        toast.error(`Error: ${error.message}`);
       } else {
-        alert(`An unexpected error occurred while deleting the ${deleteItem.type}`);
+        toast.error(`An unexpected error occurred while deleting the ${deleteItem.type}`);
       }
     } finally {
       setDeleteItem(null);

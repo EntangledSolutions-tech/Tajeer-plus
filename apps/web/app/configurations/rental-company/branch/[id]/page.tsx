@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@kit/ui/button';
 import { Badge } from '@kit/ui/badge';
 import { Checkbox } from '@kit/ui/checkbox';
+import { toast } from '@kit/ui/sonner';
 import { ArrowLeft, Edit, MoreHorizontal, Phone, Mail, MapPin, Globe, FileText, Building2, ChevronDown, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -85,9 +86,9 @@ export default function BranchDetailsPage() {
     } catch (err: any) {
       console.error('Error deleting branch:', err);
       if (err instanceof Error) {
-        alert(`Error: ${err.message}`);
+        toast.error(`Error: ${err.message}`);
       } else {
-        alert('An unexpected error occurred while deleting the branch');
+        toast.error('An unexpected error occurred while deleting the branch');
       }
     }
   };

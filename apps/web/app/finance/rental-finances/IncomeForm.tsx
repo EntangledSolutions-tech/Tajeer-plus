@@ -165,12 +165,12 @@ export const IncomeForm: React.FC<IncomeFormProps> = ({
         } else {
           console.error('Error fetching transaction types:', response.error);
           if (response.error) {
-            alert(`Error loading transaction types: ${response.error}`);
+            toast.error(`Error loading transaction types: ${response.error}`);
           }
         }
       } catch (error) {
         console.error('Error fetching transaction types:', error);
-        alert('Failed to load transaction types');
+        toast.error('Failed to load transaction types');
       } finally {
         setLoadingTransactionTypes(false);
       }

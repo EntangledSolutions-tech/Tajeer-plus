@@ -1,5 +1,6 @@
 'use client';
 import React, { useState } from 'react';
+import { toast } from '@kit/ui/sonner';
 import CustomButton from '../../../reusableComponents/CustomButton';
 import { CollapsibleSection } from '../../../reusableComponents/CollapsibleSection';
 import CustomModal from '../../../reusableComponents/CustomModal';
@@ -158,7 +159,7 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
 
   const handleHoldContract = async () => {
     if (!holdReason) {
-      alert('Please select a reason for hold');
+      toast.error('Please select a reason for hold');
       return;
     }
 
@@ -181,11 +182,11 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
         window.location.reload();
       } else {
         const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to hold contract'}`);
+        toast.error(`Error: ${errorData.error || 'Failed to hold contract'}`);
       }
     } catch (error) {
       console.error('Error holding contract:', error);
-      alert('Failed to hold contract. Please try again.');
+      toast.error('Failed to hold contract. Please try again.');
     } finally {
       setIsLoading(false);
       setIsHoldModalOpen(false);
