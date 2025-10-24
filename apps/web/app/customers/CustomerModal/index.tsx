@@ -11,10 +11,13 @@ import { useHttpService } from '../../../lib/http-service';
 import { useBranch } from '../../../contexts/branch-context';
 
 const customerDetailsSchema = Yup.object({
-  name: Yup.string().required('Name is required').min(2, 'Name must be at least 2 characters'),
+  name: Yup.string().required('Name is required').min(2, 'Name must be at least 2 characters').max(30, 'Name must not exceed 30 characters'),
   idType: Yup.string().required('ID Type is required'),
   nationality: Yup.string().required('Nationality is required'),
-  mobileNumber: Yup.string().required('Mobile number is required').min(10, 'Mobile number must be at least 10 digits'),
+  mobileNumber: Yup.string()
+    .required('Mobile number is required')
+    .min(10, 'Mobile number must be at least 10 digits')
+    .matches(/^[0-9+\-\s()]+$/, 'Mobile number contains invalid characters'),
   email: Yup.string().email('Invalid email format').required('Email is required'),
 
   // National ID specific fields (conditional validation)
@@ -22,6 +25,19 @@ const customerDetailsSchema = Yup.object({
     is: 'National ID',
     then: (schema) => schema.required('National ID Number is required').length(10, 'National ID must be 10 digits'),
     otherwise: (schema) => schema.notRequired()
+  }).test('unique', 'This national ID number already exists', async function(value) {
+    const { idType } = this.parent;
+    if (idType !== 'National ID' || !value) return true;
+
+    const response = await fetch('/api/customers/check-uniqueness', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ field: 'national_id_number', value })
+    });
+
+    if (!response.ok) return false;
+    const data = await response.json();
+    return data.isUnique;
   }),
   nationalIdIssueDate: Yup.string().when('idType', {
     is: 'National ID',
@@ -40,12 +56,12 @@ const customerDetailsSchema = Yup.object({
   }),
   fatherName: Yup.string().when('idType', {
     is: 'National ID',
-    then: (schema) => schema.required('Father Name is required').min(2, 'Father Name must be at least 2 characters'),
+    then: (schema) => schema.required('Father Name is required').min(2, 'Father Name must be at least 2 characters').max(30, 'Father Name must not exceed 30 characters'),
     otherwise: (schema) => schema.notRequired()
   }),
   motherName: Yup.string().when('idType', {
     is: 'National ID',
-    then: (schema) => schema.required('Mother Name is required').min(2, 'Mother Name must be at least 2 characters'),
+    then: (schema) => schema.required('Mother Name is required').min(2, 'Mother Name must be at least 2 characters').max(30, 'Mother Name must not exceed 30 characters'),
     otherwise: (schema) => schema.notRequired()
   }),
 
@@ -54,6 +70,19 @@ const customerDetailsSchema = Yup.object({
     is: 'GCC Countries Citizens',
     then: (schema) => schema.required('ID Copy Number is required').min(1, 'ID Copy Number must be at least 1 character'),
     otherwise: (schema) => schema.notRequired()
+  }).test('unique', 'This ID copy number already exists', async function(value) {
+    const { idType } = this.parent;
+    if (idType !== 'GCC Countries Citizens' || !value) return true;
+
+    const response = await fetch('/api/customers/check-uniqueness', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ field: 'id_copy_number', value })
+    });
+
+    if (!response.ok) return false;
+    const data = await response.json();
+    return data.isUnique;
   }),
   licenseExpirationDate: Yup.string().when('idType', {
     is: 'GCC Countries Citizens',
@@ -81,11 +110,37 @@ const customerDetailsSchema = Yup.object({
     is: 'Visitor',
     then: (schema) => schema.required('Passport Number is required').min(1, 'Passport Number must be at least 1 character'),
     otherwise: (schema) => schema.notRequired()
+  }).test('unique', 'This passport number already exists', async function(value) {
+    const { idType } = this.parent;
+    if (idType !== 'Visitor' || !value) return true;
+
+    const response = await fetch('/api/customers/check-uniqueness', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ field: 'passport_number', value })
+    });
+
+    if (!response.ok) return false;
+    const data = await response.json();
+    return data.isUnique;
   }),
   licenseNumber: Yup.string().when('idType', {
     is: 'Visitor',
     then: (schema) => schema.required('License Number is required').min(1, 'License Number must be at least 1 character'),
     otherwise: (schema) => schema.notRequired()
+  }).test('unique', 'This license number already exists', async function(value) {
+    const { idType } = this.parent;
+    if (idType !== 'Visitor' || !value) return true;
+
+    const response = await fetch('/api/customers/check-uniqueness', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ field: 'license_number', value })
+    });
+
+    if (!response.ok) return false;
+    const data = await response.json();
+    return data.isUnique;
   }),
   idExpiryDate: Yup.string().when('idType', {
     is: 'Visitor',

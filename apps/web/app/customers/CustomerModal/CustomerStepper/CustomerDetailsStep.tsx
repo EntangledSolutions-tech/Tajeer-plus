@@ -15,12 +15,12 @@ const commonFields = [
     { value: 'Visitor', label: 'Visitor' }
   ] },
   // { label: 'ID Number', name: 'idNumber', type: 'text', isRequired: true, placeholder: 'Enter ID number', min: 1, max: 50 },
-  { label: 'Name', name: 'name', type: 'text', isRequired: true, placeholder: 'Enter name', min: 2, max: 100 },
+  { label: 'Name', name: 'name', type: 'text', isRequired: true, placeholder: 'Enter name', min: 2, max: 30 },
   // { label: 'Classification', name: 'classification', type: 'searchable-select', isRequired: true },
   // { label: 'License type', name: 'licenseType', type: 'searchable-select', isRequired: true },
   { label: 'Nationality', name: 'nationality', type: 'searchable-select', isRequired: true },
   // { label: 'Status', name: 'status', type: 'searchable-select', isRequired: true },
-  { label: 'Mobile Number', name: 'mobileNumber', type: 'text', isRequired: true, placeholder: 'Enter mobile number', min: 10, max: 15 },
+  { label: 'Mobile Number', name: 'mobileNumber', type: 'text', isRequired: true, placeholder: 'Enter mobile number', min: 10, max: 15, pattern: '^[0-9+\\-\\s()]+$' },
   // { label: 'Address', name: 'address', type: 'text', isRequired: true, placeholder: 'Enter address', min: 10, max: 500 },
   { label: 'Email', name: 'email', type: 'email', isRequired: true, placeholder: 'Enter email address', min: 5, max: 100 },
   // { label: 'Date of birth', name: 'dateOfBirth', type: 'date', isRequired: true, placeholder: 'Select date', max: new Date().toISOString().split('T')[0] },
@@ -28,18 +28,18 @@ const commonFields = [
 
 // Fields specific to National ID
 const nationalIdFields = [
-  { label: 'National ID Number', name: 'nationalIdNumber', type: 'text', isRequired: true, placeholder: 'Enter National ID number', min: 10, max: 10 },
-  { label: 'National ID Issue Date', name: 'nationalIdIssueDate', type: 'date', isRequired: true, placeholder: 'Select issue date' },
-  { label: 'National ID Expiry Date', name: 'nationalIdExpiryDate', type: 'date', isRequired: true, placeholder: 'Select expiry date' },
+  { label: 'National ID Number', name: 'nationalIdNumber', type: 'text', isRequired: true, placeholder: 'Enter National ID number', min: 10, max: 10, unique: true },
+  { label: 'National ID Issue Date', name: 'nationalIdIssueDate', type: 'date', isRequired: true, placeholder: 'Select issue date', max: new Date().toISOString().split('T')[0] },
+  { label: 'National ID Expiry Date', name: 'nationalIdExpiryDate', type: 'date', isRequired: true, placeholder: 'Select expiry date', min: new Date().toISOString().split('T')[0] },
   { label: 'Place of Birth', name: 'placeOfBirth', type: 'text', isRequired: true, placeholder: 'Enter place of birth', min: 2, max: 100 },
-  { label: 'Father Name', name: 'fatherName', type: 'text', isRequired: true, placeholder: 'Enter father name', min: 2, max: 100 },
-  { label: 'Mother Name', name: 'motherName', type: 'text', isRequired: true, placeholder: 'Enter mother name', min: 2, max: 100 },
+  { label: 'Father Name', name: 'fatherName', type: 'text', isRequired: true, placeholder: 'Enter father name', min: 2, max: 30 },
+  { label: 'Mother Name', name: 'motherName', type: 'text', isRequired: true, placeholder: 'Enter mother name', min: 2, max: 30 },
 ];
 
 // Fields specific to GCC Countries Citizens
 const gccFields = [
-  { label: 'ID Copy Number', name: 'idCopyNumber', type: 'text', isRequired: true, placeholder: 'Enter ID copy number', min: 1, max: 50 },
-  { label: 'License Expiration Date', name: 'licenseExpirationDate', type: 'date', isRequired: true, placeholder: 'Select license expiration date' },
+  { label: 'ID Copy Number', name: 'idCopyNumber', type: 'text', isRequired: true, placeholder: 'Enter ID copy number', min: 1, max: 50, unique: true },
+  { label: 'License Expiration Date', name: 'licenseExpirationDate', type: 'date', isRequired: true, placeholder: 'Select license expiration date', min: new Date().toISOString().split('T')[0] },
   { label: 'License Type', name: 'licenseType', type: 'select', isRequired: true, options: [
     { value: '', label: 'Select License Type' },
     { value: 'International License', label: 'International License' },
@@ -52,11 +52,11 @@ const gccFields = [
 // Fields specific to Visitor
 const visitorFields = [
   { label: 'Border Number', name: 'borderNumber', type: 'text', isRequired: true, placeholder: 'Enter border number', min: 1, max: 50 },
-  { label: 'Passport Number', name: 'passportNumber', type: 'text', isRequired: true, placeholder: 'Enter passport number', min: 1, max: 50 },
-  { label: 'License Number', name: 'licenseNumber', type: 'text', isRequired: true, placeholder: 'Enter license number', min: 1, max: 50 },
+  { label: 'Passport Number', name: 'passportNumber', type: 'text', isRequired: true, placeholder: 'Enter passport number', min: 1, max: 50, unique: true },
+  { label: 'License Number', name: 'licenseNumber', type: 'text', isRequired: true, placeholder: 'Enter license number', min: 1, max: 50, unique: true },
   { label: 'ID Expiry Date', name: 'idExpiryDate', type: 'date', isRequired: true, placeholder: 'Select ID expiry date' },
   { label: 'Place of ID Issue', name: 'placeOfIdIssue', type: 'text', isRequired: true, placeholder: 'Enter place of ID issue', min: 2, max: 100 },
-  { label: 'License Expiry Date', name: 'licenseExpiryDate', type: 'date', isRequired: true, placeholder: 'Select license expiry date' },
+  { label: 'License Expiry Date', name: 'licenseExpiryDate', type: 'date', isRequired: true, placeholder: 'Select license expiry date', min: new Date().toISOString().split('T')[0] },
   { label: 'License Type', name: 'licenseType', type: 'select', isRequired: true, options: [
     { value: '', label: 'Select License Type' },
     { value: 'International License', label: 'International License' },
@@ -438,6 +438,7 @@ export default function CustomerDetailsStep() {
           placeholder={field.placeholder}
           min={field.min}
           max={field.max}
+          pattern={field.pattern}
         />
       );
     }
@@ -446,7 +447,7 @@ export default function CustomerDetailsStep() {
   // Get fields based on selected ID type
   const getFieldsForIdType = () => {
     const selectedIdType = values.idType;
-    
+
     if (selectedIdType === 'National ID') {
       return [...commonFields, ...nationalIdFields];
     } else if (selectedIdType === 'GCC Countries Citizens') {
