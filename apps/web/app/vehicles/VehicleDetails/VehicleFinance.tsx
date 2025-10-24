@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, Pencil } from 'lucide-react';
+import { Filter, Pencil } from 'lucide-react';
 import CustomButton from '../../reusableComponents/CustomButton';
 import { RadioButtonGroup } from '../../reusableComponents/RadioButtonGroup';
 import { SearchBar } from '../../reusableComponents/SearchBar';
@@ -19,6 +19,59 @@ const vehiclePricing = {
   purchasePrice: 'SAR 24,252',
   leaseAmountIncrease: 'SAR 26,252',
 };
+
+const pricingDepreciationRows = [
+  { 
+    year: '2022', 
+    purchasePrice: 'SAR 24,252', 
+    depreciationRate: '15%', 
+    annualDepreciation: 'SAR 3,638', 
+    accumulatedDepreciation: 'SAR 3,638', 
+    bookValue: 'SAR 20,614',
+    operationDate: '06/04/2022',
+    acquisitionDate: '06/04/2022'
+  },
+  { 
+    year: '2023', 
+    purchasePrice: 'SAR 24,252', 
+    depreciationRate: '15%', 
+    annualDepreciation: 'SAR 3,638', 
+    accumulatedDepreciation: 'SAR 7,276', 
+    bookValue: 'SAR 16,976',
+    operationDate: '06/04/2022',
+    acquisitionDate: '06/04/2022'
+  },
+  { 
+    year: '2024', 
+    purchasePrice: 'SAR 24,252', 
+    depreciationRate: '15%', 
+    annualDepreciation: 'SAR 3,638', 
+    accumulatedDepreciation: 'SAR 10,914', 
+    bookValue: 'SAR 13,338',
+    operationDate: '06/04/2022',
+    acquisitionDate: '06/04/2022'
+  },
+  { 
+    year: '2025', 
+    purchasePrice: 'SAR 24,252', 
+    depreciationRate: '15%', 
+    annualDepreciation: 'SAR 3,638', 
+    accumulatedDepreciation: 'SAR 14,552', 
+    bookValue: 'SAR 9,700',
+    operationDate: '06/04/2022',
+    acquisitionDate: '06/04/2022'
+  },
+  { 
+    year: '2026', 
+    purchasePrice: 'SAR 24,252', 
+    depreciationRate: '15%', 
+    annualDepreciation: 'SAR 3,638', 
+    accumulatedDepreciation: 'SAR 18,190', 
+    bookValue: 'SAR 6,062',
+    operationDate: '06/04/2022',
+    acquisitionDate: '06/04/2022'
+  }
+];
 
 const revenueRows = [
   { date: '03/14/2022', type: 'Contract Closure', desc: 'Lorem Ipsum text', transaction: 'Income', method: 'Cash', amount: 'SAR 23,456', invoice: 'INV-9876' },
@@ -59,6 +112,18 @@ export default function VehicleFinance() {
     { key: 'customer', label: 'Customer', type: 'text' },
     { key: 'price', label: 'Price', type: 'text' },
     { key: 'invoice', label: '', type: 'link' }
+  ];
+
+  // Define table columns for Pricing & Depreciation Details
+  const pricingDepreciationColumns: TableColumn[] = [
+    { key: 'year', label: 'Year', type: 'text' },
+    { key: 'purchasePrice', label: 'Purchase Price', type: 'text' },
+    { key: 'depreciationRate', label: 'Depreciation Rate', type: 'text' },
+    { key: 'annualDepreciation', label: 'Annual Depreciation', type: 'text' },
+    { key: 'accumulatedDepreciation', label: 'Accumulated Depreciation', type: 'text' },
+    { key: 'bookValue', label: 'Book Value', type: 'text' },
+    { key: 'operationDate', label: 'Operation Date', type: 'text' },
+    { key: 'acquisitionDate', label: 'Acquisition Date', type: 'text' }
   ];
 
   return (
@@ -109,6 +174,48 @@ export default function VehicleFinance() {
           </div>
         </div>
       </CollapsibleSection>
+
+      {/* Pricing & Depreciation Details Table */}
+      <CollapsibleSection
+        title="Pricing & Depreciation Details"
+        defaultOpen={true}
+        className="mx-0"
+        headerClassName="bg-primary/5"
+        headerButton={
+          <CustomButton
+            isSecondary
+            size="sm"
+            className="flex items-center gap-1 px-3 py-1"
+          >
+            <Pencil className="w-3 h-3" />
+            Edit
+          </CustomButton>
+        }
+      >
+        <div className="flex items-center justify-between mb-4 gap-4">
+          <div className="flex items-center gap-4">
+            <SearchBar
+              value=""
+              onChange={() => {}}
+              placeholder="Search pricing..."
+              width="w-40"
+              variant="white-bg"
+            />
+            <CustomButton isSecondary size="sm" className="p-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v16h16M4 4l8 8m0 0l8-8" /></svg>
+            </CustomButton>
+          </div>
+        </div>
+        <CustomTable
+          data={pricingDepreciationRows}
+          columns={pricingDepreciationColumns}
+          tableBackground="transparent"
+          emptyMessage="No pricing and depreciation data found"
+          searchable={false}
+          pagination={false}
+        />
+      </CollapsibleSection>
+
       {/* Revenue Table */}
       <CollapsibleSection
         title="Revenue"
@@ -197,6 +304,7 @@ export default function VehicleFinance() {
           pagination={false}
         />
       </CollapsibleSection>
+      
     </div>
   );
 }
