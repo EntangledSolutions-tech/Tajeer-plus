@@ -3,6 +3,7 @@ import { useFormikContext } from 'formik';
 import CustomInput from '../../../reusableComponents/CustomInput';
 import CustomSelect from '../../../reusableComponents/CustomSelect';
 import CustomSearchableDropdown, { SearchableDropdownOption } from '../../../reusableComponents/SearchableDropdown';
+import PhoneNumberInput from '../../../reusableComponents/PhoneNumberInput';
 import { useHttpService } from '../../../../lib/http-service';
 
   // Common fields for all ID types
@@ -20,7 +21,7 @@ const commonFields = [
   // { label: 'License type', name: 'licenseType', type: 'searchable-select', isRequired: true },
   { label: 'Nationality', name: 'nationality', type: 'searchable-select', isRequired: true },
   // { label: 'Status', name: 'status', type: 'searchable-select', isRequired: true },
-  { label: 'Mobile Number', name: 'mobileNumber', type: 'text', isRequired: true, placeholder: 'Enter mobile number', min: 10, max: 15, pattern: '^[0-9+\\-\\s()]+$' },
+  { label: 'Mobile Number', name: 'mobileNumber', type: 'phone', isRequired: true, placeholder: 'Enter mobile number', min: 10, max: 15 },
   // { label: 'Address', name: 'address', type: 'text', isRequired: true, placeholder: 'Enter address', min: 10, max: 500 },
   { label: 'Email', name: 'email', type: 'email', isRequired: true, placeholder: 'Enter email address', min: 5, max: 100 },
   // { label: 'Date of birth', name: 'dateOfBirth', type: 'date', isRequired: true, placeholder: 'Select date', max: new Date().toISOString().split('T')[0] },
@@ -428,6 +429,15 @@ export default function CustomerDetailsStep() {
           />
         );
       }
+    } else if (field.type === 'phone') {
+      return (
+        <PhoneNumberInput
+          name={field.name}
+          label={field.label}
+          required={field.isRequired}
+          countryCodeName="countryCode"
+        />
+      );
     } else {
       return (
         <CustomInput

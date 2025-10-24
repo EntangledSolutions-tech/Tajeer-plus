@@ -16,8 +16,9 @@ const customerDetailsSchema = Yup.object({
   nationality: Yup.string().required('Nationality is required'),
   mobileNumber: Yup.string()
     .required('Mobile number is required')
-    .min(10, 'Mobile number must be at least 10 digits')
-    .matches(/^[0-9+\-\s()]+$/, 'Mobile number contains invalid characters'),
+    .min(7, 'Mobile number must be at least 7 digits')
+    .matches(/^[0-9]+$/, 'Mobile number must contain only digits'),
+  countryCode: Yup.string().required('Country code is required'),
   email: Yup.string().email('Invalid email format').required('Email is required'),
 
   // National ID specific fields (conditional validation)
@@ -182,6 +183,7 @@ const initialValues = {
   idType: 'Resident ID', // Default to Resident ID
   nationality: '',
   mobileNumber: '',
+  countryCode: '+966', // Default to Saudi Arabia
   email: '',
 
   // National ID specific fields
@@ -282,7 +284,7 @@ export default function CustomerModal({ onCustomerAdded }: { onCustomerAdded?: (
         name: values.name,
         id_type: values.idType,
         nationality: values.nationality,
-        mobile_number: values.mobileNumber || '',
+        mobile_number: `${values.countryCode}${values.mobileNumber}`,
         email: values.email || '',
         documents: uploadedDocuments,
         documents_count: uploadedDocuments.length,
