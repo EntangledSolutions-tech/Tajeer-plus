@@ -11,14 +11,14 @@ interface CountryCodeSelectorProps {
   className?: string;
 }
 
-export default function CountryCodeSelector({ 
-  name, 
-  value, 
+export default function CountryCodeSelector({
+  name,
+  value,
   onChange,
-  className = '' 
+  className = ''
 }: CountryCodeSelectorProps) {
   const { setFieldValue } = useFormikContext<any>();
-  
+
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedValue = e.target.value;
     setFieldValue(name, selectedValue);
