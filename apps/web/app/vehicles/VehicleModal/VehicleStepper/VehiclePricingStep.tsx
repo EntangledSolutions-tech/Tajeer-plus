@@ -26,6 +26,9 @@ const vehiclePricingFields: PricingField[] = [
 ];
 
 export default function VehiclePricingStep() {
+  // Get today's date in YYYY-MM-DD format for max date
+  const today = new Date().toISOString().split('T')[0];
+
   return (
     <>
       <h2 className="text-2xl font-bold text-primary mb-8">Vehicle Pricing & Depreciation</h2>
@@ -41,7 +44,7 @@ export default function VehiclePricingStep() {
               required={field.isRequired}
               type={field.type}
               min={field.min}
-              max={field.max}
+              max={field.type === 'date' && (field.name === 'acquisitionDate' || field.name === 'operationDate') ? today : field.max}
               placeholder={field.placeholder}
               isCurrency={field.isCurrency}
               iconPosition="left"

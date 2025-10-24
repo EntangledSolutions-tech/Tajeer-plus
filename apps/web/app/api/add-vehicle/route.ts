@@ -92,7 +92,6 @@ export async function POST(request: NextRequest) {
         // Additional vehicle fields
         chassis_number: vehicle.chassis_number,
         vehicle_load_capacity: vehicle.vehicle_load_capacity,
-        technical_number: vehicle.technical_number,
 
         // Pricing details
         daily_rental_rate: Math.min(parseFloat(pricing.dailyRentalRate) || 0, 99999999.99),
