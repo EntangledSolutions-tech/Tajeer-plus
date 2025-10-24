@@ -34,6 +34,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if plate number already exists
+    const { data: existingVehicle, error: checkError } = await supabase
+      .from('vehicles')
+      .select('plate_number')
+      .eq('plate_number', vehicle.plateNumber)
+      .single();
+
+    if (existingVehicle) {
+      return NextResponse.json(
+        { error: 'Plate number already exists' },
+        { status: 400 }
+      );
+    }
+
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" error
+      console.error('Error checking plate number:', checkError);
+      return NextResponse.json(
+        { error: 'Failed to validate plate number' },
+        { status: 500 }
+      );
+    }
+
     // Helper function to convert string to date
     const parseDate = (dateString: string) => {
       if (!dateString) return null;

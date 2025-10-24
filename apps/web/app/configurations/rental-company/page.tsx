@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@kit/ui/alert-dialog';
+import { toast } from '@kit/ui/sonner';
 import Link from 'next/link';
 import BranchesTab from './_components/BranchesTab';
 import CustomTabs from '../../reusableComponents/CustomTabs';
@@ -66,6 +67,7 @@ export default function RentalCompanyConfigurationsPage() {
 
       if (response.success) {
         console.log(`Deleting ${deleteItem.type}:`, deleteItem.id);
+        toast.success(`${deleteItem.name} deleted successfully`);
         // Close the dialog
         setDeleteItem(null);
       } else {
@@ -74,9 +76,9 @@ export default function RentalCompanyConfigurationsPage() {
     } catch (error) {
       console.error('Error deleting item:', error);
       if (error instanceof Error) {
-        alert(`Error: ${error.message}`);
+        toast.error(`Error: ${error.message}`);
       } else {
-        alert('An unexpected error occurred while deleting the branch');
+        toast.error('An unexpected error occurred while deleting the branch');
       }
     }
   };

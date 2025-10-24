@@ -106,7 +106,7 @@ export default function VehicleContract() {
         setError(response.error || 'Failed to fetch contracts');
         setContracts([]);
         if (response.error) {
-          alert(`Error: ${response.error}`);
+          toast.error(`Error: ${response.error}`);
         }
       }
     } catch (err) {

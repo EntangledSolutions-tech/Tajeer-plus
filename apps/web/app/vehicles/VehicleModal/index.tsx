@@ -129,75 +129,76 @@ const stepSchemas = [
 
 const initialValues = {
   // Step 0 - Vehicle Details
-  make: 'Toyota', 
-  model: 'Camry', 
-  makeYear: '2023', 
-  color: 'White', 
-  ageRange: '0-2 years', 
-  serialNumber: 'VIN123456789', 
-  plateNumber: 'ABC-1234', 
-  mileage: '15000', 
-  yearOfManufacture: '2023', 
-  carClass: 'Van', 
-  plateRegistrationType: 'Private', 
-  expectedSalePrice: '45000', 
-  branch_id: '', 
-  chassis_number: 'CH123456789', 
-  vehicle_load_capacity: '500', 
+  make: 'Toyota',
+  model: 'Camry',
+  makeYear: '2023',
+  color: 'White',
+  ageRange: '0-2 years',
+  serialNumber: 'VIN123456789',
+  plateNumber: 'ABC-1234',
+  mileage: '15000',
+  yearOfManufacture: '2023',
+  carClass: 'Van',
+  plateRegistrationType: 'Private',
+  expectedSalePrice: '45000',
+  branch_id: '',
+  chassis_number: 'CH123456789',
+  vehicle_load_capacity: '500',
   technical_number: 'TN123456789',
-  
+
   // Payment Type
   paymentType: 'cash',
-  
+
   // Lease-to-own fields
   installmentValue: 0,
   interestRate: 0,
   totalPrice: 0,
   numberOfInstallments: 0,
-  
+
   // Step 1 - Pricing/Fee
-  dailyRentalRate: 150, 
-  dailyMinimumRate: 120, 
-  dailyHourlyDelayRate: 20, 
-  dailyPermittedKm: 200, 
-  dailyExcessKmRate: 2, 
-  dailyOpenKmRate: 1.5, 
-  monthlyRentalRate: 3500, 
-  monthlyMinimumRate: 3000, 
-  monthlyHourlyDelayRate: 25, 
-  monthlyPermittedKm: 5000, 
-  monthlyExcessKmRate: 1.8, 
-  monthlyOpenKmRate: 1.2, 
-  hourlyRentalRate: 25, 
-  hourlyPermittedKm: 50, 
+  dailyRentalRate: 150,
+  dailyMinimumRate: 120,
+  dailyHourlyDelayRate: 20,
+  dailyPermittedKm: 200,
+  dailyExcessKmRate: 2,
+  dailyOpenKmRate: 1.5,
+  monthlyRentalRate: 3500,
+  monthlyMinimumRate: 3000,
+  monthlyHourlyDelayRate: 25,
+  monthlyPermittedKm: 5000,
+  monthlyExcessKmRate: 1.8,
+  monthlyOpenKmRate: 1.2,
+  hourlyRentalRate: 25,
+  hourlyPermittedKm: 50,
   hourlyExcessKmRate: 3,
-  
+
   // Step 2 - Expiration Dates
-  formLicenseExpiration: '2025-12-31', 
-  insurancePolicyExpiration: '2025-12-31', 
-  periodicInspectionEnd: '2025-06-30', 
+  formLicenseExpiration: '2025-12-31',
+  insurancePolicyExpiration: '2025-12-31',
+  periodicInspectionEnd: '2025-06-30',
   operatingCardExpiration: '2025-12-31',
-  
+
   // Step 3 - Vehicle Pricing & Depreciation
-  carPricing: 45000, 
-  acquisitionDate: '2023-01-15', 
-  operationDate: '2023-02-01', 
-  depreciationRate: 15, 
+  carPricing: 45000,
+  acquisitionDate: '2023-01-15',
+  operationDate: '2023-02-01',
+  depreciationRate: 15,
   depreciationYears: 5,
-  
+
   // Step 4 - Documents
-  docName: '', 
+  docName: '',
   docFile: null,
-  
+
   // Step 5 - Additional Details
-  ownerName: 'Company Fleet', 
-  ownerId: '', 
-  actualUser: 'Fleet Manager', 
-  userId: '', 
-  insuranceCompany: 'AXA Insurance', 
-  insuranceType: 'Comprehensive', 
-  policyNumber: 'POL123456789', 
-  insuranceValue: '45000', 
+  carStatus: 'Available',
+  ownerName: 'Company Fleet',
+  ownerId: '',
+  actualUser: 'Fleet Manager',
+  userId: '',
+  insuranceCompany: 'AXA Insurance',
+  insuranceType: 'Comprehensive',
+  policyNumber: 'POL123456789',
+  insuranceValue: '45000',
   deductiblePremium: '500',
 };
 
@@ -248,6 +249,12 @@ export default function VehicleModal({ onVehicleAdded }: { onVehicleAdded?: () =
     });
 
     if (result.error) {
+      // Show specific error message for plate number conflicts
+      if (result.error === 'Plate number already exists') {
+        toast.error('Plate number already exists. Please use a different plate number.');
+      } else {
+        toast.error(result.error);
+      }
       throw new Error(result.error);
     }
 

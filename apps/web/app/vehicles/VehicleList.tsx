@@ -442,7 +442,7 @@ export default function VehicleList() {
       } else {
         console.error('Error fetching vehicles:', response.error);
         if (response.error) {
-          alert(`Error: ${response.error}`);
+          toast.error(`Error: ${response.error}`);
         }
         setVehicles([]);
       }

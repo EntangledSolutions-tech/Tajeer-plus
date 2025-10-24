@@ -107,7 +107,7 @@ export default function TotalLossModal({ isOpen, onClose, vehicleId, onSuccess }
         console.error('Error fetching vehicle:', response.error);
         setError('Failed to load vehicle details');
         if (response.error) {
-          alert(`Error: ${response.error}`);
+          toast.error(`Error: ${response.error}`);
         }
       }
     } catch (error) {
@@ -134,7 +134,7 @@ export default function TotalLossModal({ isOpen, onClose, vehicleId, onSuccess }
         setError('Failed to load insurance options');
         setInsuranceOptions([]);
         if (response.error) {
-          alert(`Error: ${response.error}`);
+          toast.error(`Error: ${response.error}`);
         }
       }
     } catch (error) {

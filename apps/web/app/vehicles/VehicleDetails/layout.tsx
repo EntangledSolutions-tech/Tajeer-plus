@@ -421,7 +421,7 @@ export default function VehicleDetailsLayout() {
       } else {
         console.error('Error fetching vehicle statuses:', response.error);
         if (response.error) {
-          alert(`Error: ${response.error}`);
+          toast.error(`Error: ${response.error}`);
         }
       }
     } catch (err) {

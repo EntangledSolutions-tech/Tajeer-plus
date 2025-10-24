@@ -108,7 +108,7 @@ export default function VehicleTransfersLogs() {
         console.error('Error fetching transfers:', response.error);
         setError(response.error || 'Failed to fetch transfer logs');
         if (response.error) {
-          alert(`Error: ${response.error}`);
+          toast.error(`Error: ${response.error}`);
         }
         // Fallback to sample data if API fails (already sorted in descending order)
         setTransfers(sampleTransfers);
