@@ -42,6 +42,17 @@ const routes = [
     ],
   },
   {
+    label: 'Companies',
+    children: [
+      {
+        label: 'Companies',
+        path: '/companies',
+        Icon: null, // Icons are now handled in the sidebar component
+        end: (path: string) => !path.startsWith('/companies'),
+      },
+    ],
+  },
+  {
     label: 'Contracts',
     children: [
       {
