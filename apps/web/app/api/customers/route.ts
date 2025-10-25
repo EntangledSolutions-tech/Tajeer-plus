@@ -51,7 +51,22 @@ export async function GET(request: NextRequest) {
       }
     }
     if (classification && classification !== 'all') {
-      query = query.eq('classification_id', classification);
+      // If classification is a name (not UUID), look it up first
+      if (!classification.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        // Classification is a name, need to look up the ID
+        const { data: classificationData } = await (supabase as any)
+          .from('customer_classifications')
+          .select('id')
+          .ilike('classification', classification)
+          .single();
+
+        if (classificationData) {
+          query = query.eq('classification_id', classificationData.id);
+        }
+      } else {
+        // Classification is already a UUID
+        query = query.eq('classification_id', classification);
+      }
     }
     if (blacklisted) {
       query = query.eq('status_id', (await (supabase as any).from('customer_statuses').select('id').eq('name', 'Blacklisted').single()).data?.id);
@@ -201,12 +216,42 @@ export async function POST(request: NextRequest) {
         customerData.date_of_birth = body.birthDate || body.date_of_birth;
         customerData.address = body.address;
         customerData.rental_type = body.rentalType || body.rental_type;
+
+        // Automatically set nationality to Saudi Arabia for National ID
+        if (!body.nationality) {
+          const { data: saudiNationality } = await supabase
+            .from('customer_nationalities')
+            .select('id')
+            .or('nationality.ilike.%Saudi%,nationality.ilike.%سعودي%')
+            .limit(1)
+            .single();
+          if (saudiNationality) {
+            customerData.nationality_id = saudiNationality.id;
+          }
+        } else {
+          customerData.nationality_id = body.nationality;
+        }
         break;
       case 'Resident ID':
         customerData.resident_id_number = body.nationalOrResidentIdNumber || body.resident_id_number;
         customerData.date_of_birth = body.birthDate || body.date_of_birth;
         customerData.address = body.address;
         customerData.rental_type = body.rentalType || body.rental_type;
+
+        // Automatically set nationality to Saudi Arabia for Resident ID
+        if (!body.nationality) {
+          const { data: saudiNationality } = await supabase
+            .from('customer_nationalities')
+            .select('id')
+            .or('nationality.ilike.%Saudi%,nationality.ilike.%سعودي%')
+            .limit(1)
+            .single();
+          if (saudiNationality) {
+            customerData.nationality_id = saudiNationality.id;
+          }
+        } else {
+          customerData.nationality_id = body.nationality;
+        }
         break;
       case 'GCC Countries Citizens':
         customerData.gcc_id_number = body.nationalOrGccIdNumber || body.gcc_id_number;

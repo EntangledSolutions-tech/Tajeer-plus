@@ -166,10 +166,8 @@ export default function CustomStepperModal({
                 <Formik
                   initialValues={initialValues}
                   validationSchema={stepSchemas[step]}
-                  validateOnMount={false}
-                  validateOnChange={true}
-                  validateOnBlur={true}
                   innerRef={formikRef}
+                  enableReinitialize={true}
                   onSubmit={async (values, actions) => {
                     try {
                       if (step < stepSchemas.length - 1) {

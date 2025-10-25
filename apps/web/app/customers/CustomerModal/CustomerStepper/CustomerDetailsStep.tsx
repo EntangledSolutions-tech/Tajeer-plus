@@ -376,6 +376,23 @@ export default function CustomerDetailsStep() {
     }
   }, []);
 
+  // Automatically set nationality to Saudi Arabia for National ID and Resident ID
+  useEffect(() => {
+    if ((values.idType === 'National ID' || values.idType === 'Resident ID') && nationalities.length > 0) {
+      // Find Saudi Arabia nationality in the options
+      const saudiNationality = nationalities.find(nat =>
+        nat.label === 'Saudi' || nat.label === 'Saudi Arabia' || nat.label === 'Saudi Arabian'
+      );
+
+      if (saudiNationality) {
+        // Only set if nationality is not already set or if it's different
+        if (!values.nationality || values.nationality !== saudiNationality.id) {
+          setFieldValue('nationality', saudiNationality.id);
+        }
+      }
+    }
+  }, [values.idType, nationalities, setFieldValue]);
+
   // Clear all fields when ID type changes
   const [previousIdType, setPreviousIdType] = useState(values.idType);
 
