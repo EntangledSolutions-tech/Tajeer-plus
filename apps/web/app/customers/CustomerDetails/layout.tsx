@@ -212,7 +212,6 @@ export default function CustomerDetailsLayout() {
     if (!customer) return {};
 
     return {
-      name: customer.name || '',
       idType: customer.id_type || '',
       idNumber: customer.id_number || '',
       classification: customer.classification_id || '',
@@ -303,9 +302,9 @@ export default function CustomerDetailsLayout() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div>
-                <div className="text-3xl font-bold text-white">{customer?.name || '-'}</div>
+                <div className="text-3xl font-bold text-white">{customer?.id_number || 'No ID'}</div>
                 <div className="text-lg text-blue-100 font-medium">
-                  {customer ? `${customer.id_type} - ${customer.id_number}` : '-'}
+                  {customer ? customer.id_type : '-'}
                 </div>
               </div>
               <div className="ml-4">

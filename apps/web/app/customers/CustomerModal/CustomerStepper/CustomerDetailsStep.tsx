@@ -7,48 +7,66 @@ import PhoneNumberInput from '../../../reusableComponents/PhoneNumberInput';
 import { countries } from '../../../reusableComponents/countryCodes';
 import { useHttpService } from '../../../../lib/http-service';
 
-  // Common fields for all ID types
-const commonFields = [
+// Fields for National ID and Resident ID (both share the same form layout)
+const nationalAndResidentIdFields = [
   { label: 'ID Type', name: 'idType', type: 'select', isRequired: true, options: [
     { value: '', label: 'Select ID Type' },
-    { value: 'GCC Countries Citizens', label: 'GCC Countries Citizens' },
-    { value: 'National ID', label: 'National ID' },
-    { value: 'Resident ID', label: 'Resident ID' },
-    { value: 'Visitor', label: 'Visitor' }
+    { value: 'National ID', label: 'National ID', description: 'For Saudi citizens' },
+    { value: 'Resident ID', label: 'Resident ID', description: 'For residents with iqama' },
+    { value: 'GCC Countries Citizens', label: 'GCC Citizen', description: 'For users from Gulf Cooperation Council countries' },
+    { value: 'Visitor', label: 'Visitor', description: 'For foreign visitors holding border/passport info' }
   ] },
-  // { label: 'ID Number', name: 'idNumber', type: 'text', isRequired: true, placeholder: 'Enter ID number', min: 1, max: 50 },
-  { label: 'Name', name: 'name', type: 'text', isRequired: true, placeholder: 'Enter name', min: 2, max: 30 },
-  // { label: 'Classification', name: 'classification', type: 'searchable-select', isRequired: true },
-  // { label: 'License type', name: 'licenseType', type: 'searchable-select', isRequired: true },
-  { label: 'Nationality', name: 'nationality', type: 'searchable-select', isRequired: true },
-  // { label: 'Status', name: 'status', type: 'searchable-select', isRequired: true },
   { label: 'Mobile Number', name: 'mobileNumber', type: 'phone', isRequired: true, placeholder: 'Enter mobile number', min: 10, max: 15 },
-  // { label: 'Address', name: 'address', type: 'text', isRequired: true, placeholder: 'Enter address', min: 10, max: 500 },
+  { label: 'National/Resident ID Number', name: 'nationalOrResidentIdNumber', type: 'text', isRequired: true, placeholder: 'Enter ID number', min: 1, max: 50, unique: true },
+  { label: 'Birth Date', name: 'birthDate', type: 'date', isRequired: true, placeholder: 'Select birth date', max: new Date().toISOString().split('T')[0] },
+  { label: 'Address', name: 'address', type: 'text', isRequired: true, placeholder: 'Enter address', min: 10, max: 500 },
   { label: 'Email', name: 'email', type: 'email', isRequired: true, placeholder: 'Enter email address', min: 5, max: 100 },
-  // { label: 'Date of birth', name: 'dateOfBirth', type: 'date', isRequired: true, placeholder: 'Select date', max: new Date().toISOString().split('T')[0] },
+  { label: 'Rental Type', name: 'rentalType', type: 'select', isRequired: true, options: [
+    { value: '', label: 'Select Rental Type' },
+    { value: 'Daily without driver', label: 'Daily without driver', description: 'باليوم بدون سائق' },
+    { value: 'Daily with driver', label: 'Daily with driver', description: 'باليوم بسائق' },
+    { value: 'Weekly without driver', label: 'Weekly without driver', description: 'بالأسبوع بدون سائق' },
+    { value: 'Weekly with driver', label: 'Weekly with driver', description: 'بالأسبوع بسائق' },
+    { value: 'Monthly without driver', label: 'Monthly without driver', description: 'بالشهر بدون سائق' },
+    { value: 'Monthly with driver', label: 'Monthly with driver', description: 'بالشهر بسائق' }
+  ] },
 ];
 
-// Fields specific to National ID
-const nationalIdFields = [
-  { label: 'National ID Number', name: 'nationalIdNumber', type: 'text', isRequired: true, placeholder: 'Enter National ID number', min: 10, max: 10, unique: true },
-  { label: 'National ID Issue Date', name: 'nationalIdIssueDate', type: 'date', isRequired: true, placeholder: 'Select issue date', max: new Date().toISOString().split('T')[0] },
-  { label: 'National ID Expiry Date', name: 'nationalIdExpiryDate', type: 'date', isRequired: true, placeholder: 'Select expiry date', min: new Date().toISOString().split('T')[0] },
-  { label: 'Place of Birth', name: 'placeOfBirth', type: 'searchable-select', isRequired: true, placeholder: 'Select place of birth' },
-  { label: 'Father Name', name: 'fatherName', type: 'text', isRequired: true, placeholder: 'Enter father name', min: 2, max: 30 },
-  { label: 'Mother Name', name: 'motherName', type: 'text', isRequired: true, placeholder: 'Enter mother name', min: 2, max: 30 },
-];
-
-// Fields specific to GCC Countries Citizens
-const gccFields = [
-  { label: 'ID Copy Number', name: 'idCopyNumber', type: 'text', isRequired: true, placeholder: 'Enter ID copy number', min: 1, max: 50, unique: true },
-  { label: 'License Expiration Date', name: 'licenseExpirationDate', type: 'date', isRequired: true, placeholder: 'Select license expiration date', min: new Date().toISOString().split('T')[0] },
+// Fields specific to GCC Countries Citizens (complete field set based on screenshot)
+// This array contains ALL fields for GCC Countries Citizens in the exact order for 2-column grid layout
+const gccAllFields = [
+  { label: 'ID Type', name: 'idType', type: 'select', isRequired: true, options: [
+    { value: '', label: 'Select ID Type' },
+    { value: 'National ID', label: 'National ID', description: 'For Saudi citizens' },
+    { value: 'Resident ID', label: 'Resident ID', description: 'For residents with iqama' },
+    { value: 'GCC Countries Citizens', label: 'GCC Citizen', description: 'For users from Gulf Cooperation Council countries' },
+    { value: 'Visitor', label: 'Visitor', description: 'For foreign visitors holding border/passport info' }
+  ] },
+  { label: 'Mobile Number', name: 'mobileNumber', type: 'phone', isRequired: true, placeholder: 'Enter mobile number', min: 10, max: 15 },
+  { label: 'Country', name: 'country', type: 'searchable-select', isRequired: true, placeholder: 'Select country' },
+  { label: 'National/GCC ID Number', name: 'nationalOrGccIdNumber', type: 'text', isRequired: true, placeholder: 'Enter ID number', min: 1, max: 50, unique: true },
+  { label: 'ID Copy Number', name: 'idCopyNumber', type: 'number', isRequired: true, placeholder: 'Enter ID copy number', min: 1, unique: true },
+  { label: 'License Number', name: 'licenseNumber', type: 'text', isRequired: true, placeholder: 'Enter license number', min: 1, max: 50, unique: true },
+  { label: 'ID Expiry Date', name: 'idExpiryDate', type: 'date', isRequired: true, placeholder: 'Select ID expiry date', min: new Date().toISOString().split('T')[0] },
+  { label: 'License Expiry Date', name: 'licenseExpiryDate', type: 'date', isRequired: true, placeholder: 'Select license expiry date', min: new Date().toISOString().split('T')[0] },
   { label: 'License Type', name: 'licenseType', type: 'select', isRequired: true, options: [
     { value: '', label: 'Select License Type' },
-    { value: 'International License', label: 'International License' },
-    { value: 'Local License', label: 'Local License' },
-    { value: 'GCC License', label: 'GCC License' }
+    { value: 'International License', label: 'International License', description: 'رخصة دولية' },
+    { value: 'Local License', label: 'Local License', description: 'رخصة محلية' },
+    { value: 'GCC License', label: 'GCC License', description: 'رخصة خليجية' }
   ] },
   { label: 'Place of ID Issue', name: 'placeOfIdIssue', type: 'searchable-select', isRequired: true, placeholder: 'Select place of ID issue' },
+  { label: 'Address', name: 'address', type: 'text', isRequired: true, placeholder: 'Enter address', min: 10, max: 500 },
+  { label: 'Email', name: 'email', type: 'email', isRequired: true, placeholder: 'Enter email address', min: 5, max: 100 },
+  { label: 'Rental Type', name: 'rentalType', type: 'select', isRequired: true, options: [
+    { value: '', label: 'Select Rental Type' },
+    { value: 'Daily without driver', label: 'Daily without driver', description: 'باليوم بدون سائق' },
+    { value: 'Daily with driver', label: 'Daily with driver', description: 'باليوم بسائق' },
+    { value: 'Weekly without driver', label: 'Weekly without driver', description: 'بالأسبوع بدون سائق' },
+    { value: 'Weekly with driver', label: 'Weekly with driver', description: 'بالأسبوع بسائق' },
+    { value: 'Monthly without driver', label: 'Monthly without driver', description: 'بالشهر بدون سائق' },
+    { value: 'Monthly with driver', label: 'Monthly with driver', description: 'بالشهر بسائق' }
+  ] },
 ];
 
 // Fields specific to Visitor (complete field set based on screenshot layout)
@@ -58,10 +76,10 @@ const gccFields = [
 const visitorAllFields = [
   { label: 'ID Type', name: 'idType', type: 'select', isRequired: true, options: [
     { value: '', label: 'Select ID Type' },
-    { value: 'GCC Countries Citizens', label: 'GCC Countries Citizens' },
-    { value: 'National ID', label: 'National ID' },
-    { value: 'Resident ID', label: 'Resident ID' },
-    { value: 'Visitor', label: 'Visitor' }
+    { value: 'National ID', label: 'National ID', description: 'For Saudi citizens' },
+    { value: 'Resident ID', label: 'Resident ID', description: 'For residents with iqama' },
+    { value: 'GCC Countries Citizens', label: 'GCC Citizen', description: 'For users from Gulf Cooperation Council countries' },
+    { value: 'Visitor', label: 'Visitor', description: 'For foreign visitors holding border/passport info' }
   ] },
   { label: 'Mobile Number', name: 'mobileNumber', type: 'phone', isRequired: true, placeholder: 'Enter mobile number', min: 10, max: 15 },
   { label: 'Border Number', name: 'borderNumber', type: 'text', isRequired: true, placeholder: 'Enter border number', min: 1, max: 50 },
@@ -278,7 +296,7 @@ export default function CustomerDetailsStep() {
     }
   };
 
-  // Prepare countries options
+  // Prepare countries options (Saudi Arabia is already first in the countries array)
   useEffect(() => {
     const options: SearchableDropdownOption[] = countries.map((country) => ({
       id: country.code,
@@ -287,7 +305,12 @@ export default function CustomerDetailsStep() {
       subLabel: undefined
     }));
     setCountriesOptions(options);
-  }, []);
+
+    // Set Saudi Arabia as default for country field if not set
+    if (!values.country && (values.idType === 'GCC Countries Citizens' || values.idType === 'Visitor')) {
+      setFieldValue('country', 'Saudi Arabia');
+    }
+  }, [values.idType]);
 
   // Fetch data on component mount
   useEffect(() => {
@@ -346,24 +369,46 @@ export default function CustomerDetailsStep() {
   }, [values.classification, values.licenseType, values.nationality, values.status,
       classifications, licenseTypes, nationalities, statuses, setFieldValue]);
 
-  // Handle ID type changes and set default nationality for Resident ID
+  // Set default country code to Saudi Arabia on mount
   useEffect(() => {
-    const handleIdTypeChange = () => {
-      if (values.idType === 'Resident ID' && nationalities.length > 0) {
-        // Find Saudi Arabia nationality
-        const saudiArabiaOption = nationalities.find(nationality =>
-          nationality.label.toLowerCase().includes('saudi') ||
-          nationality.label.toLowerCase().includes('arabia')
-        );
+    if (!values.countryCode) {
+      setFieldValue('countryCode', '+966'); // Saudi Arabia default
+    }
+  }, []);
 
-        if (saudiArabiaOption && values.nationality !== saudiArabiaOption.id) {
-          setFieldValue('nationality', saudiArabiaOption.id);
-        }
+  // Clear all fields when ID type changes
+  const [previousIdType, setPreviousIdType] = useState(values.idType);
+
+  useEffect(() => {
+    // Only clear fields if ID type actually changed (not on initial load)
+    if (previousIdType && previousIdType !== values.idType) {
+      // List of all possible field names that should be cleared
+      const fieldsToClear = [
+        'mobileNumber', 'email', 'address', 'rentalType',
+        'nationalOrResidentIdNumber', 'birthDate',
+        'nationalOrGccIdNumber', 'country', 'idCopyNumber', 'licenseNumber',
+        'idExpiryDate', 'licenseExpiryDate', 'licenseType', 'placeOfIdIssue',
+        'borderNumber', 'passportNumber', 'hasAdditionalDriver'
+      ];
+
+      // Clear all fields
+      fieldsToClear.forEach(field => {
+        setFieldValue(field, '');
+      });
+
+      // Reset country code to Saudi Arabia after clearing
+      setFieldValue('countryCode', '+966');
+
+      // Set Saudi Arabia as default for country field for GCC and Visitor types
+      if (values.idType === 'GCC Countries Citizens' || values.idType === 'Visitor') {
+        setFieldValue('country', 'Saudi Arabia');
       }
-    };
+    }
 
-    handleIdTypeChange();
-  }, [values.idType, nationalities, values.nationality, setFieldValue]);
+    // Update previous ID type
+    setPreviousIdType(values.idType);
+  }, [values.idType, setFieldValue, previousIdType]);
+
 
   // Helper function to render a field
   const renderField = (field: any) => {
@@ -497,15 +542,15 @@ export default function CustomerDetailsStep() {
   const getFieldsForIdType = () => {
     const selectedIdType = values.idType;
 
-    if (selectedIdType === 'National ID') {
-      return [...commonFields, ...nationalIdFields];
+    if (selectedIdType === 'National ID' || selectedIdType === 'Resident ID') {
+      return nationalAndResidentIdFields; // Both National ID and Resident ID use the same fields
     } else if (selectedIdType === 'GCC Countries Citizens') {
-      return [...commonFields, ...gccFields];
+      return gccAllFields; // Use complete field set for GCC
     } else if (selectedIdType === 'Visitor') {
-      return visitorAllFields; // Use complete field set for Visitor (not commonFields)
+      return visitorAllFields; // Use complete field set for Visitor
     }
-    // Default to common fields only (includes Resident ID)
-    return commonFields;
+    // Default to National/Resident fields if no type selected
+    return nationalAndResidentIdFields;
   };
 
   return (

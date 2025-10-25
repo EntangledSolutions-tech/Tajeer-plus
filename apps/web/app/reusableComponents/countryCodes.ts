@@ -6,6 +6,8 @@ export interface Country {
 }
 
 export const countries: Country[] = [
+  // Saudi Arabia first (default)
+  { code: 'SA', name: 'Saudi Arabia', flag: '🇸🇦', dialCode: '+966' },
   { code: 'AF', name: 'Afghanistan', flag: '🇦🇫', dialCode: '+93' },
   { code: 'AL', name: 'Albania', flag: '🇦🇱', dialCode: '+355' },
   { code: 'DZ', name: 'Algeria', flag: '🇩🇿', dialCode: '+213' },
@@ -190,7 +192,6 @@ export const countries: Country[] = [
   { code: 'WS', name: 'Samoa', flag: '🇼🇸', dialCode: '+685' },
   { code: 'SM', name: 'San Marino', flag: '🇸🇲', dialCode: '+378' },
   { code: 'ST', name: 'São Tomé and Príncipe', flag: '🇸🇹', dialCode: '+239' },
-  { code: 'SA', name: 'Saudi Arabia', flag: '🇸🇦', dialCode: '+966' },
   { code: 'SN', name: 'Senegal', flag: '🇸🇳', dialCode: '+221' },
   { code: 'RS', name: 'Serbia', flag: '🇷🇸', dialCode: '+381' },
   { code: 'SC', name: 'Seychelles', flag: '🇸🇨', dialCode: '+248' },
