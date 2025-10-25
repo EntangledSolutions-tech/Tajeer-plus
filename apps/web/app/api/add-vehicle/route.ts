@@ -34,11 +34,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Convert plate number and chassis number to uppercase
+    const plateNumberUpper = vehicle.plateNumber?.toUpperCase();
+    const chassisNumberUpper = vehicle.chassis_number?.toUpperCase();
+
     // Check if plate number already exists
     const { data: existingVehicle, error: checkError } = await supabase
       .from('vehicles')
       .select('plate_number')
-      .eq('plate_number', vehicle.plateNumber)
+      .eq('plate_number', plateNumberUpper)
       .single();
 
     if (existingVehicle) {
@@ -81,7 +85,7 @@ export async function POST(request: NextRequest) {
         color_id: vehicle.color, // Form sends 'color' field with UUID value
         age_range: vehicle.ageRange,
         serial_number: vehicle.serialNumber,
-        plate_number: vehicle.plateNumber,
+        plate_number: plateNumberUpper,
         mileage: parseInt(vehicle.mileage) || 0,
         year_of_manufacture: vehicle.yearOfManufacture,
         car_class: vehicle.carClass,
@@ -90,7 +94,7 @@ export async function POST(request: NextRequest) {
         branch_id: branch_id, // From body root level
 
         // Additional vehicle fields
-        chassis_number: vehicle.chassis_number,
+        chassis_number: chassisNumberUpper,
         vehicle_load_capacity: vehicle.vehicle_load_capacity,
 
         // Pricing details
@@ -116,12 +120,21 @@ export async function POST(request: NextRequest) {
         periodic_inspection_end: parseDate(expirations.periodicInspectionEnd),
         operating_card_expiration: parseDate(expirations.operatingCardExpiration),
 
-        // Vehicle pricing & depreciation
+        // Payment type
+        payment_type: depreciation.paymentType || 'cash',
+
+        // Vehicle pricing & depreciation (for cash payment)
         car_pricing: Math.min(parseFloat(depreciation.carPricing) || 0, 99999999.99),
         acquisition_date: parseDate(depreciation.acquisitionDate),
         operation_date: parseDate(depreciation.operationDate),
         depreciation_rate: Math.min(parseFloat(depreciation.depreciationRate) || 0, 100), // Max 100%
         depreciation_years: parseInt(depreciation.depreciationYears) || 0,
+
+        // Lease-to-own fields
+        installment_value: depreciation.paymentType === 'LeaseToOwn' ? Math.min(parseFloat(depreciation.installmentValue) || 0, 99999999.99) : null,
+        interest_rate: depreciation.paymentType === 'LeaseToOwn' ? Math.min(parseFloat(depreciation.interestRate) || 0, 100) : null,
+        total_price: depreciation.paymentType === 'LeaseToOwn' ? Math.min(parseFloat(depreciation.totalPrice) || 0, 99999999.99) : null,
+        number_of_installments: depreciation.paymentType === 'LeaseToOwn' ? parseInt(depreciation.numberOfInstallments) || 0 : null,
 
         // Additional details
         status_id: additional_details.carStatus,
