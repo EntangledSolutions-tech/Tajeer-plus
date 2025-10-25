@@ -66,21 +66,23 @@ const vehicleDetailsSchema = Yup.object({
   vehicle_load_capacity: Yup.string().required('Vehicle Load Capacity is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
 });
 const pricingFeeSchema = Yup.object({
+  // Only validate the daily fields that users actually input
   dailyRentalRate: Yup.number().typeError('Must be a number').required('Daily rental rate is required'),
   dailyMinimumRate: Yup.number().typeError('Must be a number').required('Daily minimum rate is required'),
   dailyHourlyDelayRate: Yup.number().typeError('Must be a number').required('Daily hourly delay rate is required'),
   dailyPermittedKm: Yup.number().typeError('Must be a number').required('Permitted daily km is required'),
   dailyExcessKmRate: Yup.number().typeError('Must be a number').required('Excess km rate is required'),
   dailyOpenKmRate: Yup.number().typeError('Must be a number').required('Open km rate is required'),
-  monthlyRentalRate: Yup.number().typeError('Must be a number').required('Monthly rental rate is required'),
-  monthlyMinimumRate: Yup.number().typeError('Must be a number').required('Monthly minimum rate is required'),
-  monthlyHourlyDelayRate: Yup.number().typeError('Must be a number').required('Monthly hourly delay rate is required'),
-  monthlyPermittedKm: Yup.number().typeError('Must be a number').required('Permitted daily km (monthly) is required'),
-  monthlyExcessKmRate: Yup.number().typeError('Must be a number').required('Excess km rate (monthly) is required'),
-  monthlyOpenKmRate: Yup.number().typeError('Must be a number').required('Open km rate (monthly) is required'),
-  hourlyRentalRate: Yup.number().typeError('Must be a number').required('Hourly rental rate is required'),
-  hourlyPermittedKm: Yup.number().typeError('Must be a number').required('Permitted km per hour is required'),
-  hourlyExcessKmRate: Yup.number().typeError('Must be a number').required('Excess km rate (hourly) is required'),
+  // Monthly and hourly rates are calculated fields - not required for validation
+  monthlyRentalRate: Yup.number().typeError('Must be a number').notRequired(),
+  monthlyMinimumRate: Yup.number().typeError('Must be a number').notRequired(),
+  monthlyHourlyDelayRate: Yup.number().typeError('Must be a number').notRequired(),
+  monthlyPermittedKm: Yup.number().typeError('Must be a number').notRequired(),
+  monthlyExcessKmRate: Yup.number().typeError('Must be a number').notRequired(),
+  monthlyOpenKmRate: Yup.number().typeError('Must be a number').notRequired(),
+  hourlyRentalRate: Yup.number().typeError('Must be a number').notRequired(),
+  hourlyPermittedKm: Yup.number().typeError('Must be a number').notRequired(),
+  hourlyExcessKmRate: Yup.number().typeError('Must be a number').notRequired(),
 });
 const expirationDatesSchema = Yup.object({
   formLicenseExpiration: Yup.string().required('Form/license expiration date is required'),
@@ -89,11 +91,54 @@ const expirationDatesSchema = Yup.object({
   operatingCardExpiration: Yup.string().required('Operating card expiration date is required'),
 });
 const vehiclePricingSchema = Yup.object({
-  carPricing: Yup.number().typeError('Must be a number').required('Car Pricing is required').min(1, 'Car Pricing cannot be 0'),
-  acquisitionDate: Yup.string().required('Acquisition Date is required'),
-  operationDate: Yup.string().required('Operation Date is required'),
-  depreciationRate: Yup.number().typeError('Must be a number').required('Depreciation Rate is required').min(0, 'Depreciation Rate must be at least 0%').max(100, 'Depreciation Rate cannot exceed 100%'),
-  depreciationYears: Yup.number().typeError('Must be a number').required('Number of depreciation years is required'),
+  paymentType: Yup.string().required('Payment type is required'),
+  // Cash payment fields - only required when paymentType is 'cash'
+  carPricing: Yup.number().when('paymentType', {
+    is: 'cash',
+    then: (schema) => schema.typeError('Must be a number').required('Car Pricing is required').min(1, 'Car Pricing cannot be 0'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  acquisitionDate: Yup.string().when('paymentType', {
+    is: 'cash',
+    then: (schema) => schema.required('Acquisition Date is required'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  operationDate: Yup.string().when('paymentType', {
+    is: 'cash',
+    then: (schema) => schema.required('Operation Date is required'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  depreciationRate: Yup.number().when('paymentType', {
+    is: 'cash',
+    then: (schema) => schema.typeError('Must be a number').required('Depreciation Rate is required').min(0, 'Depreciation Rate must be at least 0%').max(100, 'Depreciation Rate cannot exceed 100%'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  depreciationYears: Yup.string().when('paymentType', {
+    is: 'cash',
+    then: (schema) => schema.required('Number of depreciation years is required'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  // Lease-to-own fields - only required when paymentType is 'LeaseToOwn'
+  installmentValue: Yup.mixed().when('paymentType', {
+    is: 'LeaseToOwn',
+    then: (schema) => schema.typeError('Must be a number').required('Installment Value is required').min(0, 'Installment Value must be at least 0'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  interestRate: Yup.mixed().when('paymentType', {
+    is: 'LeaseToOwn',
+    then: (schema) => schema.typeError('Must be a number').required('Interest Rate is required').min(0, 'Interest Rate must be at least 0%').max(100, 'Interest Rate cannot exceed 100%'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  totalPrice: Yup.mixed().when('paymentType', {
+    is: 'LeaseToOwn',
+    then: (schema) => schema.typeError('Must be a number').required('Total Price is required').min(0, 'Total Price must be at least 0'),
+    otherwise: (schema) => schema.notRequired()
+  }),
+  numberOfInstallments: Yup.mixed().when('paymentType', {
+    is: 'LeaseToOwn',
+    then: (schema) => schema.typeError('Must be a number').required('Number of Installments is required').min(1, 'Must be at least 1').max(120, 'Cannot exceed 120 installments'),
+    otherwise: (schema) => schema.notRequired()
+  }),
 });
 const documentSchema = Yup.object({
   name: Yup.string().required('Document Name is required'),
@@ -181,7 +226,7 @@ const initialValues = {
   acquisitionDate: '2023-01-15',
   operationDate: '2023-02-01',
   depreciationRate: 15,
-  depreciationYears: 5,
+  depreciationYears: '5',
 
   // Step 4 - Documents
   docName: '',
