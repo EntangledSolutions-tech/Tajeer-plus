@@ -463,7 +463,7 @@ export default function CustomerList() {
   };
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto">
+    <div className="w-full  mx-auto">
       {/* Error AlertDialog */}
       {error && (
         <AlertDialog open={!!error}>

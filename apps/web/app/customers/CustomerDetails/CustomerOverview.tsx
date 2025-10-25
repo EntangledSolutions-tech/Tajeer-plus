@@ -4,16 +4,38 @@ import { CollapsibleSection } from '../../reusableComponents/CollapsibleSection'
 
 interface Customer {
   id: string;
-  name: string;
+  name?: string | null;
   id_type: string;
   id_number: string;
   mobile_number?: string;
+  email?: string;
   classification?: string | { classification: string };
   license_type?: string | { license_type: string };
   nationality?: string | { nationality: string };
-  date_of_birth: string;
-  address: string;
+  date_of_birth?: string;
+  address?: string;
   status?: string | { name: string; color?: string };
+
+  // National ID specific fields
+  national_id_number?: string;
+  national_id_issue_date?: string;
+  national_id_expiry_date?: string;
+  place_of_birth?: string;
+  father_name?: string;
+  mother_name?: string;
+
+  // GCC Countries Citizens specific fields
+  id_copy_number?: string;
+  license_expiration_date?: string;
+  place_of_id_issue?: string;
+
+  // Visitor specific fields
+  border_number?: string;
+  passport_number?: string;
+  license_number?: string;
+  id_expiry_date?: string;
+  license_expiry_date?: string;
+  country?: string;
 }
 
 interface CustomerOverviewProps {
@@ -21,6 +43,63 @@ interface CustomerOverviewProps {
 }
 
 export default function CustomerOverview({ customer }: CustomerOverviewProps) {
+  // Helper function to render field
+  const renderField = (label: string, value: any) => {
+    if (!value) return null;
+    return (
+      <div className="min-w-0">
+        <div className="text-sm text-primary font-medium">{label}</div>
+        <div className="font-bold text-primary text-base break-words overflow-hidden">{value}</div>
+      </div>
+    );
+  };
+
+  // Helper to get display name
+  const getDisplayName = () => {
+    return customer?.name || 'Anonymous';
+  };
+
+  // Render fields based on ID type
+  const renderIdTypeSpecificFields = () => {
+    const idType = customer?.id_type;
+
+    if (idType === 'National ID') {
+      return (
+        <>
+          {renderField('National ID Number', customer?.national_id_number)}
+          {renderField('National ID Issue Date', customer?.national_id_issue_date ? new Date(customer.national_id_issue_date).toLocaleDateString() : null)}
+          {renderField('National ID Expiry Date', customer?.national_id_expiry_date ? new Date(customer.national_id_expiry_date).toLocaleDateString() : null)}
+          {renderField('Place of Birth', customer?.place_of_birth)}
+          {renderField('Father Name', customer?.father_name)}
+          {renderField('Mother Name', customer?.mother_name)}
+        </>
+      );
+    } else if (idType === 'GCC Countries Citizens') {
+      return (
+        <>
+          {renderField('ID Copy Number', customer?.id_copy_number)}
+          {renderField('License Expiration Date', customer?.license_expiration_date ? new Date(customer.license_expiration_date).toLocaleDateString() : null)}
+          {renderField('Place of ID Issue', customer?.place_of_id_issue)}
+        </>
+      );
+    } else if (idType === 'Visitor') {
+      return (
+        <>
+          {renderField('Border Number', customer?.border_number)}
+          {renderField('Passport Number', customer?.passport_number)}
+          {renderField('License Number', customer?.license_number)}
+          {renderField('ID Copy Number', customer?.id_copy_number)}
+          {renderField('ID Expiry Date', customer?.id_expiry_date ? new Date(customer.id_expiry_date).toLocaleDateString() : null)}
+          {renderField('License Expiry Date', customer?.license_expiry_date ? new Date(customer.license_expiry_date).toLocaleDateString() : null)}
+          {renderField('Place of ID Issue', customer?.place_of_id_issue)}
+          {renderField('Country', customer?.country)}
+          {renderField('Address', customer?.address)}
+        </>
+      );
+    }
+    // Resident ID - no additional fields
+    return null;
+  };
 
   return (
     <div className="flex flex-col">
@@ -34,53 +113,30 @@ export default function CustomerOverview({ customer }: CustomerOverviewProps) {
             className="mb-6 mx-0"
             headerClassName="bg-[#F6F9FF]"
           >
-            <div className="grid grid-cols-5 gap-y-2 gap-x-6 text-base">
-              <div>
-                <div className="text-sm text-primary font-medium">Code</div>
-                <div className="font-bold text-primary text-base">83</div>
-              </div>
-              <div>
-                <div className="text-sm text-primary font-medium">Classification</div>
-                <div className="font-bold text-primary text-base">
-                  {typeof customer?.classification === 'object' ? customer.classification?.classification : customer?.classification || 'Individual'}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-primary font-medium">Customer Name</div>
-                <div className="font-bold text-primary text-base">{customer?.name || 'Liam Johnson'}</div>
-              </div>
-              <div>
-                <div className="text-sm text-primary font-medium">Mobile Number</div>
-                <div className="font-bold text-primary text-base">{customer?.mobile_number || '+966 50 123 4567'}</div>
-              </div>
-              <div>
-                <div className="text-sm text-primary font-medium">Nationality</div>
-                <div className="font-bold text-primary text-base">
-                  {typeof customer?.nationality === 'object' ? customer.nationality?.nationality : customer?.nationality || 'Saudi'}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-primary font-medium">Date of Birth</div>
-                <div className="font-bold text-primary text-base">10/07/1988</div>
-              </div>
-              <div>
-                <div className="text-sm text-primary font-medium">ID Type</div>
-                <div className="font-bold text-primary text-base">{customer?.id_type || 'National ID'}</div>
-              </div>
-              <div>
-                <div className="text-sm text-primary font-medium">ID Number</div>
-                <div className="font-bold text-primary text-base">{customer?.id_number || '4823917460'}</div>
-              </div>
-              <div>
-                <div className="text-sm text-primary font-medium">License type</div>
-                <div className="font-bold text-primary text-base">
-                  {typeof customer?.license_type === 'object' ? customer.license_type?.license_type : customer?.license_type || 'Heavy Transport'}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-primary font-medium">Address</div>
-                <div className="font-bold text-primary text-base">{customer?.address || 'Buraydah-Al Dhahi'}</div>
-              </div>
+            <div className="grid grid-cols-5 gap-y-4 gap-x-6 text-base overflow-hidden">
+              {/* Common Fields */}
+              {renderField('Customer Name', getDisplayName())}
+              {renderField('ID Type', customer?.id_type)}
+              {renderField('ID Number', customer?.id_number)}
+              {renderField('Mobile Number', customer?.mobile_number)}
+              {renderField('Email', customer?.email)}
+
+              {/* Conditional fields based on ID type */}
+              {customer?.id_type !== 'Visitor' && renderField('Nationality',
+                typeof customer?.nationality === 'object' ? customer.nationality?.nationality : customer?.nationality
+              )}
+              {customer?.id_type !== 'Visitor' && renderField('Classification',
+                typeof customer?.classification === 'object' ? customer.classification?.classification : customer?.classification
+              )}
+              {customer?.id_type !== 'Visitor' && customer?.date_of_birth && renderField('Date of Birth', new Date(customer.date_of_birth).toLocaleDateString())}
+
+              {/* ID Type Specific Fields */}
+              {renderIdTypeSpecificFields()}
+
+              {/* License Type - for all types except National ID */}
+              {customer?.id_type !== 'National ID' && renderField('License Type',
+                typeof customer?.license_type === 'object' ? customer.license_type?.license_type : customer?.license_type
+              )}
             </div>
           </CollapsibleSection>
 

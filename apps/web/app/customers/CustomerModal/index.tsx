@@ -11,9 +11,17 @@ import { useHttpService } from '../../../lib/http-service';
 import { useBranch } from '../../../contexts/branch-context';
 
 const customerDetailsSchema = Yup.object({
-  name: Yup.string().required('Name is required').min(2, 'Name must be at least 2 characters').max(30, 'Name must not exceed 30 characters'),
+  name: Yup.string().when('idType', {
+    is: (val: string) => val !== 'Visitor',
+    then: (schema) => schema.required('Name is required').min(2, 'Name must be at least 2 characters').max(30, 'Name must not exceed 30 characters'),
+    otherwise: (schema) => schema.notRequired()
+  }),
   idType: Yup.string().required('ID Type is required'),
-  nationality: Yup.string().required('Nationality is required'),
+  nationality: Yup.string().when('idType', {
+    is: (val: string) => val !== 'Visitor',
+    then: (schema) => schema.required('Nationality is required'),
+    otherwise: (schema) => schema.notRequired()
+  }),
   mobileNumber: Yup.string()
     .required('Mobile number is required')
     .min(7, 'Mobile number must be at least 7 digits')
@@ -68,12 +76,12 @@ const customerDetailsSchema = Yup.object({
 
   // GCC Countries Citizens specific fields (conditional validation)
   idCopyNumber: Yup.string().when('idType', {
-    is: 'GCC Countries Citizens',
+    is: (val: string) => val === 'GCC Countries Citizens' || val === 'Visitor',
     then: (schema) => schema.required('ID Copy Number is required').min(1, 'ID Copy Number must be at least 1 character'),
     otherwise: (schema) => schema.notRequired()
   }).test('unique', 'This ID copy number already exists', async function(value) {
     const { idType } = this.parent;
-    if (idType !== 'GCC Countries Citizens' || !value) return true;
+    if ((idType !== 'GCC Countries Citizens' && idType !== 'Visitor') || !value) return true;
 
     const response = await fetch('/api/customers/check-uniqueness', {
       method: 'POST',
@@ -96,7 +104,7 @@ const customerDetailsSchema = Yup.object({
     otherwise: (schema) => schema.notRequired()
   }),
   placeOfIdIssue: Yup.string().when('idType', {
-    is: 'GCC Countries Citizens',
+    is: (val: string) => val === 'GCC Countries Citizens' || val === 'Visitor',
     then: (schema) => schema.required('Place of ID Issue is required').min(2, 'Place of ID Issue must be at least 2 characters'),
     otherwise: (schema) => schema.notRequired()
   }),
@@ -158,14 +166,9 @@ const customerDetailsSchema = Yup.object({
     then: (schema) => schema.required('Address is required').min(10, 'Address must be at least 10 characters'),
     otherwise: (schema) => schema.notRequired()
   }),
-  rentalType: Yup.string().when('idType', {
+  country: Yup.string().when('idType', {
     is: 'Visitor',
-    then: (schema) => schema.required('Rental Type is required').min(2, 'Rental Type must be at least 2 characters'),
-    otherwise: (schema) => schema.notRequired()
-  }),
-  hasAdditionalDriver: Yup.string().when('idType', {
-    is: 'Visitor',
-    then: (schema) => schema.required('Please select if there is an additional driver'),
+    then: (schema) => schema.required('Country is required'),
     otherwise: (schema) => schema.notRequired()
   }),
 });
@@ -206,9 +209,8 @@ const initialValues = {
   licenseNumber: '',
   idExpiryDate: '',
   licenseExpiryDate: '',
-  rentalType: '',
-  hasAdditionalDriver: '',
   address: '',
+  country: '',
 
   // Step 1 - Documents (handled separately)
   documents: [],
@@ -315,9 +317,11 @@ export default function CustomerModal({ onCustomerAdded }: { onCustomerAdded?: (
           license_number: values.licenseNumber,
           id_expiry_date: values.idExpiryDate,
           license_expiry_date: values.licenseExpiryDate,
+          license_type: values.licenseType,
+          place_of_id_issue: values.placeOfIdIssue,
           address: values.address,
-          rental_type: values.rentalType,
-          has_additional_driver: values.hasAdditionalDriver,
+          country: values.country,
+          id_copy_number: values.idCopyNumber,
         })
       };
 

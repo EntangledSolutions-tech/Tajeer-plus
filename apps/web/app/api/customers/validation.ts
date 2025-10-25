@@ -15,6 +15,19 @@ const baseCustomerSchema = z.object({
   documents_count: z.number().optional(),
 });
 
+// Visitor base schema (doesn't require name and nationality)
+const visitorBaseSchema = z.object({
+  id_type: z.enum(['National ID', 'GCC Countries Citizens', 'Visitor', 'Resident ID'], {
+    required_error: 'ID Type is required',
+    invalid_type_error: 'Invalid ID Type',
+  }),
+  mobile_number: z.string().min(10, 'Mobile number must be at least 10 digits').max(15, 'Mobile number must not exceed 15 digits'),
+  email: z.string().email('Invalid email format'),
+  branch_id: z.string().uuid('Invalid branch ID'),
+  documents: z.array(z.any()).optional(),
+  documents_count: z.number().optional(),
+});
+
 // National ID specific fields schema
 const nationalIdSchema = z.object({
   national_id_number: z.string().length(10, 'National ID must be 10 digits'),
@@ -39,7 +52,7 @@ const gccSchema = z.object({
   place_of_id_issue: z.string().min(2, 'Place of ID Issue must be at least 2 characters').max(100, 'Place of ID Issue must not exceed 100 characters'),
 });
 
-// Visitor specific fields schema
+// Visitor specific fields schema (updated to match screenshot requirements)
 const visitorSchema = z.object({
   border_number: z.string().min(1, 'Border Number is required').max(50, 'Border Number must not exceed 50 characters'),
   passport_number: z.string().min(1, 'Passport Number is required').max(50, 'Passport Number must not exceed 50 characters'),
@@ -47,18 +60,24 @@ const visitorSchema = z.object({
   id_expiry_date: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: 'Invalid ID Expiry Date',
   }),
+  place_of_id_issue: z.string().min(2, 'Place of ID Issue must be at least 2 characters').max(100, 'Place of ID Issue must not exceed 100 characters'),
   license_expiry_date: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: 'Invalid License Expiry Date',
   }),
+  license_type: z.string().optional(),
   address: z.string().min(10, 'Address must be at least 10 characters').max(500, 'Address must not exceed 500 characters'),
-  rental_type: z.string().min(2, 'Rental Type must be at least 2 characters').max(100, 'Rental Type must not exceed 100 characters'),
-  has_additional_driver: z.string().optional(),
+  country: z.string().min(2, 'Country must be at least 2 characters').max(100, 'Country must not exceed 100 characters'),
+  id_copy_number: z.string().min(1, 'ID Copy Number is required').max(50, 'ID Copy Number must not exceed 50 characters'),
 });
 
 // Dynamic validation function
 export function validateCustomerData(data: any) {
+  // Use different base schema for Visitor type
+  const isVisitor = data.id_type === 'Visitor';
+  const baseSchema = isVisitor ? visitorBaseSchema : baseCustomerSchema;
+
   // First validate the base schema
-  const baseValidation = baseCustomerSchema.safeParse(data);
+  const baseValidation = baseSchema.safeParse(data);
 
   if (!baseValidation.success) {
     return {
@@ -72,7 +91,7 @@ export function validateCustomerData(data: any) {
 
   // Then validate based on ID type
   let specificValidation;
-  
+
   switch (data.id_type) {
     case 'National ID':
       specificValidation = nationalIdSchema.safeParse(data);

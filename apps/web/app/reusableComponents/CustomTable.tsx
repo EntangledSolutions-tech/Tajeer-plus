@@ -426,7 +426,7 @@ export default function CustomTable({
                       size="sm"
                       className={`min-w-[40px] h-[40px] cursor-pointer ${
                         i === currentPage
-                          ? 'bg-dark-gray text-white rounded-full'
+                          ? 'bg-dark-gray text-white hover:text-white rounded-full'
                           : 'bg-transparent text-dark-gray hover:bg-gray-100 rounded-full'
                       }`}
                       onClick={() => onPageChange?.(i)}
@@ -444,7 +444,7 @@ export default function CustomTable({
                     size="sm"
                     className={`min-w-[40px] h-[40px] cursor-pointer ${
                       1 === currentPage
-                        ? 'bg-dark-gray text-white rounded-full'
+                        ? 'bg-dark-gray text-white hover:text-white rounded-full'
                         : 'bg-transparent text-dark-gray hover:bg-gray-100 rounded-full'
                     }`}
                     onClick={() => onPageChange?.(1)}
@@ -480,7 +480,7 @@ export default function CustomTable({
                       size="sm"
                       className={`min-w-[40px] h-[40px] cursor-pointer ${
                         i === currentPage
-                          ? 'bg-dark-gray text-white rounded-full'
+                          ? 'bg-dark-gray text-white hover:text-white rounded-full'
                           : 'bg-transparent text-dark-gray hover:bg-gray-100 rounded-full'
                       }`}
                       onClick={() => onPageChange?.(i)}
@@ -507,7 +507,7 @@ export default function CustomTable({
                     size="sm"
                     className={`min-w-[40px] h-[40px] cursor-pointer ${
                       totalPages === currentPage
-                        ? 'bg-dark-gray text-white rounded-full'
+                        ? 'bg-dark-gray text-white hover:text-white rounded-full'
                         : 'bg-transparent text-dark-gray hover:bg-gray-100 rounded-full'
                     }`}
                     onClick={() => onPageChange?.(totalPages)}

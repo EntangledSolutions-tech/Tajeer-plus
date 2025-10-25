@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getAuthenticatedUser } from '@kit/auth/get-server-session';
+import { getAuthenticatedUser } from '../../../../lib/api-helpers';
 
 export async function POST(request: NextRequest) {
   try {
