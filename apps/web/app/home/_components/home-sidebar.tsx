@@ -1,7 +1,7 @@
 'use client';
 
 import type { User } from '@supabase/supabase-js';
-import { ChevronLeft, Info, Building2 } from 'lucide-react';
+import { ChevronLeft, Info } from 'lucide-react';
 import { navigationConfig } from '~/config/navigation.config';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -37,9 +37,6 @@ const NavigationIcons = {
       height={20}
       className={className}
     />
-  ),
-  Companies: ({ className, isActive }: { className?: string; isActive?: boolean }) => (
-    <Building2 className={className} />
   ),
   Contracts: ({ className, isActive }: { className?: string; isActive?: boolean }) => (
     <Image
@@ -103,7 +100,6 @@ const getIconComponent = (label: string) => {
     case 'Dashboard': return NavigationIcons.Dashboard;
     case 'Vehicles': return NavigationIcons.Vehicles;
     case 'Customers': return NavigationIcons.Customers;
-    case 'Companies': return NavigationIcons.Companies;
     case 'Contracts': return NavigationIcons.Contracts;
     case 'Finance': return NavigationIcons.Finance;
     case 'Reports': return NavigationIcons.Reports;
