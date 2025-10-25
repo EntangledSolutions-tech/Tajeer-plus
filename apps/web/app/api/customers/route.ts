@@ -181,15 +181,16 @@ export async function POST(request: NextRequest) {
     }
 
     const customerData: any = {
-      name: validatedData.name,
       id_type: validatedData.id_type,
       id_number: idNumber, // Map the type-specific ID to the main id_number field
       mobile_number: validatedData.mobile_number,
       email: validatedData.email,
-      nationality_id: validatedData.nationality,
       branch_id: validatedData.branch_id,
       status_id: body.status || (await supabase.from('customer_statuses').select('id').eq('name', 'Active').single()).data?.id,
-      // classification_id and license_type_id are optional (null for Resident ID)
+      // name and nationality_id are not required for Visitor type
+      name: body.name || null,
+      nationality_id: body.nationality || null,
+      // classification_id and license_type_id are optional (null for Resident ID and Visitor)
       classification_id: body.classification_id || null,
       license_type_id: body.license_type_id || null,
     };
@@ -215,10 +216,12 @@ export async function POST(request: NextRequest) {
         customerData.passport_number = body.passport_number;
         customerData.license_number = body.license_number;
         customerData.id_expiry_date = body.id_expiry_date;
+        customerData.place_of_id_issue = body.place_of_id_issue;
         customerData.license_expiry_date = body.license_expiry_date;
+        customerData.license_type = body.license_type;
         customerData.address = body.address;
-        customerData.rental_type = body.rental_type;
-        customerData.has_additional_driver = body.has_additional_driver;
+        customerData.country = body.country;
+        customerData.id_copy_number = body.id_copy_number;
         break;
       case 'Resident ID':
         // Resident ID only requires base fields

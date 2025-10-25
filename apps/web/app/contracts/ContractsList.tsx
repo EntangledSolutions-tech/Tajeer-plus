@@ -335,7 +335,7 @@ export default function ContractsList() {
   ];
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto">
+    <div className="w-full  mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">

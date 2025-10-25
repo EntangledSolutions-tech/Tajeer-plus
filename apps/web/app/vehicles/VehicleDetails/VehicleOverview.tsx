@@ -46,7 +46,6 @@ interface Vehicle {
   owner_id: string;
   actual_user_id: string;
   vehicle_load_capacity: number;
-  technical_number: string;
   insurance_policy: {
     policy_company: string;
     policy_type: string;
@@ -306,10 +305,6 @@ export default function VehicleOverview() {
               <div>
                 <div className="text-sm text-primary font-medium">Vehicle Load Capacity</div>
                 <div className="font-bold text-primary text-base">{vehicle.vehicle_load_capacity !== null && vehicle.vehicle_load_capacity !== undefined ? vehicle.vehicle_load_capacity : '-'}</div>
-              </div>
-              <div>
-                <div className="text-sm text-primary font-medium">Technical Number</div>
-                <div className="font-bold text-primary text-base">{vehicle.technical_number || '-'}</div>
               </div>
             </div>
           </CollapsibleSection>

@@ -620,7 +620,7 @@ export default function VehicleList() {
 
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto">
+    <div className="w-full mx-auto">
       {/* Error AlertDialog */}
       {/* Error AlertDialog */}
 

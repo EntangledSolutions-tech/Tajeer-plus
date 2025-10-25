@@ -55,16 +55,15 @@ const vehicleDetailsSchema = Yup.object({
   color: Yup.string().required('Car color is required'),
   ageRange: Yup.string().required('Age range is required'),
   serialNumber: Yup.string().required('Serial number is required'),
-  plateNumber: Yup.string().required('Plate number is required'),
+  plateNumber: Yup.string().required('Plate number is required').max(10, 'Plate number must be at most 10 characters'),
   mileage: Yup.string().required('Mileage is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
   yearOfManufacture: Yup.string().required('Year of Manufacture is required'),
   carClass: Yup.string().required('Car class classification is required'),
   plateRegistrationType: Yup.string().required('Plate registration type is required'),
   expectedSalePrice: Yup.string().required('Expected Sale Price is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
   branch_id: Yup.string().required('Branch is required'),
-  chassis_number: Yup.string().required('Chassis Number is required'),
+  chassis_number: Yup.string().required('Chassis Number is required').max(20, 'Chassis number must be at most 20 characters'),
   vehicle_load_capacity: Yup.string().required('Vehicle Load Capacity is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
-  technical_number: Yup.string().required('Technical Number is required'),
 });
 const pricingFeeSchema = Yup.object({
   dailyRentalRate: Yup.number().typeError('Must be a number').required('Daily rental rate is required'),
@@ -144,7 +143,6 @@ const initialValues = {
   branch_id: '',
   chassis_number: 'CH123456789',
   vehicle_load_capacity: '500',
-  technical_number: 'TN123456789',
 
   // Payment Type
   paymentType: 'cash',

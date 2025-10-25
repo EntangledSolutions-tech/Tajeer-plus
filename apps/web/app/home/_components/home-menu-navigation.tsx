@@ -53,7 +53,7 @@ export function HomeMenuNavigation() {
         <div ref={searchRef} className="relative z-[200]">
           <SimpleInput
             placeholder="Search vehicles, customers, contracts..."
-            className="w-[400px] rounded-lg px-4 text-foreground focus:ring-0 shadow-none"
+            className="w-[400px] rounded-lg  text-foreground focus:ring-0 shadow-none"
             value={searchQuery}
             onChange={handleSearchChange}
             onFocus={handleSearchFocus}

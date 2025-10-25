@@ -312,7 +312,8 @@ export default function VehicleDetailsStep() {
       name: 'plateNumber',
       type: 'text',
       isRequired: true,
-      placeholder: 'Enter plate number'
+      placeholder: 'Enter plate number',
+      max: 10
     },
     {
       label: 'Mileage',
@@ -384,7 +385,8 @@ export default function VehicleDetailsStep() {
       name: 'chassis_number',
       type: 'text',
       isRequired: true,
-      placeholder: 'Enter chassis number'
+      placeholder: 'Enter chassis number',
+      max: 20
     }
   ];
 
@@ -397,13 +399,6 @@ export default function VehicleDetailsStep() {
       isRequired: true,
       placeholder: 'Enter vehicle load capacity',
       min: 1
-    },
-    {
-      label: 'Technical Number',
-      name: 'technical_number',
-      type: 'text',
-      isRequired: true,
-      placeholder: 'Enter technical number'
     }
   ];
 
@@ -449,6 +444,7 @@ export default function VehicleDetailsStep() {
                 readOnly={field.readOnly}
                 isCurrency={field.isCurrency}
                 iconPosition="left"
+                maxLength={field.max}
               />
             )}
           </div>
@@ -472,6 +468,7 @@ export default function VehicleDetailsStep() {
               disabled={field.disabled}
               readOnly={field.readOnly}
               iconPosition="left"
+              maxLength={field.max}
             />
           </div>
         ))}

@@ -38,6 +38,8 @@ export default function VehiclePricingStep() {
   const handlePaymentTypeChange = (type: 'cash' | 'LeaseToOwn') => {
     setFieldValue('paymentType', type);
   };
+  // Get today's date in YYYY-MM-DD format for max date
+  const today = new Date().toISOString().split('T')[0];
 
   return (
     <>
@@ -84,7 +86,7 @@ export default function VehiclePricingStep() {
               required={field.isRequired}
               type={field.type}
               min={field.min}
-              max={field.max}
+              max={field.type === 'date' && (field.name === 'acquisitionDate' || field.name === 'operationDate') ? today : field.max}
               placeholder={field.placeholder}
               isCurrency={field.isCurrency}
               iconPosition="left"
