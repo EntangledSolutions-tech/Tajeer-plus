@@ -166,7 +166,9 @@ export default function CustomStepperModal({
                 <Formik
                   initialValues={initialValues}
                   validationSchema={stepSchemas[step]}
-                  validateOnMount
+                  validateOnMount={false}
+                  validateOnChange={true}
+                  validateOnBlur={true}
                   innerRef={formikRef}
                   onSubmit={async (values, actions) => {
                     try {
@@ -206,7 +208,19 @@ export default function CustomStepperModal({
                     }
                   }}
                 >
-                  {formik => (
+                  {formik => {
+                    // Debug: Log form state (remove this after debugging)
+                    if (process.env.NODE_ENV === 'development') {
+                      console.log('Form State:', {
+                        isValid: formik.isValid,
+                        isValidating: formik.isValidating,
+                        errors: formik.errors,
+                        touched: formik.touched,
+                        values: formik.values
+                      });
+                    }
+
+                    return (
                     <Form>
                       {CurrentStepComponent && <CurrentStepComponent
                         onDocumentsChange={onDocumentsChange}
@@ -242,7 +256,7 @@ export default function CustomStepperModal({
                               type="submit"
                               variant="primary"
                               loading={loading}
-                              disabled={!formik.isValid || loading}
+                              disabled={!formik.isValid || formik.isValidating || loading}
                             >
                               {title.includes('customer') ? 'Add Customer' : title.includes('contract') ? 'Create Contract' : 'Submit'}
                             </CustomButton>
@@ -250,7 +264,8 @@ export default function CustomStepperModal({
                         </div>
                       </div>
                     </Form>
-                  )}
+                    );
+                  }}
                 </Formik>
               </div>
             </div>

@@ -166,17 +166,16 @@ export async function POST(request: NextRequest) {
     // Determine the main ID number based on ID type
     switch (validatedData.id_type) {
       case 'National ID':
-        idNumber = body.national_id_number;
+        idNumber = body.nationalOrResidentIdNumber || body.national_id_number;
+        break;
+      case 'Resident ID':
+        idNumber = body.nationalOrResidentIdNumber || body.resident_id_number;
         break;
       case 'GCC Countries Citizens':
-        idNumber = body.id_copy_number;
+        idNumber = body.nationalOrGccIdNumber || body.gcc_id_number;
         break;
       case 'Visitor':
         idNumber = body.passport_number;
-        break;
-      case 'Resident ID':
-        // For Resident ID, use mobile number as the unique identifier
-        idNumber = body.mobile_number || `RES-${Date.now()}`;
         break;
     }
 
@@ -187,29 +186,39 @@ export async function POST(request: NextRequest) {
       email: validatedData.email,
       branch_id: validatedData.branch_id,
       status_id: body.status || (await supabase.from('customer_statuses').select('id').eq('name', 'Active').single()).data?.id,
-      // name and nationality_id are not required for Visitor type
-      name: body.name || null,
-      nationality_id: body.nationality || null,
-      // classification_id and license_type_id are optional (null for Resident ID and Visitor)
-      classification_id: body.classification_id || null,
-      license_type_id: body.license_type_id || null,
+      // name and nationality_id are not required for any ID type now
+      name: null,
+      nationality_id: null,
+      // classification_id and license_type_id are optional
+      classification_id: null,
+      license_type_id: null,
     };
 
     // Add ID type specific fields dynamically
     switch (validatedData.id_type) {
       case 'National ID':
-        customerData.national_id_number = body.national_id_number;
-        customerData.national_id_issue_date = body.national_id_issue_date;
-        customerData.national_id_expiry_date = body.national_id_expiry_date;
-        customerData.place_of_birth = body.place_of_birth;
-        customerData.father_name = body.father_name;
-        customerData.mother_name = body.mother_name;
+        customerData.national_id_number = body.nationalOrResidentIdNumber || body.national_id_number;
+        customerData.date_of_birth = body.birthDate || body.date_of_birth;
+        customerData.address = body.address;
+        customerData.rental_type = body.rentalType || body.rental_type;
+        break;
+      case 'Resident ID':
+        customerData.resident_id_number = body.nationalOrResidentIdNumber || body.resident_id_number;
+        customerData.date_of_birth = body.birthDate || body.date_of_birth;
+        customerData.address = body.address;
+        customerData.rental_type = body.rentalType || body.rental_type;
         break;
       case 'GCC Countries Citizens':
-        customerData.id_copy_number = body.id_copy_number;
-        customerData.license_expiration_date = body.license_expiration_date;
-        customerData.license_type = body.license_type;
-        customerData.place_of_id_issue = body.place_of_id_issue;
+        customerData.gcc_id_number = body.nationalOrGccIdNumber || body.gcc_id_number;
+        customerData.country = body.country;
+        customerData.id_copy_number = body.idCopyNumber || body.id_copy_number;
+        customerData.license_number = body.licenseNumber || body.license_number;
+        customerData.id_expiry_date = body.idExpiryDate || body.id_expiry_date;
+        customerData.license_expiry_date = body.licenseExpiryDate || body.license_expiry_date;
+        customerData.license_type = body.licenseType || body.license_type;
+        customerData.place_of_id_issue = body.placeOfIdIssue || body.place_of_id_issue;
+        customerData.address = body.address;
+        customerData.rental_type = body.rentalType || body.rental_type;
         break;
       case 'Visitor':
         customerData.border_number = body.border_number;
@@ -222,9 +231,6 @@ export async function POST(request: NextRequest) {
         customerData.address = body.address;
         customerData.country = body.country;
         customerData.id_copy_number = body.id_copy_number;
-        break;
-      case 'Resident ID':
-        // Resident ID only requires base fields
         break;
     }
 

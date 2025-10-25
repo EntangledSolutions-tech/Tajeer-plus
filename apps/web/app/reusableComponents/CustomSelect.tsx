@@ -9,7 +9,7 @@ interface CustomSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement
   label: string;
   required?: boolean;
   name: string;
-  options: { value: string; label: string; color?: string }[];
+  options: { value: string; label: string; description?: string; color?: string }[];
   disabled?: boolean;
   readOnly?: boolean;
 }
@@ -31,7 +31,7 @@ export const SimpleSelect = ({
   required?: boolean;
   error?: string;
   className?: string;
-  options: { value: string; label: string; color?: string }[];
+  options: { value: string; label: string; description?: string; color?: string }[];
   disabled?: boolean;
   readOnly?: boolean;
   value?: string;
@@ -90,7 +90,12 @@ export const SimpleSelect = ({
                     style={{ backgroundColor: opt.color }}
                   />
                 )}
-                <span>{opt.label}</span>
+                <div className="flex-1">
+                  <div className="font-medium">{opt.label}</div>
+                  {opt.description && (
+                    <div className="text-sm text-gray-500">{opt.description}</div>
+                  )}
+                </div>
               </div>
             </SelectItem>
           ))}
@@ -119,7 +124,7 @@ const CustomSelect = ({
   label?: string;
   required?: boolean;
   className?: string;
-  options: { value: string; label: string; color?: string }[];
+  options: { value: string; label: string; description?: string; color?: string }[];
   disabled?: boolean;
   readOnly?: boolean;
   onChange?: (value: string) => void;

@@ -17,7 +17,6 @@ import { useBranch } from '../../contexts/branch-context';
 
 interface Customer {
   id: string;
-  name: string;
   id_number: string;
   mobile: string;
   classification: 'Individual' | 'Company';
@@ -49,12 +48,6 @@ export default function CustomerList() {
 
   // Column definitions for CustomTable
   const columns: TableColumn[] = [
-    {
-      key: 'name',
-      label: 'Name',
-      type: 'text',
-      sortable: true
-    },
     {
       key: 'id_number',
       label: 'ID Number',

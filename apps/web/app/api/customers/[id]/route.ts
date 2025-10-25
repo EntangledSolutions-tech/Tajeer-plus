@@ -64,12 +64,51 @@ export async function PUT(
     const { id: customerId } = await params;
     const body = await request.json();
 
+    // Map field names from camelCase to snake_case for database
+    const customerData: any = { ...body };
+
+    // Handle GCC-specific field mappings
+    if (body.id_type === 'GCC Countries Citizens' || body.idType === 'GCC Countries Citizens') {
+      if (body.nationalOrGccIdNumber) {
+        customerData.gcc_id_number = body.nationalOrGccIdNumber;
+        delete customerData.nationalOrGccIdNumber;
+      }
+      if (body.idCopyNumber !== undefined) {
+        customerData.id_copy_number = body.idCopyNumber;
+        delete customerData.idCopyNumber;
+      }
+      if (body.licenseNumber) {
+        customerData.license_number = body.licenseNumber;
+        delete customerData.licenseNumber;
+      }
+      if (body.idExpiryDate) {
+        customerData.id_expiry_date = body.idExpiryDate;
+        delete customerData.idExpiryDate;
+      }
+      if (body.licenseExpiryDate) {
+        customerData.license_expiry_date = body.licenseExpiryDate;
+        delete customerData.licenseExpiryDate;
+      }
+      if (body.licenseType) {
+        customerData.license_type = body.licenseType;
+        delete customerData.licenseType;
+      }
+      if (body.placeOfIdIssue) {
+        customerData.place_of_id_issue = body.placeOfIdIssue;
+        delete customerData.placeOfIdIssue;
+      }
+      if (body.rentalType) {
+        customerData.rental_type = body.rentalType;
+        delete customerData.rentalType;
+      }
+    }
+
     // Update customer with user ownership validation
     const { data: updatedCustomer, error } = await updateUserRecord(
       supabase,
       'customers',
       customerId,
-      body,
+      customerData,
       user.id
     );
 
