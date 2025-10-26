@@ -595,32 +595,7 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
     }
   };
 
-  const handleRefreshPayment = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/contracts/${contract?.id}/refresh-payment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
 
-      if (response.ok) {
-        const data = await response.json();
-        alert('Payment information refreshed successfully');
-        // Refresh the page to show updated payment data
-        window.location.reload();
-      } else {
-        const errorData = await response.json();
-        alert(`Error: ${errorData.error || 'Failed to refresh payment'}`);
-      }
-    } catch (error) {
-      console.error('Error refreshing payment:', error);
-      alert('Failed to refresh payment. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <div className="flex flex-col">
@@ -1029,14 +1004,6 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
                   disabled={isLoading}
                 >
                   {isLoading ? 'Generating PDF...' : 'Print Contract'}
-                </CustomButton>
-                <CustomButton
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefreshPayment}
-                  disabled={isLoading}
-                >
-                  Refresh Payment
                 </CustomButton>
                 <CustomButton variant="primary" size="sm">
                   Extend Contract
