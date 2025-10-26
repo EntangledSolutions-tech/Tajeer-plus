@@ -23,19 +23,18 @@ interface Vehicle {
   branch: { name: string; code: string; address?: string; phone?: string; email?: string } | string;
   daily_rental_rate: number;
   daily_minimum_rate: number;
-  daily_hourly_delay_rate: number;
   daily_permitted_km: number;
   daily_excess_km_rate: number;
   daily_open_km_rate: number;
   monthly_rental_rate: number;
   monthly_minimum_rate: number;
-  monthly_hourly_delay_rate: number;
   monthly_permitted_km: number;
   monthly_excess_km_rate: number;
   monthly_open_km_rate: number;
   hourly_rental_rate: number;
   hourly_permitted_km: number;
   hourly_excess_km_rate: number;
+  hourly_delay_rate: number;
   payment_type?: string;
   car_pricing: number;
   acquisition_date: string;
@@ -378,10 +377,9 @@ export default function VehicleOverview() {
               {/* Daily rent */}
               <div>
                 <div className="font-bold text-primary text-base mb-2">Daily rent</div>
-                <div className="grid grid-cols-6 gap-4 text-base">
+                <div className="grid grid-cols-5 gap-4 text-base">
                   <div><span className="text-sm text-primary font-medium">Daily rental rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.daily_rental_rate !== null && vehicle.daily_rental_rate !== undefined ? formatCurrency(vehicle.daily_rental_rate) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Minimum rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.daily_minimum_rate !== null && vehicle.daily_minimum_rate !== undefined ? formatCurrency(vehicle.daily_minimum_rate) : '-'}</span></div>
-                  <div><span className="text-sm text-primary font-medium">Hourly delay rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.daily_hourly_delay_rate !== null && vehicle.daily_hourly_delay_rate !== undefined ? formatCurrency(vehicle.daily_hourly_delay_rate) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Permitted daily km</span><br /><span className="text-lg text-primary font-bold">{vehicle.daily_permitted_km !== null && vehicle.daily_permitted_km !== undefined ? formatNumber(vehicle.daily_permitted_km) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Excess km rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.daily_excess_km_rate !== null && vehicle.daily_excess_km_rate !== undefined ? formatCurrency(vehicle.daily_excess_km_rate) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Open km rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.daily_open_km_rate !== null && vehicle.daily_open_km_rate !== undefined ? formatCurrency(vehicle.daily_open_km_rate) : '-'}</span></div>
@@ -391,10 +389,9 @@ export default function VehicleOverview() {
               {/* Monthly rent */}
               <div>
                 <div className="font-bold text-primary text-base mb-2">Monthly rent</div>
-                <div className="grid grid-cols-6 gap-4 text-base">
+                <div className="grid grid-cols-5 gap-4 text-base">
                   <div><span className="text-sm text-primary font-medium">Monthly rental rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.monthly_rental_rate !== null && vehicle.monthly_rental_rate !== undefined ? formatCurrency(vehicle.monthly_rental_rate) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Minimum rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.monthly_minimum_rate !== null && vehicle.monthly_minimum_rate !== undefined ? formatCurrency(vehicle.monthly_minimum_rate) : '-'}</span></div>
-                  <div><span className="text-sm text-primary font-medium">Hourly delay rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.monthly_hourly_delay_rate !== null && vehicle.monthly_hourly_delay_rate !== undefined ? formatCurrency(vehicle.monthly_hourly_delay_rate) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Permitted daily km</span><br /><span className="text-lg text-primary font-bold">{vehicle.monthly_permitted_km !== null && vehicle.monthly_permitted_km !== undefined ? formatNumber(vehicle.monthly_permitted_km) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Excess km rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.monthly_excess_km_rate !== null && vehicle.monthly_excess_km_rate !== undefined ? formatCurrency(vehicle.monthly_excess_km_rate) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Open km rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.monthly_open_km_rate !== null && vehicle.monthly_open_km_rate !== undefined ? formatCurrency(vehicle.monthly_open_km_rate) : '-'}</span></div>
@@ -404,10 +401,11 @@ export default function VehicleOverview() {
               {/* Hourly rent */}
               <div>
                 <div className="font-bold text-primary text-base mb-2">Hourly rent</div>
-                <div className="grid grid-cols-6 gap-4 text-base">
+                <div className="grid grid-cols-4 gap-4 text-base">
                   <div><span className="text-sm text-primary font-medium">Hourly rental rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.hourly_rental_rate !== null && vehicle.hourly_rental_rate !== undefined ? formatCurrency(vehicle.hourly_rental_rate) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Permitted km per hour</span><br /><span className="text-lg text-primary font-bold">{vehicle.hourly_permitted_km !== null && vehicle.hourly_permitted_km !== undefined ? formatNumber(vehicle.hourly_permitted_km) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Excess km rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.hourly_excess_km_rate !== null && vehicle.hourly_excess_km_rate !== undefined ? formatCurrency(vehicle.hourly_excess_km_rate) : '-'}</span></div>
+                  <div><span className="text-sm text-primary font-medium">Hourly delay rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.hourly_delay_rate !== null && vehicle.hourly_delay_rate !== undefined ? formatCurrency(vehicle.hourly_delay_rate) : '-'}</span></div>
                 </div>
               </div>
             </div>

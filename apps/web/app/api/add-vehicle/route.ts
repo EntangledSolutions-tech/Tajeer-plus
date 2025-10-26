@@ -115,19 +115,18 @@ export async function POST(request: NextRequest) {
         // Pricing details
         daily_rental_rate: Math.min(parseFloat(pricing.dailyRentalRate) || 0, 99999999.99),
         daily_minimum_rate: Math.min(parseFloat(pricing.dailyMinimumRate) || 0, 99999999.99),
-        daily_hourly_delay_rate: Math.min(parseFloat(pricing.dailyHourlyDelayRate) || 0, 99999999.99),
         daily_permitted_km: parseInt(pricing.dailyPermittedKm) || 0,
         daily_excess_km_rate: Math.min(parseFloat(pricing.dailyExcessKmRate) || 0, 99999999.99),
         daily_open_km_rate: Math.min(parseFloat(pricing.dailyOpenKmRate) || 0, 99999999.99),
         monthly_rental_rate: Math.min(parseFloat(pricing.monthlyRentalRate) || 0, 99999999.99),
         monthly_minimum_rate: Math.min(parseFloat(pricing.monthlyMinimumRate) || 0, 99999999.99),
-        monthly_hourly_delay_rate: Math.min(parseFloat(pricing.monthlyHourlyDelayRate) || 0, 99999999.99),
         monthly_permitted_km: parseInt(pricing.monthlyPermittedKm) || 0,
         monthly_excess_km_rate: Math.min(parseFloat(pricing.monthlyExcessKmRate) || 0, 99999999.99),
         monthly_open_km_rate: Math.min(parseFloat(pricing.monthlyOpenKmRate) || 0, 99999999.99),
         hourly_rental_rate: Math.min(parseFloat(pricing.hourlyRentalRate) || 0, 99999999.99),
         hourly_permitted_km: parseInt(pricing.hourlyPermittedKm) || 0,
         hourly_excess_km_rate: Math.min(parseFloat(pricing.hourlyExcessKmRate) || 0, 99999999.99),
+        hourly_delay_rate: Math.min(parseFloat(pricing.hourlyDelayRate) || 0, 99999999.99),
 
         // Expiration dates
         form_license_expiration: parseDate(expirations.formLicenseExpiration),

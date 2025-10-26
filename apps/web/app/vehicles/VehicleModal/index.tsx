@@ -70,20 +70,19 @@ const pricingFeeSchema = Yup.object({
   // Only validate the daily fields that users actually input
   dailyRentalRate: Yup.number().typeError('Must be a number').required('Daily rental rate is required'),
   dailyMinimumRate: Yup.number().typeError('Must be a number').required('Daily minimum rate is required'),
-  dailyHourlyDelayRate: Yup.number().typeError('Must be a number').required('Daily hourly delay rate is required'),
   dailyPermittedKm: Yup.number().typeError('Must be a number').required('Permitted daily km is required'),
   dailyExcessKmRate: Yup.number().typeError('Must be a number').required('Excess km rate is required'),
   dailyOpenKmRate: Yup.number().typeError('Must be a number').required('Open km rate is required'),
-  // Monthly and hourly rates are calculated fields - not required for validation
-  monthlyRentalRate: Yup.number().typeError('Must be a number').notRequired(),
-  monthlyMinimumRate: Yup.number().typeError('Must be a number').notRequired(),
-  monthlyHourlyDelayRate: Yup.number().typeError('Must be a number').notRequired(),
-  monthlyPermittedKm: Yup.number().typeError('Must be a number').notRequired(),
-  monthlyExcessKmRate: Yup.number().typeError('Must be a number').notRequired(),
-  monthlyOpenKmRate: Yup.number().typeError('Must be a number').notRequired(),
-  hourlyRentalRate: Yup.number().typeError('Must be a number').notRequired(),
-  hourlyPermittedKm: Yup.number().typeError('Must be a number').notRequired(),
-  hourlyExcessKmRate: Yup.number().typeError('Must be a number').notRequired(),
+  // Monthly and hourly rates - editable fields
+  monthlyRentalRate: Yup.number().typeError('Must be a number').required('Monthly rental rate is required'),
+  monthlyMinimumRate: Yup.number().typeError('Must be a number').required('Monthly minimum rate is required'),
+  monthlyPermittedKm: Yup.number().typeError('Must be a number').required('Permitted daily km is required'),
+  monthlyExcessKmRate: Yup.number().typeError('Must be a number').required('Excess km rate is required'),
+  monthlyOpenKmRate: Yup.number().typeError('Must be a number').required('Open km rate is required'),
+  hourlyRentalRate: Yup.number().typeError('Must be a number').required('Hourly rental rate is required'),
+  hourlyPermittedKm: Yup.number().typeError('Must be a number').required('Permitted km per hour is required'),
+  hourlyExcessKmRate: Yup.number().typeError('Must be a number').required('Excess km rate is required'),
+  hourlyDelayRate: Yup.number().typeError('Must be a number').required('Hourly delay rate is required'),
 });
 const expirationDatesSchema = Yup.object({
   formLicenseExpiration: Yup.string().required('Form/license expiration date is required'),
@@ -197,19 +196,18 @@ const initialValues = {
   // Step 1 - Pricing/Fee
   dailyRentalRate: 150,
   dailyMinimumRate: 120,
-  dailyHourlyDelayRate: 20,
   dailyPermittedKm: 200,
   dailyExcessKmRate: 2,
   dailyOpenKmRate: 1.5,
   monthlyRentalRate: 3500,
   monthlyMinimumRate: 3000,
-  monthlyHourlyDelayRate: 25,
   monthlyPermittedKm: 5000,
   monthlyExcessKmRate: 1.8,
   monthlyOpenKmRate: 1.2,
   hourlyRentalRate: 25,
   hourlyPermittedKm: 50,
   hourlyExcessKmRate: 3,
+  hourlyDelayRate: 50,
 
   // Step 2 - Expiration Dates
   formLicenseExpiration: '2025-12-31',
