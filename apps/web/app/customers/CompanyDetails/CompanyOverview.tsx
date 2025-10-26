@@ -1,5 +1,5 @@
 import React from 'react';
-import { CollapsibleSection } from '../../../reusableComponents/CollapsibleSection';
+import { CollapsibleSection } from '../../reusableComponents/CollapsibleSection';
 
 interface Company {
   id: string;
