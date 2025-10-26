@@ -1,11 +1,15 @@
 'use client';
 import React, { useState } from 'react';
+import { Formik, Form } from 'formik';
 import { toast } from '@kit/ui/sonner';
 import CustomButton from '../../../reusableComponents/CustomButton';
 import { CollapsibleSection } from '../../../reusableComponents/CollapsibleSection';
 import CustomModal from '../../../reusableComponents/CustomModal';
 import { SimpleSelect } from '../../../reusableComponents/CustomSelect';
 import { SimpleTextarea } from '../../../reusableComponents/CustomTextarea';
+import CustomInput from '../../../reusableComponents/CustomInput';
+import CustomSelect from '../../../reusableComponents/CustomSelect';
+import { useHttpService } from '../../../../lib/http-service';
 
 interface Customer {
   id: string;
@@ -110,6 +114,8 @@ interface ContractOverviewProps {
 
 export default function ContractOverview({ contract }: ContractOverviewProps) {
   const [isHoldModalOpen, setIsHoldModalOpen] = useState(false);
+  const [isExtendModalOpen, setIsExtendModalOpen] = useState(false);
+  const { postRequest } = useHttpService();
 
   // Get status colors for buttons - use actual backend colors
   const getStatusColor = (statusName: string) => {
@@ -1031,7 +1037,11 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
                 >
                   {isLoading ? 'Generating PDF...' : 'Print Contract'}
                 </CustomButton>
-                <CustomButton variant="primary" size="sm">
+                <CustomButton
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setIsExtendModalOpen(true)}
+                >
                   Extend Contract
                 </CustomButton>
               </div>
@@ -1279,6 +1289,162 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
           </CollapsibleSection>
         </div>
       </div>
+
+      {/* Extend Contract Modal */}
+      <CustomModal
+        isOpen={isExtendModalOpen}
+        onClose={() => setIsExtendModalOpen(false)}
+        title={`Extend Contract #${contract?.contract_number || contract?.id?.slice(0, 8)}?`}
+        maxWidth="max-w-lg"
+      >
+        <Formik
+          initialValues={{
+            extensionType: 'fees',
+            feeAmount: 0,
+            durationDays: 0,
+            paymentMethod: 'cash'
+          }}
+          onSubmit={async (values) => {
+            try {
+              setIsLoading(true);
+              const response = await postRequest(`/api/contracts/${contract?.id}/extend`, values);
+              if (response.success) {
+                toast.success('Contract extended successfully');
+                setIsExtendModalOpen(false);
+                window.location.reload();
+              } else {
+                toast.error(response.error || 'Failed to extend contract');
+              }
+            } catch (error) {
+              console.error('Error extending contract:', error);
+              toast.error('Failed to extend contract');
+            } finally {
+              setIsLoading(false);
+            }
+          }}
+        >
+          {({ values, setFieldValue }) => {
+            const calculatedDuration = values.feeAmount && contract?.daily_rental_rate
+              ? Math.ceil(values.feeAmount / contract.daily_rental_rate)
+              : 0;
+            const calculatedFees = values.durationDays && contract?.daily_rental_rate
+              ? values.durationDays * contract.daily_rental_rate
+              : 0;
+
+            return (
+              <Form>
+                <div className="p-6 space-y-6">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-primary">Extension Type</h3>
+                    <div className="flex gap-6">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="extensionType"
+                          value="fees"
+                          checked={values.extensionType === 'fees'}
+                          onChange={(e) => setFieldValue('extensionType', e.target.value)}
+                          className="w-5 h-5 text-[#005F8E] focus:ring-[#005F8E] border-gray-300 focus:ring-2"
+                          style={{ accentColor: '#005F8E' }}
+                        />
+                        <span className="text-base font-medium text-primary">Extend by fees</span>
+                      </label>
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="extensionType"
+                          value="duration"
+                          checked={values.extensionType === 'duration'}
+                          onChange={(e) => setFieldValue('extensionType', e.target.value)}
+                          className="w-5 h-5 text-[#005F8E] focus:ring-[#005F8E] border-gray-300 focus:ring-2"
+                          style={{ accentColor: '#005F8E' }}
+                        />
+                        <span className="text-base font-medium text-primary">Extend by duration</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {values.extensionType === 'fees' && (
+                    <div>
+                      <CustomInput
+                        name="feeAmount"
+                        label="Fee amount"
+                        type="number"
+                        placeholder="Enter fee amount"
+                        isCurrency={true}
+                        min="0"
+                        required
+                      />
+                      {calculatedDuration > 0 && (
+                        <p className="text-sm text-primary/70 mt-2">
+                          This will extend the contract by {calculatedDuration} day{calculatedDuration !== 1 ? 's' : ''}
+                          {contract?.daily_rental_rate && (
+                            <span className="ml-1">
+                              (Fee: {Number(values.feeAmount).toFixed(2)} SAR ÷ Daily Rate: {contract.daily_rental_rate.toFixed(2)} SAR)
+                            </span>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {values.extensionType === 'duration' && (
+                    <div>
+                      <CustomInput
+                        name="durationDays"
+                        label="Duration"
+                        type="number"
+                        placeholder="Enter number of days"
+                        min="1"
+                        required
+                      />
+                      {calculatedFees > 0 && (
+                        <p className="text-sm text-primary/70 mt-2">
+                          This will cost {calculatedFees.toFixed(2)} SAR
+                          {contract?.daily_rental_rate && (
+                            <span className="ml-1">
+                              (Duration: {values.durationDays} day{values.durationDays !== 1 ? 's' : ''} × Daily Rate: {contract.daily_rental_rate.toFixed(2)} SAR)
+                            </span>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <CustomSelect
+                    name="paymentMethod"
+                    label="Payment method"
+                    options={[
+                      { value: 'cash', label: 'Cash' }
+                    ]}
+                    required
+                    disabled
+                    readOnly
+                  />
+
+                  <div className="flex justify-end space-x-3 pt-4 border-t">
+                    <CustomButton
+                      variant="outline"
+                      type="button"
+                      onClick={() => setIsExtendModalOpen(false)}
+                      disabled={isLoading}
+                    >
+                      Cancel
+                    </CustomButton>
+                    <CustomButton
+                      variant="primary"
+                      type="submit"
+                      disabled={isLoading}
+                    >
+                      {isLoading ? 'Processing...' : 'Pay & Extend Contract'}
+                    </CustomButton>
+                  </div>
+                </div>
+              </Form>
+            );
+          }}
+        </Formik>
+      </CustomModal>
     </div>
   );
 }
