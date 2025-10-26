@@ -6,6 +6,7 @@ import { toast } from '@kit/ui/sonner';
 import Link from 'next/link';
 import ContractStatusTab from './_components/ContractStatusTab';
 import ContractAddOnsTab from './_components/ContractAddOnsTab';
+import PermissionsValidationsTab from './_components/PermissionsValidationsTab';
 import CustomTabs from '../../reusableComponents/CustomTabs';
 import { useHttpService } from '../../../lib/http-service';
 
@@ -15,7 +16,8 @@ const tabs = [
   { key: 'fees', label: 'Fees', disabled: true, disabledReason: 'Fees module is under maintenance. Please try again later.' },
   { key: 'terms', label: 'Terms', disabled: true, disabledReason: 'Terms module is under maintenance. Please try again later.' },
   { key: 'add_ons', label: 'Contract Add-Ons' },
-  { key: 'status', label: 'Status' }
+  { key: 'status', label: 'Status' },
+  { key: 'permissions', label: 'Permissions & Validations' }
 ];
 
 export default function ContractConfigurationsPage() {
@@ -146,6 +148,10 @@ export default function ContractConfigurationsPage() {
 
           {activeTab === 'status' && (
             <ContractStatusTab loading={loading} onDelete={handleDelete} />
+          )}
+
+          {activeTab === 'permissions' && (
+            <PermissionsValidationsTab loading={loading} />
           )}
         </div>
       </div>

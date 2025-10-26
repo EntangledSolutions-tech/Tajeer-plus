@@ -1,7 +1,8 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Formik, Form } from 'formik';
 import { toast } from '@kit/ui/sonner';
+import { Info } from 'lucide-react';
 import CustomButton from '../../../reusableComponents/CustomButton';
 import { CollapsibleSection } from '../../../reusableComponents/CollapsibleSection';
 import CustomModal from '../../../reusableComponents/CustomModal';
@@ -10,6 +11,12 @@ import { SimpleTextarea } from '../../../reusableComponents/CustomTextarea';
 import CustomInput from '../../../reusableComponents/CustomInput';
 import CustomSelect from '../../../reusableComponents/CustomSelect';
 import { useHttpService } from '../../../../lib/http-service';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@kit/ui/tooltip';
 
 interface Customer {
   id: string;
@@ -115,7 +122,8 @@ interface ContractOverviewProps {
 export default function ContractOverview({ contract }: ContractOverviewProps) {
   const [isHoldModalOpen, setIsHoldModalOpen] = useState(false);
   const [isExtendModalOpen, setIsExtendModalOpen] = useState(false);
-  const { postRequest } = useHttpService();
+  const { postRequest, getRequest } = useHttpService();
+  const [cancelWindowHours, setCancelWindowHours] = useState(24);
 
   // Get status colors for buttons - use actual backend colors
   const getStatusColor = (statusName: string) => {
@@ -143,6 +151,50 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
   const [cancelReason, setCancelReason] = useState('');
   const [cancelComments, setCancelComments] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch cancel window hours setting
+  useEffect(() => {
+    const fetchCancelWindowSetting = async () => {
+      try {
+        const response = await getRequest('/api/system-settings?category=contracts');
+        if (response.success && response.data) {
+          const settings = (response.data as any).data?.settings || (response.data as any).settings || [];
+          const cancelWindowSetting = settings.find(
+            (setting: { key: string; value: string }) => setting.key === 'cancelWindowHours'
+          );
+          if (cancelWindowSetting) {
+            setCancelWindowHours(parseInt(cancelWindowSetting.value, 10) || 24);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching cancel window setting:', error);
+      }
+    };
+
+    fetchCancelWindowSetting();
+  }, []);
+
+  // Calculate if cancellation is allowed based on elapsed time
+  const isCancellationAllowed = () => {
+    if (!contract?.start_date) return true;
+
+    const startDate = new Date(contract.start_date);
+    const now = new Date();
+    const elapsedHours = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+
+    return elapsedHours <= cancelWindowHours;
+  };
+
+  const getCancellationTooltip = () => {
+    if (!isCancellationAllowed() && contract?.start_date) {
+      const startDate = new Date(contract.start_date);
+      const elapsedHours = (new Date().getTime() - startDate.getTime()) / (1000 * 60 * 60);
+      const hoursRemaining = cancelWindowHours - Math.floor(elapsedHours);
+
+      return `Cancellation period has expired (allowed within ${cancelWindowHours} hours from start). Elapsed: ${Math.floor(elapsedHours)} hours.`;
+    }
+    return '';
+  };
 
   const holdReasons = [
     { value: 'financial_claims', label: 'Presence of financial claims' },
@@ -1011,19 +1063,37 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
                 >
                   Close Contract
                 </CustomButton>
-                <CustomButton
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsCancelModalOpen(true)}
-                  disabled={contract?.status?.name === 'Cancelled'}
-                  style={{
-                    color: getStatusColor('Cancelled'),
-                    borderColor: getStatusColor('Cancelled'),
-                    backgroundColor: '#ffffff'
-                  }}
-                >
-                  Cancel Contract
-                </CustomButton>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <CustomButton
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsCancelModalOpen(true)}
+                          disabled={contract?.status?.name === 'Cancelled' || !isCancellationAllowed()}
+                          style={{
+                            color: getStatusColor('Cancelled'),
+                            borderColor: getStatusColor('Cancelled'),
+                            backgroundColor: '#ffffff'
+                          }}
+                        >
+                          <span className="flex items-center gap-2">
+                            Cancel Contract
+                            {!isCancellationAllowed() && getCancellationTooltip() && (
+                              <Info className="w-4 h-4" />
+                            )}
+                          </span>
+                        </CustomButton>
+                      </span>
+                    </TooltipTrigger>
+                    {getCancellationTooltip() && (
+                      <TooltipContent>
+                        <p>{getCancellationTooltip()}</p>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
                 <CustomButton
                   variant="outline"
                   size="sm"
