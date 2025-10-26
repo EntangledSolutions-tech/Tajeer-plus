@@ -87,6 +87,17 @@ interface Contract {
   // Joined data from database
   customer?: Customer | null;
   vehicle?: Vehicle | null;
+  company_id?: string; // Added for company details
+  company?: {
+    company_name: string;
+    tax_number: string;
+    commercial_registration_number: string;
+    email: string;
+    mobile_number: string;
+    address: string;
+    city: string;
+    country: string;
+  } | null;
 
   // Backward compatibility fields (deprecated)
   vehicle_plate?: string;
@@ -513,6 +524,21 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
           { label: 'Additional Comments', value: contract.cancel_comments || 'No additional comments' },
         ];
         pdfContent.appendChild(createSection('Cancellation Details', cancelData));
+      }
+
+      // Company Details - Show only if company is linked
+      if (contract?.company_id && contract?.company) {
+        const companyData = [
+          { label: 'Company Name', value: contract.company.company_name || '-' },
+          { label: 'Tax Number', value: contract.company.tax_number || '-' },
+          { label: 'Commercial Registration', value: contract.company.commercial_registration_number || '-' },
+          { label: 'Email', value: contract.company.email || '-' },
+          { label: 'Mobile', value: contract.company.mobile_number || '-' },
+          { label: 'Address', value: contract.company.address || '-' },
+          { label: 'City', value: contract.company.city || '-' },
+          { label: 'Country', value: contract.company.country || '-' },
+        ];
+        pdfContent.appendChild(createSection('Company Details', companyData));
       }
 
       // Generate PDF
@@ -1140,6 +1166,14 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
                   {contract?.customer?.membership_tier || 'Gold'}
                 </div>
               </div>
+              {contract?.company_id && contract?.company && (
+                <div>
+                  <div className="text-sm text-primary font-medium">Related to Company</div>
+                  <div className="font-bold text-primary text-base">
+                    {contract.company.company_name}
+                  </div>
+                </div>
+              )}
             </div>
           </CollapsibleSection>
 

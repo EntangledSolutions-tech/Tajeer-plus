@@ -51,6 +51,17 @@ export async function GET(
           daily_hourly_delay_rate,
           daily_permitted_km,
           daily_excess_km_rate
+        ),
+        company:companies!company_id(
+          id,
+          company_name,
+          tax_number,
+          commercial_registration_number,
+          email,
+          mobile_number,
+          address,
+          city,
+          country
         )
       `)
       .eq('id', contractId)
