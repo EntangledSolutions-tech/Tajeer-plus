@@ -28,8 +28,15 @@ export default function PricingTermsStep() {
   const [permittedDailyKm, setPermittedDailyKm] = useState('0');
   const [excessKmRate, setExcessKmRate] = useState('0');
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [depositAmount, setDepositAmount] = useState('');
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [isLoadingAddOns, setIsLoadingAddOns] = useState(true);
+  const [canEditRentalDays, setCanEditRentalDays] = useState(false);
+
+  // Display validation errors from formik
+  const depositError = formik.errors.depositAmount && formik.touched.depositAmount
+    ? String(formik.errors.depositAmount)
+    : '';
 
   // Add-ons state - will be populated from database
   const [addOns, setAddOns] = useState<AddOn[]>([]);
@@ -91,6 +98,13 @@ export default function PricingTermsStep() {
       vehicleExcessKmRate,
       rentalDays: calculatedDays
     });
+
+    console.log('Formik values:', {
+      vehicleHourlyDelayRate: formik.values.vehicleHourlyDelayRate,
+      vehicleDailyRentRate: formik.values.vehicleDailyRentRate,
+      vehiclePermittedDailyKm: formik.values.vehiclePermittedDailyKm,
+      vehicleExcessKmRate: formik.values.vehicleExcessKmRate
+    });
   };
 
   // Fetch add-ons from database
@@ -126,6 +140,11 @@ export default function PricingTermsStep() {
   useEffect(() => {
     populateVehicleData();
     fetchAddOns();
+
+    // Initialize deposit from formik if available
+    if (formik.values.depositAmount) {
+      setDepositAmount(formik.values.depositAmount);
+    }
   }, []);
 
   // Also populate when formik values change (in case vehicle is selected later or dates change)
@@ -161,10 +180,26 @@ export default function PricingTermsStep() {
 
 
 
+  // Trigger validation when depositAmount or total changes
+  useEffect(() => {
+    if (formik.touched.depositAmount) {
+      formik.validateField('depositAmount');
+    }
+  }, [depositAmount, total]);
+
   // Calculate pricing whenever relevant state changes
   useEffect(() => {
     calculatePricing();
   }, [dailyRentalRate, rentalDays, JSON.stringify(addOns)]);
+
+  // Auto-fill deposit amount when total changes
+  useEffect(() => {
+    if (total > 0 && !depositAmount) {
+      setDepositAmount(total.toString());
+    } else if (total > 0 && parseFloat(depositAmount.replace(/,/g, '')) !== total) {
+      setDepositAmount(total.toString());
+    }
+  }, [total]);
 
   // Update Formik values whenever state changes
   useEffect(() => {
@@ -175,6 +210,7 @@ export default function PricingTermsStep() {
     formik.setFieldValue('permittedDailyKm', permittedDailyKm);
     formik.setFieldValue('excessKmRate', excessKmRate);
     formik.setFieldValue('paymentMethod', paymentMethod);
+    formik.setFieldValue('depositAmount', depositAmount);
     formik.setFieldValue('addOns', addOns);
     formik.setFieldValue('totalAmount', total);
 
@@ -185,7 +221,7 @@ export default function PricingTermsStep() {
 
     // Force re-render to update UI
     console.log('Formik values updated, total:', total);
-  }, [dailyRentalRate, hourlyDelayRate, currentKm, rentalDays, permittedDailyKm, excessKmRate, paymentMethod, addOns, total]);
+  }, [dailyRentalRate, hourlyDelayRate, currentKm, rentalDays, permittedDailyKm, excessKmRate, paymentMethod, depositAmount, addOns, total]);
 
   const handleAddOnToggle = (addOnId: string) => {
     console.log('Toggling add-on:', addOnId);
@@ -229,17 +265,27 @@ export default function PricingTermsStep() {
       <div className="mb-8">
         <h3 className="text-lg font-semibold text-primary mb-4">Daily rent</h3>
         <div className="grid grid-cols-2 gap-6">
-          <CustomInput
-            label="Daily rental rate (From vehicle)"
-            name="dailyRentalRate"
-            type="text"
-            value={dailyRentalRate}
-            readOnly
-            disabled
-            className="bg-gray-50 cursor-not-allowed"
-            placeholder="0.00"
-            isCurrency={true}
-          />
+          <div>
+            <CustomInput
+              label="Daily rental rate (From vehicle)"
+              name="dailyRentalRate"
+              type="text"
+              value={dailyRentalRate}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const value = e.target.value;
+                const minDailyRate = parseFloat(formik.values.vehicleDailyRentRate) || 0;
+                const enteredValue = parseFloat(value.replace(/,/g, '')) || 0;
+                if (enteredValue >= minDailyRate) {
+                  setDailyRentalRate(value);
+                }
+              }}
+              placeholder="0.00"
+              isCurrency={true}
+            />
+            <p className="text-xs text-primary/60 mt-1">
+              Minimum: {formik.values.vehicleDailyRentRate || 0} SAR
+            </p>
+          </div>
           <CustomInput
             label="Hourly delay rate (From vehicle)"
             name="hourlyDelayRate"
@@ -268,17 +314,32 @@ export default function PricingTermsStep() {
             className="bg-gray-50 cursor-not-allowed"
             placeholder="0"
           />
-          <CustomInput
-            label="Rental days (Auto-calculated)"
-            name="rentalDays"
-            type="text"
-            value={rentalDays + ' days'}
-            readOnly
-            disabled
-            className="bg-gray-50 cursor-not-allowed"
-            placeholder="Auto-calculated from dates"
-          />
-          {/* Removed per request: "Calculated as: End Date - Start Date" */}
+          <div>
+            <CustomInput
+              label="Rental days (Auto-calculated)"
+              name="rentalDays"
+              type="text"
+              value={rentalDays}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                if (canEditRentalDays) {
+                  const value = e.target.value;
+                  // Only allow numeric values
+                  if (/^\d+$/.test(value) || value === '') {
+                    setRentalDays(value);
+                  }
+                }
+              }}
+              readOnly={!canEditRentalDays}
+              disabled={!canEditRentalDays}
+              className={!canEditRentalDays ? "bg-gray-50 cursor-not-allowed" : ""}
+              placeholder="Auto-calculated from dates"
+            />
+            {canEditRentalDays && (
+              <p className="text-xs text-primary/60 mt-1">
+                Editable when deposit is less than total price
+              </p>
+            )}
+          </div>
           <CustomInput
             label="Permitted daily km"
             name="permittedDailyKm"
@@ -302,36 +363,6 @@ export default function PricingTermsStep() {
           />
         </div>
       </div>
-
-      {/* Payment method Section */}
-      <div className="mb-8">
-        <h3 className="text-lg font-semibold text-primary mb-4">Payment method</h3>
-        <CustomSelect
-          label="Payment Method"
-          name="paymentMethod"
-          options={[
-            { value: 'cash', label: 'Cash' },
-            { value: 'card', label: 'Card' }
-          ]}
-          value={paymentMethod}
-          disabled
-        />
-      </div>
-
-      {/* Deposit Section */}
-      <div className="mb-8">
-        <h3 className="text-lg font-semibold text-primary mb-4">Deposit</h3>
-        <div className="grid grid-cols-2 gap-6">
-          <CustomInput
-            label="Deposit amount"
-            name="deposit"
-            type="text"
-            placeholder="0.00"
-            isCurrency={true}
-          />
-        </div>
-      </div>
-
 
       {/* Add-ons Section */}
       <div className="mb-8">
@@ -365,12 +396,53 @@ export default function PricingTermsStep() {
         )}
       </div>
 
+      {/* Payment method & Deposit Section */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold text-primary mb-4">Payment & Deposit</h3>
+        <div className="grid grid-cols-2 gap-6">
+          <CustomSelect
+            label="Payment Method"
+            name="paymentMethod"
+            options={[
+              { value: 'cash', label: 'Cash' },
+              { value: 'card', label: 'Card' }
+            ]}
+            value={paymentMethod}
+            disabled
+          />
+          <div>
+            <CustomInput
+              label="Deposit amount"
+              name="depositAmount"
+              type="text"
+              value={depositAmount}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                setDepositAmount(e.target.value);
+                formik.setFieldTouched('depositAmount', true);
+              }}
+              placeholder="0.00"
+              isCurrency={true}
+              required
+                             error={depositError}
+             />
+             {total > 0 && !depositError && (
+               <p className="text-xs text-primary/60 mt-1">
+                 Must equal: {total.toFixed(2)} SAR
+               </p>
+             )}
+           </div>
+         </div>
+       </div>
+
       {/* Bottom Section with Total and Breakdown */}
       <div className="mt-8 pt-6 border-t border-primary/30 flex justify-between items-end">
         {/* Total and View Breakdown */}
         <div className="relative">
           <div className="text-right mb-2">
-            <span className="text-2xl font-bold text-primary">{formatPrice(total)}</span>
+            <span className="text-2xl font-bold text-primary">{formatPrice(total - (parseFloat(depositAmount.replace(/,/g, '')) || 0))}</span>
+            {depositAmount && parseFloat(depositAmount.replace(/,/g, '')) > 0 && (
+              <span className="text-sm text-gray-500 ml-2">(Due)</span>
+            )}
           </div>
           <div className="relative">
             <CustomButton
@@ -422,6 +494,25 @@ export default function PricingTermsStep() {
                     <span className="font-bold text-primary">Total</span>
                     <span className="font-bold text-primary">{formatPrice(total)}</span>
                   </div>
+
+                  {/* Deposit (in red) */}
+                  {depositAmount && parseFloat(depositAmount.replace(/,/g, '')) > 0 && (
+                    <>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-red-600">Deposit</span>
+                        <span className="font-semibold text-red-600">-{formatPrice(parseFloat(depositAmount.replace(/,/g, '')) || 0)}</span>
+                      </div>
+
+                      {/* Divider */}
+                      <hr className="border-primary/30" />
+
+                      {/* Amount Due */}
+                      <div className="flex justify-between items-center text-lg">
+                        <span className="font-bold text-primary">Amount Due</span>
+                        <span className="font-bold text-primary">{formatPrice(total - (parseFloat(depositAmount.replace(/,/g, '')) || 0))}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}

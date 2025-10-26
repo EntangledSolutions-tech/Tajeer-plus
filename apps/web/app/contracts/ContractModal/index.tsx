@@ -78,6 +78,9 @@ const initialValues = {
   vehicleMileage: 0,
   vehicleStatus: '',
   vehicleDailyRentRate: 0,
+  vehicleHourlyDelayRate: 0,
+  vehiclePermittedDailyKm: 0,
+  vehicleExcessKmRate: 0,
 
   // Step 3 - Contract Details
   startDate: new Date().toISOString().split('T')[0], // Current date in YYYY-MM-DD format
@@ -95,7 +98,7 @@ const initialValues = {
   excessKmRate: '0',
   paymentMethod: 'cash',
   totalAmount: '0',
-  deposit: '0',
+  depositAmount: '',
 
 
   // Step 6 - Summary (no additional fields needed)

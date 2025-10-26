@@ -77,10 +77,24 @@ export const pricingTermsSchema = Yup.object({
   excessKmRate: Yup.string().required('Excess km rate is required'),
   paymentMethod: Yup.string().required('Payment method is required'),
   totalAmount: Yup.number().min(0, 'Total amount must be positive').required('Total amount is required'),
-  deposit: Yup.number()
-    .min(0, 'Deposit must be zero or positive')
-    .max(10000000, 'Deposit is too large')
-    .required('Deposit is required'),
+  depositAmount: Yup.string()
+    .required('Deposit is required')
+    .test('is-number', 'Deposit must be a valid number', (value) => {
+      if (!value) return false;
+      const numValue = parseFloat(value.replace(/,/g, ''));
+      return !isNaN(numValue);
+    })
+    .test('is-positive', 'Deposit must be zero or positive', (value) => {
+      if (!value) return false;
+      const numValue = parseFloat(value.replace(/,/g, ''));
+      return numValue >= 0;
+    })
+    .test('equals-total', 'Deposit amount must equal total amount', function(value) {
+      const { totalAmount } = this.parent;
+      if (!value || !totalAmount) return false;
+      const numValue = parseFloat(value.replace(/,/g, ''));
+      return numValue === totalAmount;
+    }),
 });
 
 // Comprehensive schema for final validation

@@ -2,8 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useFormikContext } from 'formik';
 import { User, Car, FileText, DollarSign, ClipboardCheck } from 'lucide-react';
 
+interface AddOn {
+  id: string;
+  name: string;
+  price: number;
+  enabled: boolean;
+}
+
 const SummaryStep: React.FC = () => {
   const formik = useFormikContext<any>();
+  const [showAddOnsTooltip, setShowAddOnsTooltip] = useState(false);
 
   const renderCustomerDetails = () => {
     const {
@@ -16,7 +24,9 @@ const SummaryStep: React.FC = () => {
       customerAddress,
       customerMobile,
       customerStatus,
-      customerNationality
+      customerNationality,
+      relatedToCompany,
+      companyName
     } = formik.values;
 
     return (
@@ -84,6 +94,12 @@ const SummaryStep: React.FC = () => {
             <div className="md:col-span-2">
               <span className="font-medium text-gray-600">Address:</span>
               <span className="ml-2 text-gray-900">{customerAddress}</span>
+            </div>
+          )}
+          {relatedToCompany && companyName && (
+            <div>
+              <span className="font-medium text-gray-600">Related to Company:</span>
+              <span className="ml-2 text-gray-900">{companyName}</span>
             </div>
           )}
         </div>
@@ -203,7 +219,12 @@ const SummaryStep: React.FC = () => {
   };
 
   const renderPricingTerms = () => {
-    const { dailyRentalRate, hourlyDelayRate, currentKm, rentalDays, permittedDailyKm, excessKmRate, paymentMethod, totalAmount } = formik.values;
+    const { dailyRentalRate, hourlyDelayRate, currentKm, rentalDays, permittedDailyKm, excessKmRate, paymentMethod, totalAmount, depositAmount, addOns } = formik.values;
+
+    const addOnsArray: AddOn[] = Array.isArray(addOns) ? addOns : [];
+    const enabledAddOns = addOnsArray.filter((addon: AddOn) => addon.enabled);
+    const depositAmountNum = parseFloat(depositAmount?.replace(/,/g, '') || '0') || 0;
+    const amountAfterDeposit = (totalAmount || 0) - depositAmountNum;
 
     return (
       <div className="bg-gray-50 p-4 rounded-lg">
@@ -258,6 +279,49 @@ const SummaryStep: React.FC = () => {
             <div>
               <span className="font-medium text-gray-600">Total Amount:</span>
               <span className="ml-2 text-gray-900 font-semibold">{totalAmount} SAR</span>
+            </div>
+          )}
+          {enabledAddOns.length > 0 && (
+            <div>
+              <span className="font-medium text-gray-600">Add-ons:</span>
+              <span
+                className="ml-2 text-gray-900 underline cursor-help relative"
+                onMouseEnter={() => setShowAddOnsTooltip(true)}
+                onMouseLeave={() => setShowAddOnsTooltip(false)}
+              >
+                {enabledAddOns.length} add-on{enabledAddOns.length !== 1 ? 's' : ''}
+                {showAddOnsTooltip && (
+                  <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border-2 border-primary/30 rounded-lg p-3 shadow-lg z-10">
+                    <div className="text-sm font-semibold text-primary mb-2">Selected Add-ons:</div>
+                    <div className="space-y-1">
+                      {enabledAddOns.map((addon: AddOn) => (
+                        <div key={addon.id} className="flex justify-between text-sm">
+                          <span className="text-gray-700">• {addon.name}</span>
+                          <span className="text-gray-900 font-medium">+{addon.price} SAR</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </span>
+            </div>
+          )}
+          {depositAmount && (
+            <div>
+              <span className="font-medium text-gray-600">Deposit Amount:</span>
+              <span className="ml-2 text-gray-900">{depositAmount} SAR</span>
+            </div>
+          )}
+          {amountAfterDeposit > 0 && (
+            <div>
+              <span className="font-medium text-gray-600">Amount Due:</span>
+              <span className="ml-2 text-gray-900 font-semibold">{amountAfterDeposit.toFixed(2)} SAR</span>
+            </div>
+          )}
+          {amountAfterDeposit === 0 && depositAmount && (
+            <div>
+              <span className="font-medium text-gray-600">Amount Due:</span>
+              <span className="ml-2 text-gray-900 font-semibold">0.00 SAR</span>
             </div>
           )}
         </div>

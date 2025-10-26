@@ -225,6 +225,7 @@ export default function VehicleDetailsStep() {
       const response = await getRequest(`/api/vehicles?${params}`);
       if (response.success && response.data) {
         console.log('Vehicles API response:', response.data); // Debug log
+        console.log('First vehicle raw data:', response.data.vehicles?.[0]); // Debug log
 
         // Filter only available vehicles and map to expected format
         const availableVehicles = response.data.vehicles
@@ -233,22 +234,33 @@ export default function VehicleDetailsStep() {
             vehicle.status?.name === 'Active' ||
             !vehicle.status
           )
-          .map((vehicle: any) => ({
-            id: vehicle.id,
-            plate_number: vehicle.plate_number || 'N/A',
-            serial_number: vehicle.serial_number || 'N/A',
-            plate_registration_type: vehicle.plate_registration_type || 'Private',
-            make_year: vehicle.make_year || vehicle.year_of_manufacture || 'N/A',
-            model: vehicle.model?.name || 'N/A',
-            make: vehicle.make?.name || 'N/A',
-            color: vehicle.color?.name || 'N/A',
-            mileage: vehicle.mileage || 0,
-            status: vehicle.status?.name || 'Available',
-            daily_rent_rate: vehicle.daily_rental_rate || 0,
-            daily_hourly_delay_rate: vehicle.daily_hourly_delay_rate || 0,
-            daily_permitted_km: vehicle.daily_permitted_km || 0,
-            daily_excess_km_rate: vehicle.daily_excess_km_rate || 0
-          }));
+          .map((vehicle: any) => {
+            console.log('Mapping vehicle:', {
+              id: vehicle.id,
+              daily_rental_rate: vehicle.daily_rental_rate,
+              daily_hourly_delay_rate: vehicle.daily_hourly_delay_rate,
+              daily_permitted_km: vehicle.daily_permitted_km,
+              daily_excess_km_rate: vehicle.daily_excess_km_rate,
+              mileage: vehicle.mileage
+            });
+
+            return {
+              id: vehicle.id,
+              plate_number: vehicle.plate_number || 'N/A',
+              serial_number: vehicle.serial_number || 'N/A',
+              plate_registration_type: vehicle.plate_registration_type || 'Private',
+              make_year: vehicle.make_year || vehicle.year_of_manufacture || 'N/A',
+              model: vehicle.model?.name || 'N/A',
+              make: vehicle.make?.name || 'N/A',
+              color: vehicle.color?.name || 'N/A',
+              mileage: vehicle.mileage || 0,
+              status: vehicle.status?.name || 'Available',
+              daily_rent_rate: vehicle.daily_rental_rate || 0,
+              daily_hourly_delay_rate: vehicle.hourly_delay_rate || vehicle.daily_hourly_delay_rate || 0,
+              daily_permitted_km: vehicle.daily_permitted_km || 0,
+              daily_excess_km_rate: vehicle.daily_excess_km_rate || 0
+            };
+          });
         setVehicles(availableVehicles);
       } else {
         setVehicles([]);
@@ -282,6 +294,9 @@ export default function VehicleDetailsStep() {
   }, [searchTerm, selectedFilters, activeFiltersCount, selectedBranch]);
 
   const handleVehicleSelect = (vehicle: Vehicle) => {
+    console.log('Selected vehicle:', vehicle);
+    console.log('daily_hourly_delay_rate:', vehicle.daily_hourly_delay_rate);
+
     // Update Formik values with all vehicle data
     formik.setFieldValue('selectedVehicleId', vehicle.id);
     formik.setFieldValue('vehiclePlate', vehicle.plate_number);
@@ -297,6 +312,8 @@ export default function VehicleDetailsStep() {
     formik.setFieldValue('vehicleHourlyDelayRate', vehicle.daily_hourly_delay_rate);
     formik.setFieldValue('vehiclePermittedDailyKm', vehicle.daily_permitted_km);
     formik.setFieldValue('vehicleExcessKmRate', vehicle.daily_excess_km_rate);
+
+    console.log('Set vehicleHourlyDelayRate to:', vehicle.daily_hourly_delay_rate);
 
     // Trigger validation to enable the next button
     setTimeout(() => {

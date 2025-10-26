@@ -6,6 +6,7 @@ import CustomSelect from '../../../reusableComponents/CustomSelect';
 import CustomButton from '../../../reusableComponents/CustomButton';
 import CustomSearchableDropdown, { SearchableDropdownOption } from '../../../reusableComponents/SearchableDropdown';
 import { SearchBar } from '../../../reusableComponents/SearchBar';
+import { SimpleCheckbox } from '../../../reusableComponents/CustomCheckbox';
 import { User, Phone, MapPin, Plus } from 'lucide-react';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { useHttpService } from '../../../../lib/http-service';
@@ -49,6 +50,18 @@ interface LicenseType {
   is_active: boolean;
 }
 
+interface Company {
+  id: string;
+  company_name: string;
+  tax_number: string;
+  commercial_registration_number?: string;
+  email?: string;
+  mobile_number?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+}
+
 interface ApiResponse<T> {
   data: T[];
   pagination: {
@@ -73,11 +86,14 @@ export default function CustomerDetailsStep() {
   const [classifications, setClassifications] = useState<SearchableDropdownOption[]>([]);
   const [licenseTypes, setLicenseTypes] = useState<SearchableDropdownOption[]>([]);
   const [customerStatuses, setCustomerStatuses] = useState<CustomerStatus[]>([]);
+  const [companies, setCompanies] = useState<SearchableDropdownOption[]>([]);
+  const [companiesList, setCompaniesList] = useState<Company[]>([]);
   const [loading, setLoading] = useState({
     customerSearchLoading: false,
     classificationLoading: false,
     licenseTypeLoading: false,
-    statusesLoading: false
+    statusesLoading: false,
+    companiesLoading: false
   });
 
   // Get selected customer from Formik values
@@ -216,11 +232,36 @@ export default function CustomerDetailsStep() {
     }
   };
 
+  // Fetch companies
+  const fetchCompanies = async () => {
+    setLoading(prev => ({ ...prev, companiesLoading: true }));
+    try {
+      const response = await getRequest('/api/companies?active=true&limit=100');
+      if (response.success && response.data && response.data.companies) {
+        const companiesData = response.data.companies;
+        setCompaniesList(companiesData);
+        const options: SearchableDropdownOption[] = companiesData.map((company: Company) => ({
+          id: company.id,
+          value: company.id,
+          label: company.company_name,
+          subLabel: `Tax: ${company.tax_number}`
+        }));
+        setCompanies(options);
+      }
+    } catch (err) {
+      console.error('Error fetching companies:', err);
+      setCompanies([]);
+    } finally {
+      setLoading(prev => ({ ...prev, companiesLoading: false }));
+    }
+  };
+
   // Fetch classifications and license types on component mount
   useEffect(() => {
     fetchClassifications();
     fetchLicenseTypes();
     fetchCustomerStatuses();
+    fetchCompanies();
   }, []);
 
   // Debounce search
@@ -236,6 +277,23 @@ export default function CustomerDetailsStep() {
       setSearchInitiated(false);
     }
   }, [searchTerm, selectedBranch]);
+
+  // Save company details to Formik when company is selected
+  useEffect(() => {
+    if (formik.values.companyId && companiesList.length > 0) {
+      const company = companiesList.find((c: Company) => c.id === formik.values.companyId);
+      if (company) {
+        formik.setFieldValue('companyName', company.company_name || '');
+        formik.setFieldValue('companyTaxNumber', company.tax_number || '');
+        formik.setFieldValue('companyCommercialRegistration', company.commercial_registration_number || '');
+        formik.setFieldValue('companyEmail', company.email || '');
+        formik.setFieldValue('companyMobile', company.mobile_number || '');
+        formik.setFieldValue('companyAddress', company.address || '');
+        formik.setFieldValue('companyCity', company.city || '');
+        formik.setFieldValue('companyCountry', company.country || '');
+      }
+    }
+  }, [formik.values.companyId, companiesList]);
 
   const handleCustomerSelect = (customer: Customer) => {
     // Check if customer is blacklisted
@@ -429,6 +487,43 @@ export default function CustomerDetailsStep() {
                   {selectedCustomer.status}
                 </span>
               </div>
+            </div>
+
+            {/* Company Linking Section */}
+            <div className="mt-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+              <div className="mb-4">
+                <SimpleCheckbox
+                  name="relatedToCompany"
+                  label="Related to Company"
+                  checked={formik.values.relatedToCompany}
+                  onCheckedChange={(checked: boolean) => {
+                    formik.setFieldValue('relatedToCompany', checked);
+                    if (!checked) {
+                      formik.setFieldValue('companyId', '');
+                      formik.setFieldValue('companyName', '');
+                      formik.setFieldValue('companyTaxNumber', '');
+                      formik.setFieldValue('companyCommercialRegistration', '');
+                      formik.setFieldValue('companyEmail', '');
+                      formik.setFieldValue('companyMobile', '');
+                      formik.setFieldValue('companyAddress', '');
+                      formik.setFieldValue('companyCity', '');
+                      formik.setFieldValue('companyCountry', '');
+                    }
+                  }}
+                />
+              </div>
+              {formik.values.relatedToCompany && (
+                <div>
+                  <CustomSearchableDropdown
+                    name="companyId"
+                    label="Select Company"
+                    options={companies}
+                    placeholder="Select a company"
+                    searchPlaceholder="Search companies..."
+                    isLoading={loading.companiesLoading}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
