@@ -146,12 +146,7 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
 
   const holdReasons = [
     { value: 'financial_claims', label: 'Presence of financial claims' },
-    { value: 'documentation_issues', label: 'Documentation issues' },
-    { value: 'vehicle_maintenance', label: 'Vehicle maintenance required' },
-    { value: 'customer_request', label: 'Customer request' },
-    { value: 'legal_issues', label: 'Legal issues' },
-    { value: 'payment_delays', label: 'Payment delays' },
-    { value: 'other', label: 'Other' }
+    { value: 'damage_non_traffic_accident', label: 'Damage resulting from non-traffic accident' }
   ];
 
   const closeReasons = [
