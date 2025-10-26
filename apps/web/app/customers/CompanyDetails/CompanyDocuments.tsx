@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Download, Trash2, Eye, Upload } from 'lucide-react';
-import CustomButton from '../../../reusableComponents/CustomButton';
-import { useHttpService } from '../../../../lib/http-service';
+import CustomButton from '../../reusableComponents/CustomButton';
+import { useHttpService } from '../../../lib/http-service';
 import { toast } from '@kit/ui/sonner';
 
-interface Document {
+interface CompanyDocument {
   id: string;
   file_name: string;
   file_path: string;
@@ -21,7 +21,7 @@ interface CompanyDocumentsProps {
 export default function CompanyDocuments({ companyId }: CompanyDocumentsProps) {
   const { getRequest, postRequest } = useHttpService();
 
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const [documents, setDocuments] = useState<CompanyDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -81,15 +81,15 @@ export default function CompanyDocuments({ companyId }: CompanyDocumentsProps) {
     }
   };
 
-  const handleDownload = async (document: Document) => {
+  const handleDownload = async (doc: CompanyDocument) => {
     try {
-      const result = await getRequest(`/api/companies/${companyId}/documents/${document.id}/download`);
+      const result = await getRequest(`/api/companies/${companyId}/documents/${doc.id}/download`);
 
       if (result.success && result.data) {
         // Create a temporary link to download the file
         const link = document.createElement('a');
         link.href = result.data.downloadUrl;
-        link.download = document.file_name;
+        link.download = doc.file_name;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

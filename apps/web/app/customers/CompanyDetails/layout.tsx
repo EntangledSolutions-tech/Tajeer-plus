@@ -5,12 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import CompanyOverview from './CompanyOverview';
 import CompanyContracts from './CompanyContracts';
 import CompanyDocuments from './CompanyDocuments';
-import CustomButton from '../../../reusableComponents/CustomButton';
+import CustomButton from '../../reusableComponents/CustomButton';
 import { Edit, MoreHorizontal, Trash2, ChevronDown, Pencil, ArrowLeft } from 'lucide-react';
-import CustomTabs from '../../../reusableComponents/CustomTabs';
-import CustomStepperModal, { StepperModalStep } from '../../../reusableComponents/CustomStepperModal';
-import CompanyDetailsStep from '../../CompanyModal/CompanyStepper/CompanyDetailsStep';
-import CompanyDocumentsStep from '../../CompanyModal/CompanyStepper/CompanyDocumentsStep';
+import CustomTabs from '../../reusableComponents/CustomTabs';
+import CustomStepperModal, { StepperModalStep } from '../../reusableComponents/CustomStepperModal';
+import CompanyDetailsStep from '../CompanyModal/CompanyStepper/CompanyDetailsStep';
+import CompanyDocumentsStep from '../CompanyModal/CompanyStepper/CompanyDocumentsStep';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,8 +18,8 @@ import {
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
 import * as Yup from 'yup';
-import { useHttpService } from '../../../../lib/http-service';
-import { useBranch } from '../../../../contexts/branch-context';
+import { useHttpService } from '../../../lib/http-service';
+import { useBranch } from '../../../contexts/branch-context';
 import { toast } from '@kit/ui/sonner';
 
 interface Company {
@@ -134,15 +134,13 @@ const companyDocumentsSchema = Yup.object({
 
 const steps: StepperModalStep[] = [
   {
-    title: 'Company Details',
-    description: 'Basic company information',
-    schema: companyDetailsSchema,
+    id: 'company-details',
+    name: 'Company Details',
     component: CompanyDetailsStep
   },
   {
-    title: 'Documents',
-    description: 'Upload company documents',
-    schema: companyDocumentsSchema,
+    id: 'documents',
+    name: 'Documents',
     component: CompanyDocumentsStep
   }
 ];
@@ -300,9 +298,9 @@ export default function CompanyDetailsLayout() {
   }
 
   const tabs = [
-    { id: 'overview', label: 'Overview', component: <CompanyOverview company={company} /> },
-    { id: 'contracts', label: 'Contracts', component: <CompanyContracts companyId={companyId} /> },
-    { id: 'documents', label: 'Documents', component: <CompanyDocuments companyId={companyId} /> },
+    { key: 'overview', id: 'overview', label: 'Overview', component: <CompanyOverview company={company} /> },
+    { key: 'contracts', id: 'contracts', label: 'Contracts', component: <CompanyContracts companyId={companyId} /> },
+    { key: 'documents', id: 'documents', label: 'Documents', component: <CompanyDocuments companyId={companyId} /> },
   ];
 
   return (
@@ -364,13 +362,14 @@ export default function CompanyDetailsLayout() {
         steps={steps}
         stepSchemas={[companyDetailsSchema, companyDocumentsSchema]}
         initialValues={getEditInitialValues()}
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
         title="Edit Company"
         onSubmit={handleEditCompany}
         onComplete={() => {
           setIsEditModalOpen(false);
         }}
+        triggerButton={
+          <div style={{ display: 'none' }}></div>
+        }
       />
     </div>
   );

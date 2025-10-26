@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight } from 'lucide-react';
-import CustomTable, { TableColumn, TableAction } from '../../../reusableComponents/CustomTable';
-import { useHttpService } from '../../../../lib/http-service';
+import CustomTable, { TableColumn, TableAction } from '../../reusableComponents/CustomTable';
+import { useHttpService } from '../../../lib/http-service';
 import { toast } from '@kit/ui/sonner';
 
 interface Contract {
