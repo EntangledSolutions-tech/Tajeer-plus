@@ -98,14 +98,14 @@ export async function POST(request: NextRequest) {
         model_id: vehicle.model, // Form sends 'model' field with UUID value
         make_year: vehicle.makeYear,
         color_id: vehicle.color, // Form sends 'color' field with UUID value
-        age_range: vehicle.ageRange,
+        age_range: depreciation.ageRange, // Moved to pricing step
         serial_number: vehicle.serialNumber,
         plate_number: plateNumberUpper,
         mileage: parseInt(vehicle.mileage) || 0,
-        year_of_manufacture: vehicle.yearOfManufacture,
+        year_of_manufacture: null, // Field removed from form, set to null
         car_class: vehicle.carClass,
         plate_registration_type: vehicle.plateRegistrationType,
-        expected_sale_price: Math.min(parseFloat(vehicle.expectedSalePrice) || 0, 99999999.99),
+        expected_sale_price: Math.min(parseFloat(depreciation.expectedSalePrice) || 0, 99999999.99), // Moved to pricing step
         branch_id: branch_id, // From body root level
 
         // Additional vehicle fields
@@ -153,8 +153,8 @@ export async function POST(request: NextRequest) {
 
         // Additional details
         status_id: availableStatus.id,
-        owner_id: additional_details.ownerName,
-        actual_user_id: additional_details.actualUser,
+        owner_id: vehicle.ownerName,
+        actual_user_id: vehicle.actualUser,
         insurance_policy_id: additional_details.insuranceType,
         insurance_value: Math.min(parseFloat(additional_details.insuranceValue) || 0, 99999999.99),
 

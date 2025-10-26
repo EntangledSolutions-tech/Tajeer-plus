@@ -53,17 +53,18 @@ const vehicleDetailsSchema = Yup.object({
   model: Yup.string().required('Car Model is required'),
   makeYear: Yup.string().required('Make Year is required'),
   color: Yup.string().required('Car color is required'),
-  ageRange: Yup.string().required('Age range is required'),
   serialNumber: Yup.string().required('Serial number is required'),
   plateNumber: Yup.string().required('Plate number is required').max(10, 'Plate number must be at most 10 characters'),
   mileage: Yup.string().required('Mileage is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
-  yearOfManufacture: Yup.string().required('Year of Manufacture is required'),
   carClass: Yup.string().required('Car class classification is required'),
   plateRegistrationType: Yup.string().required('Plate registration type is required'),
-  expectedSalePrice: Yup.string().required('Expected Sale Price is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
   branch_id: Yup.string().required('Branch is required'),
   chassis_number: Yup.string().required('Chassis Number is required').max(20, 'Chassis number must be at most 20 characters'),
   vehicle_load_capacity: Yup.string().required('Vehicle Load Capacity is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
+  ownerName: Yup.string().required('Owner Name is required'),
+  ownerId: Yup.string(),
+  actualUser: Yup.string().required('Actual User is required'),
+  userId: Yup.string(),
 });
 const pricingFeeSchema = Yup.object({
   // Only validate the daily fields that users actually input
@@ -91,6 +92,8 @@ const expirationDatesSchema = Yup.object({
   operatingCardExpiration: Yup.string().required('Operating card expiration date is required'),
 });
 const vehiclePricingSchema = Yup.object({
+  ageRange: Yup.string().required('Age range is required'),
+  expectedSalePrice: Yup.string().required('Expected Sale Price is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
   paymentType: Yup.string().required('Payment type is required'),
   // Cash payment fields - only required when paymentType is 'cash'
   carPricing: Yup.number().when('paymentType', {
@@ -121,22 +124,22 @@ const vehiclePricingSchema = Yup.object({
   // Lease-to-own fields - only required when paymentType is 'LeaseToOwn'
   installmentValue: Yup.mixed().when('paymentType', {
     is: 'LeaseToOwn',
-    then: (schema) => schema.typeError('Must be a number').required('Installment Value is required').min(0, 'Installment Value must be at least 0'),
+    then: (schema) => schema.typeError('Must be a number').required('Installment Value is required').test('min', 'Installment Value must be at least 0', (value) => !value || Number(value) >= 0),
     otherwise: (schema) => schema.notRequired()
   }),
   interestRate: Yup.mixed().when('paymentType', {
     is: 'LeaseToOwn',
-    then: (schema) => schema.typeError('Must be a number').required('Interest Rate is required').min(0, 'Interest Rate must be at least 0%').max(100, 'Interest Rate cannot exceed 100%'),
+    then: (schema) => schema.typeError('Must be a number').required('Interest Rate is required').test('range', 'Interest Rate must be between 0% and 100%', (value) => !value || (Number(value) >= 0 && Number(value) <= 100)),
     otherwise: (schema) => schema.notRequired()
   }),
   totalPrice: Yup.mixed().when('paymentType', {
     is: 'LeaseToOwn',
-    then: (schema) => schema.typeError('Must be a number').required('Total Price is required').min(0, 'Total Price must be at least 0'),
+    then: (schema) => schema.typeError('Must be a number').required('Total Price is required').test('min', 'Total Price must be at least 0', (value) => !value || Number(value) >= 0),
     otherwise: (schema) => schema.notRequired()
   }),
   numberOfInstallments: Yup.mixed().when('paymentType', {
     is: 'LeaseToOwn',
-    then: (schema) => schema.typeError('Must be a number').required('Number of Installments is required').min(1, 'Must be at least 1').max(120, 'Cannot exceed 120 installments'),
+    then: (schema) => schema.typeError('Must be a number').required('Number of Installments is required').test('range', 'Must be between 1 and 120', (value) => !value || (Number(value) >= 1 && Number(value) <= 120)),
     otherwise: (schema) => schema.notRequired()
   }),
 });
@@ -148,10 +151,6 @@ const documentsSchema = Yup.object({
   documents: Yup.array(documentSchema).min(1, 'At least one document is required'),
 });
 const additionalDetailsSchema = Yup.object({
-  ownerName: Yup.string().required('Owner Name is required'),
-  ownerId: Yup.string(), // Not required since it's auto-populated
-  actualUser: Yup.string().required('Actual User is required'),
-  userId: Yup.string(), // Not required since it's auto-populated
   insuranceCompany: Yup.string().required('Insurance Company is required'),
   insuranceType: Yup.string().required('Insurance Type is required'),
   policyNumber: Yup.string(), // Not required since it's auto-populated
@@ -177,14 +176,11 @@ const initialValues = {
   model: 'Camry',
   makeYear: '2023',
   color: 'White',
-  ageRange: '0-2 years',
   serialNumber: 'VIN123456789',
   plateNumber: 'ABC-1234',
   mileage: '15000',
-  yearOfManufacture: '2023',
   carClass: 'Van',
   plateRegistrationType: 'Private',
-  expectedSalePrice: '45000',
   branch_id: '',
   chassis_number: 'CH123456789',
   vehicle_load_capacity: '500',
@@ -222,6 +218,8 @@ const initialValues = {
   operatingCardExpiration: '2025-12-31',
 
   // Step 3 - Vehicle Pricing & Depreciation
+  ageRange: '0-1',
+  expectedSalePrice: '45000',
   carPricing: 45000,
   acquisitionDate: '2023-01-15',
   operationDate: '2023-02-01',

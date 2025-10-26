@@ -36,91 +36,17 @@ export default function AdditionalDetailsStep() {
 
   // State for dropdown options
   const [loading, setLoading] = useState({
-    owners: false,
-    actualUsers: false,
     insuranceCompanies: false,
     insuranceTypes: false,
   });
 
   const [options, setOptions] = useState<{
-    owners: DropdownOption[];
-    actualUsers: DropdownOption[];
     insuranceCompanies: DropdownOption[];
     insuranceTypes: DropdownOption[];
   }>({
-    owners: [],
-    actualUsers: [],
     insuranceCompanies: [],
     insuranceTypes: [],
   });
-
-  // Fetch vehicle owners
-  const fetchOwners = async () => {
-    try {
-      setLoading(prev => ({ ...prev, owners: true }));
-      const result = await getRequest('/api/vehicle-configuration/owners?page=1&limit=100');
-      if (result.success && result.data) {
-        // Map the data to the format needed for SearchableSelect
-        const mappedOwners = result.data.owners?.map((owner: any) => {
-          // Ensure all values are strings and not undefined
-          const code = owner.code || '';
-          const id = owner.id || '';
-          const name = owner.name || '';
-
-          if (!code || !id || !name) {
-            console.warn('Invalid owner data:', owner);
-            return null;
-          }
-
-          return {
-            key: code,
-            id: id,
-            value: name,
-            subValue: `Code: ${code}`
-          };
-        }).filter(Boolean) || [];
-        setOptions(prev => ({ ...prev, owners: mappedOwners }));
-      }
-    } catch (error) {
-      console.error('Error fetching owners:', error);
-    } finally {
-      setLoading(prev => ({ ...prev, owners: false }));
-    }
-  };
-
-  // Fetch actual users
-  const fetchActualUsers = async () => {
-    try {
-      setLoading(prev => ({ ...prev, actualUsers: true }));
-      const result = await getRequest('/api/vehicle-configuration/actual-users?page=1&limit=100');
-      if (result.success && result.data) {
-        // Map the data to the format needed for SearchableSelect
-        const mappedUsers = result.data.actualUsers?.map((user: any) => {
-          // Ensure all values are strings and not undefined
-          const code = user.code || '';
-          const id = user.id || '';
-          const name = user.name || '';
-
-          if (!code || !id || !name) {
-            console.warn('Invalid user data:', user);
-            return null;
-          }
-
-          return {
-            key: code,
-            id: id,
-            value: name,
-            subValue: `Code: ${code}`
-          };
-        }).filter(Boolean) || [];
-        setOptions(prev => ({ ...prev, actualUsers: mappedUsers }));
-      }
-    } catch (error) {
-      console.error('Error fetching actual users:', error);
-    } finally {
-      setLoading(prev => ({ ...prev, actualUsers: false }));
-    }
-  };
 
   // Fetch insurance companies
   const fetchInsuranceCompanies = async () => {
@@ -181,43 +107,12 @@ export default function AdditionalDetailsStep() {
   // Load data on component mount
   useEffect(() => {
     console.log('AdditionalDetailsStep mounted, fetching data...');
-    fetchOwners();
-    fetchActualUsers();
     fetchInsuranceCompanies();
   }, []);
 
   // Restore insurance types when companies are loaded and company is selected
   useEffect(() => {
     if (values.insuranceCompany && options.insuranceCompanies.length > 0) {
-      const selectedCompany = options.insuranceCompanies.find(company => company.id === values.insuranceCompany);
-      if (selectedCompany) {
-        fetchInsuranceTypes(selectedCompany.value);
-      }
-    }
-  }, [values.insuranceCompany, options.insuranceCompanies]);
-
-  // Watch for form value changes and update related fields
-  useEffect(() => {
-    if (values.ownerName && options.owners.length > 0) {
-      const selectedOwner = options.owners.find((owner) => owner.id === values.ownerName);
-      if (selectedOwner && selectedOwner.key !== values.ownerId) {
-        setFieldValue('ownerId', selectedOwner.key || '');
-      }
-    }
-  }, [values.ownerName, options.owners, setFieldValue, values.ownerId]);
-
-  useEffect(() => {
-    if (values.actualUser && options.actualUsers.length > 0) {
-      const selectedUser = options.actualUsers.find((user) => user.id === values.actualUser);
-      if (selectedUser && selectedUser.key !== values.userId) {
-        setFieldValue('userId', selectedUser.key || '');
-      }
-    }
-  }, [values.actualUser, options.actualUsers, setFieldValue, values.userId]);
-
-  useEffect(() => {
-    if (values.insuranceCompany) {
-      // Find the company name from the selected ID
       const selectedCompany = options.insuranceCompanies.find(company => company.id === values.insuranceCompany);
       if (selectedCompany) {
         fetchInsuranceTypes(selectedCompany.value);
@@ -256,51 +151,6 @@ export default function AdditionalDetailsStep() {
   return (
     <>
       <h2 className="text-2xl font-bold text-primary mb-8">Additional Details</h2>
-
-      {/* Main Details Section */}
-      <div className="grid grid-cols-2 gap-6 mb-8">
-        {/* Owner Name */}
-        <SearchableSelect
-          label="Owner's Name"
-          name="ownerName"
-          required={true}
-          options={Array.isArray(options.owners) ? options.owners : []}
-          placeholder="Select owner..."
-          searchPlaceholder="Search owners..."
-          disabled={loading.owners}
-        />
-
-        {/* Owner ID (code) */}
-        <CustomInput
-          label="Owner ID"
-          name="ownerId"
-          required={false}
-          type="text"
-          disabled={true}
-          readOnly={true}
-        />
-
-        {/* Actual User */}
-        <SearchableSelect
-          label="Actual User"
-          name="actualUser"
-          required={true}
-          options={Array.isArray(options.actualUsers) ? options.actualUsers : []}
-          placeholder="Select actual user..."
-          searchPlaceholder="Search users..."
-          disabled={loading.actualUsers}
-        />
-
-        {/* User ID (code) */}
-        <CustomInput
-          label="User ID"
-          name="userId"
-          required={false}
-          type="text"
-          disabled={true}
-          readOnly={true}
-        />
-      </div>
 
       {/* Insurance Section */}
       <h3 className="text-xl font-bold text-primary mb-6">Insurance</h3>

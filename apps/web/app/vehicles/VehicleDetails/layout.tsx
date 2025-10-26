@@ -112,15 +112,16 @@ const vehicleDetailsSchema = Yup.object({
   model: Yup.string().required('Car Model is required'),
   makeYear: Yup.string().required('Make Year is required'),
   color: Yup.string().required('Car color is required'),
-  ageRange: Yup.string().required('Age range is required'),
   serialNumber: Yup.string().required('Serial number is required'),
   plateNumber: Yup.string().required('Plate number is required'),
   mileage: Yup.string().required('Mileage is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
-  yearOfManufacture: Yup.string().required('Year of Manufacture is required'),
   carClass: Yup.string().required('Car class classification is required'),
   plateRegistrationType: Yup.string().required('Plate registration type is required'),
-  expectedSalePrice: Yup.string().required('Expected Sale Price is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
   branch_id: Yup.string().required('Branch is required'),
+  ownerName: Yup.string().required('Owner Name is required'),
+  ownerId: Yup.string(),
+  actualUser: Yup.string().required('Actual User is required'),
+  userId: Yup.string(),
 });
 
 const pricingFeeSchema = Yup.object({
@@ -149,6 +150,8 @@ const expirationDatesSchema = Yup.object({
 });
 
 const vehiclePricingSchema = Yup.object({
+  ageRange: Yup.string().required('Age range is required'),
+  expectedSalePrice: Yup.string().required('Expected Sale Price is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
   carPricing: Yup.number().typeError('Must be a number').required('Car Pricing is required').min(1, 'Car Pricing cannot be 0'),
   acquisitionDate: Yup.string().required('Acquisition Date is required'),
   operationDate: Yup.string().required('Operation Date is required'),
@@ -157,10 +160,6 @@ const vehiclePricingSchema = Yup.object({
 });
 
 const additionalDetailsSchema = Yup.object({
-  ownerName: Yup.string().required('Owner Name is required'),
-  ownerId: Yup.string(),
-  actualUser: Yup.string().required('Actual User is required'),
-  userId: Yup.string(),
   insuranceCompany: Yup.string().required('Insurance Company is required'),
   insuranceType: Yup.string().required('Insurance Type is required'),
   policyNumber: Yup.string(),
@@ -356,14 +355,11 @@ export default function VehicleDetailsLayout() {
       model: typeof vehicle.model === 'object' ? vehicle.model?.name : vehicle.model || '',
       makeYear: vehicle.make_year ? vehicle.make_year.toString() : '',
       color: typeof vehicle.color === 'object' ? vehicle.color?.name : vehicle.color || '',
-      ageRange: vehicle.age_range || '',
       serialNumber: vehicle.serial_number || '',
       plateNumber: vehicle.plate_number || '',
       mileage: vehicle.mileage || '',
-      yearOfManufacture: vehicle.year_of_manufacture ? vehicle.year_of_manufacture.toString() : '',
       carClass: vehicle.car_class || '',
       plateRegistrationType: vehicle.plate_registration_type || '',
-      expectedSalePrice: vehicle.expected_sale_price || '',
       branch: vehicle.branch_id || '',
 
       // Pricing
@@ -395,6 +391,8 @@ export default function VehicleDetailsLayout() {
       operationDate: vehicle.operation_date || '',
       depreciationRate: vehicle.depreciation_rate || 0,
       depreciationYears: vehicle.depreciation_years ? vehicle.depreciation_years.toString() : '',
+      ageRange: vehicle.age_range || '',
+      expectedSalePrice: vehicle.expected_sale_price || '',
 
       // Additional details
       ownerName: typeof vehicle.owner === 'object' ? vehicle.owner?.name : vehicle.owner || '',

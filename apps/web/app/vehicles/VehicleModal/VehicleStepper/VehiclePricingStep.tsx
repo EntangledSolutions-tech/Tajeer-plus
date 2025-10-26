@@ -66,6 +66,32 @@ export default function VehiclePricingStep() {
     <>
       <h2 className="text-2xl font-bold text-primary mb-8">Vehicle Pricing & Depreciation</h2>
 
+      {/* Age Range and Expected Sale Price */}
+      <div className="grid grid-cols-2 gap-6 mb-8">
+        <CustomSelect
+          label="Age Range"
+          name="ageRange"
+          required={true}
+          options={[
+            { value: '0-1', label: '0-1 years' },
+            { value: '2-3', label: '2-3 years' },
+            { value: '4-5', label: '4-5 years' },
+            { value: '6-7', label: '6-7 years' },
+            { value: '8+', label: '8+ years' }
+          ]}
+        />
+        <CustomInput
+          label="Expected Sale Price"
+          name="expectedSalePrice"
+          required={true}
+          type="number"
+          placeholder="Enter expected sale price"
+          min={0}
+          isCurrency={true}
+          iconPosition="left"
+        />
+      </div>
+
       {/* Payment Type Toggle */}
       <div className="mb-8">
         <div className="font-semibold text-primary mb-4">Payment Type</div>
