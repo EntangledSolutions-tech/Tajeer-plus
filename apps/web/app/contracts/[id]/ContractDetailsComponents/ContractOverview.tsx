@@ -1193,11 +1193,6 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
             defaultOpen={true}
             className="mb-6 mx-0"
             headerClassName="bg-[#F6F9FF]"
-            headerButton={
-              <CustomButton variant="primary" size="sm">
-                Update Vehicle
-              </CustomButton>
-            }
           >
             <div className="grid grid-cols-5 gap-y-2 gap-x-6 text-base">
               <div>
