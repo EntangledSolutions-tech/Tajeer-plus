@@ -273,10 +273,15 @@ export default function PricingTermsStep() {
               value={dailyRentalRate}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 const value = e.target.value;
+                // Allow any input while typing
+                setDailyRentalRate(value);
+              }}
+              onBlur={() => {
+                // Validate on blur - ensure it meets minimum requirement
+                const currentValue = parseFloat(dailyRentalRate.replace(/,/g, '')) || 0;
                 const minDailyRate = parseFloat(formik.values.vehicleDailyRentRate) || 0;
-                const enteredValue = parseFloat(value.replace(/,/g, '')) || 0;
-                if (enteredValue >= minDailyRate) {
-                  setDailyRentalRate(value);
+                if (currentValue > 0 && currentValue < minDailyRate) {
+                  setDailyRentalRate(minDailyRate.toString());
                 }
               }}
               placeholder="0.00"

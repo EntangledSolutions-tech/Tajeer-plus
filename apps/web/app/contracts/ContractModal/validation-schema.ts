@@ -3,6 +3,11 @@ import * as Yup from 'yup';
 // Step-specific validation schemas
 export const customerDetailsSchema = Yup.object({
   selectedCustomerId: Yup.string().required('Please select a customer'),
+  companyId: Yup.string().when('relatedToCompany', {
+    is: true,
+    then: (schema) => schema.required('Company selection is required'),
+    otherwise: (schema) => schema.nullable().notRequired()
+  }),
 });
 
 export const vehicleDetailsSchema = Yup.object({

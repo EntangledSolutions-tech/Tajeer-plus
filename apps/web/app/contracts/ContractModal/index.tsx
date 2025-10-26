@@ -65,6 +65,16 @@ const initialValues = {
   customerStatus: '',
   customerStatusId: '',
   customerNationality: '',
+  relatedToCompany: false,
+  companyId: '',
+  companyName: '',
+  companyTaxNumber: '',
+  companyCommercialRegistration: '',
+  companyEmail: '',
+  companyMobile: '',
+  companyAddress: '',
+  companyCity: '',
+  companyCountry: '',
 
   // Step 2 - Vehicle Details
   selectedVehicleId: '',
@@ -99,6 +109,7 @@ const initialValues = {
   paymentMethod: 'cash',
   totalAmount: '0',
   depositAmount: '',
+  addOns: [],
 
 
   // Step 6 - Summary (no additional fields needed)

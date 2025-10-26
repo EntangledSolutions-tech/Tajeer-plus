@@ -256,6 +256,19 @@ export default function CustomerDetailsStep() {
     }
   };
 
+  // Validate company selection when relatedToCompany is checked
+  useEffect(() => {
+    if (formik.values.relatedToCompany && !formik.values.companyId) {
+      formik.setFieldError('companyId', 'Company selection is required');
+    } else if (!formik.values.relatedToCompany && formik.errors.companyId) {
+      // Clear error when checkbox is unchecked
+      formik.setFieldError('companyId', undefined);
+    } else if (formik.values.relatedToCompany && formik.values.companyId && formik.errors.companyId) {
+      // Clear error if company is selected
+      formik.setFieldError('companyId', undefined);
+    }
+  }, [formik.values.relatedToCompany, formik.values.companyId]);
+
   // Fetch classifications and license types on component mount
   useEffect(() => {
     fetchClassifications();
@@ -291,6 +304,8 @@ export default function CustomerDetailsStep() {
         formik.setFieldValue('companyAddress', company.address || '');
         formik.setFieldValue('companyCity', company.city || '');
         formik.setFieldValue('companyCountry', company.country || '');
+        // Mark the field as touched to trigger validation
+        formik.setFieldTouched('companyId', true);
       }
     }
   }, [formik.values.companyId, companiesList]);
@@ -498,6 +513,10 @@ export default function CustomerDetailsStep() {
                   checked={formik.values.relatedToCompany}
                   onCheckedChange={(checked: boolean) => {
                     formik.setFieldValue('relatedToCompany', checked);
+                    if (checked) {
+                      // Mark companyId as touched when checkbox is checked to trigger validation
+                      formik.setFieldTouched('companyId', true);
+                    }
                     if (!checked) {
                       formik.setFieldValue('companyId', '');
                       formik.setFieldValue('companyName', '');
@@ -508,21 +527,26 @@ export default function CustomerDetailsStep() {
                       formik.setFieldValue('companyAddress', '');
                       formik.setFieldValue('companyCity', '');
                       formik.setFieldValue('companyCountry', '');
+                      // Clear validation error and touched state when unchecked
+                      formik.setFieldError('companyId', undefined);
+                      formik.setFieldTouched('companyId', false);
+                      // Trigger validation to enable next button
+                      setTimeout(() => {
+                        formik.validateForm();
+                      }, 100);
                     }
                   }}
                 />
               </div>
               {formik.values.relatedToCompany && (
-                <div>
-                  <CustomSearchableDropdown
-                    name="companyId"
-                    label="Select Company"
-                    options={companies}
-                    placeholder="Select a company"
-                    searchPlaceholder="Search companies..."
-                    isLoading={loading.companiesLoading}
-                  />
-                </div>
+                <CustomSearchableDropdown
+                  name="companyId"
+                  label="Select Company"
+                  options={companies}
+                  placeholder="Select a company"
+                  searchPlaceholder="Search companies..."
+                  isLoading={loading.companiesLoading}
+                />
               )}
             </div>
           </div>
