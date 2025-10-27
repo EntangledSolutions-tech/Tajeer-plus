@@ -146,7 +146,6 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [holdReason, setHoldReason] = useState('');
   const [holdComments, setHoldComments] = useState('');
-  const [closeReason, setCloseReason] = useState('');
   const [closeComments, setCloseComments] = useState('');
   const [cancelReason, setCancelReason] = useState('');
   const [cancelComments, setCancelComments] = useState('');
@@ -201,15 +200,6 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
     { value: 'damage_non_traffic_accident', label: 'Damage resulting from non-traffic accident' }
   ];
 
-  const closeReasons = [
-    { value: 'contract_completed', label: 'Contract completed successfully' },
-    { value: 'customer_request', label: 'Customer request' },
-    { value: 'vehicle_returned', label: 'Vehicle returned' },
-    { value: 'early_termination', label: 'Early termination' },
-    { value: 'mutual_agreement', label: 'Mutual agreement' },
-    { value: 'other', label: 'Other' }
-  ];
-
   const cancelReasons = [
     { value: 'customer_request', label: 'Customer cancellation request' },
     { value: 'payment_failure', label: 'Payment failure or non-payment' },
@@ -260,11 +250,6 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
   };
 
   const handleCloseContract = async () => {
-    if (!closeReason) {
-      alert('Please select a reason for closing');
-      return;
-    }
-
     setIsLoading(true);
     try {
       const response = await fetch(`/api/contracts/${contract?.id}/close`, {
@@ -273,8 +258,7 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          close_reason: closeReason,
-          close_comments: closeComments
+          close_comments: closeComments || ''
         }),
       });
 
@@ -291,7 +275,6 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
     } finally {
       setIsLoading(false);
       setIsCloseModalOpen(false);
-      setCloseReason('');
       setCloseComments('');
     }
   };
@@ -561,9 +544,8 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
         pdfContent.appendChild(createSection('Hold Information', holdData));
       }
 
-      if (contract?.status?.name === 'Closed' && contract?.close_reason) {
+      if (contract?.status?.name === 'Closed') {
         const closeData = [
-          { label: 'Close Reason', value: closeReasons.find(r => r.value === contract.close_reason)?.label || contract.close_reason },
           { label: 'Close Date', value: contract.close_date ? new Date(contract.close_date).toLocaleDateString('en-GB') : '-' },
           { label: 'Additional Comments', value: contract.close_comments || 'No additional comments' },
         ];
@@ -776,17 +758,9 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-primary">Close Information</h3>
 
-            <SimpleSelect
-              label="Reason for Closing"
-              required
-              options={closeReasons}
-              value={closeReason}
-              onChange={setCloseReason}
-              placeholder="Select a reason for closing"
-            />
-
             <SimpleTextarea
               label="Additional Comments"
+              required={false}
               value={closeComments}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCloseComments(e.target.value)}
               placeholder="Enter any additional details about closing the contract..."
@@ -968,7 +942,7 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
           )}
 
           {/* Close Reason Section - Show only if contract is closed */}
-          {contract?.status?.name === 'Closed' && contract?.close_reason && (
+          {contract?.status?.name === 'Closed' && (
             <CollapsibleSection
               title="Closed Details"
               defaultOpen={true}
@@ -977,18 +951,12 @@ export default function ContractOverview({ contract }: ContractOverviewProps) {
             >
               <div className="grid grid-cols-5 gap-y-2 gap-x-6 text-base">
                 <div>
-                  <div className="text-sm text-primary font-medium">Close Reason</div>
-                  <div className="font-bold text-primary text-base">
-                    {closeReasons.find(r => r.value === contract.close_reason)?.label || contract.close_reason}
-                  </div>
-                </div>
-                <div>
                   <div className="text-sm text-primary font-medium">Close Date</div>
                   <div className="font-bold text-primary text-base">
                     {contract.close_date ? new Date(contract.close_date).toLocaleDateString('en-GB') : '-'}
                   </div>
                 </div>
-                <div className="col-span-3">
+                <div className="col-span-4">
                   <div className="text-sm text-primary font-medium">Additional Comments</div>
                   <div className="font-bold text-primary text-base">
                     {contract.close_comments || 'No additional comments'}

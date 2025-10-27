@@ -11,14 +11,7 @@ export async function POST(
     const { id: contractId } = await params;
     const body = await request.json();
 
-    const { close_reason, close_comments } = body;
-
-    if (!close_reason) {
-      return NextResponse.json(
-        { error: 'Close reason is required' },
-        { status: 400 }
-      );
-    }
+    const { close_comments } = body;
 
     // First, get the "Closed" status ID
     const { data: closedStatus, error: statusError } = await supabase
@@ -56,7 +49,6 @@ export async function POST(
       .from('contracts')
       .update({
         status_id: closedStatus.id,
-        close_reason: close_reason,
         close_comments: close_comments || null,
         close_date: new Date().toISOString(),
         updated_at: new Date().toISOString()
