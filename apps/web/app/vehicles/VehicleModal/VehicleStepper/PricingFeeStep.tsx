@@ -35,10 +35,10 @@ export default function PricingFeeStep() {
     setFieldValue('monthlyExcessKmRate', values.dailyExcessKmRate ? (values.dailyExcessKmRate * 30).toFixed(2) : '');
     setFieldValue('monthlyOpenKmRate', values.dailyOpenKmRate ? (values.dailyOpenKmRate * 30).toFixed(2) : '');
 
-    // Calculate hourly rates (daily / 24)
-    setFieldValue('hourlyRentalRate', values.dailyRentalRate ? (values.dailyRentalRate / 24).toFixed(2) : '');
-    setFieldValue('hourlyPermittedKm', values.dailyPermittedKm ? (values.dailyPermittedKm / 24).toFixed(2) : '');
-    setFieldValue('hourlyExcessKmRate', values.dailyExcessKmRate ? (values.dailyExcessKmRate / 24).toFixed(2) : '');
+    // Calculate hourly rates (daily / 24) - round up
+    setFieldValue('hourlyRentalRate', values.dailyRentalRate ? Math.ceil((values.dailyRentalRate / 24) * 100) / 100 : '');
+    setFieldValue('hourlyPermittedKm', values.dailyPermittedKm ? Math.ceil(values.dailyPermittedKm / 24) : '');
+    setFieldValue('hourlyExcessKmRate', values.dailyExcessKmRate ? Math.ceil((values.dailyExcessKmRate / 24) * 100) / 100 : '');
   }, [
     values.dailyRentalRate,
     values.dailyMinimumRate,
@@ -48,11 +48,11 @@ export default function PricingFeeStep() {
     setFieldValue
   ]);
 
-  // Calculate hourly delay rate as hourly rental rate * 2
+  // Calculate hourly delay rate as hourly rental rate * 2 - round up
   React.useEffect(() => {
     const hourlyRate = parseFloat(values.hourlyRentalRate);
     if (hourlyRate && !isNaN(hourlyRate)) {
-      setFieldValue('hourlyDelayRate', (hourlyRate * 2).toFixed(2));
+      setFieldValue('hourlyDelayRate', Math.ceil((hourlyRate * 2) * 100) / 100);
     }
   }, [values.hourlyRentalRate, setFieldValue]);
 

@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import CustomSelect from '../../../reusableComponents/CustomSelect';
 import CustomInput from '../../../reusableComponents/CustomInput';
+import CustomDateTime from '../../../reusableComponents/CustomDateTime';
 import CustomButton from '../../../reusableComponents/CustomButton';
 import { useFormikContext } from 'formik';
 
@@ -201,6 +202,15 @@ export default function VehiclePricingStep() {
                 options={field.options || []}
                 placeholder="Select depreciation years"
               />
+            ) : field.type === 'date' ? (
+              <CustomDateTime
+                key={field.name}
+                label={field.label}
+                name={field.name}
+                required={field.isRequired}
+                type="date"
+                max={field.name === 'acquisitionDate' || field.name === 'operationDate' ? today : field.max}
+              />
             ) : (
               <CustomInput
                 key={field.name}
@@ -209,7 +219,7 @@ export default function VehiclePricingStep() {
                 required={field.isRequired}
                 type={field.type}
                 min={field.min}
-                max={field.type === 'date' && (field.name === 'acquisitionDate' || field.name === 'operationDate') ? today : field.max}
+                max={field.max}
                 placeholder={field.placeholder}
                 isCurrency={field.isCurrency}
                 iconPosition="left"

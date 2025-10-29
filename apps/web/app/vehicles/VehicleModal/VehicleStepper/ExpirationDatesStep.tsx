@@ -1,6 +1,6 @@
 import React from 'react';
 import { useFormikContext } from 'formik';
-import CustomInput from '../../../reusableComponents/CustomInput';
+import CustomDateTime from '../../../reusableComponents/CustomDateTime';
 import CustomButton from '../../../reusableComponents/CustomButton';
 
 function gregorianToHijri(dateStr: string) {
@@ -39,11 +39,11 @@ export default function ExpirationDatesStep() {
       <div className="flex flex-col gap-6 max-w-2xl">
         {expirationFields.map((field) => (
           <div key={field.name} className="flex items-center gap-4">
-            <CustomInput
+            <CustomDateTime
               label={field.label}
               name={field.name}
               required={field.isRequired}
-              type={field.type}
+              type="date"
               min={today}
               max={field.max}
             />

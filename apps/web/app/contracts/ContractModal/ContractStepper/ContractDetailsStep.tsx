@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useFormikContext } from 'formik';
 import CustomInput from '../../../reusableComponents/CustomInput';
 import CustomSelect from '../../../reusableComponents/CustomSelect';
+import CustomDateTime from '../../../reusableComponents/CustomDateTime';
 import { useHttpService } from '../../../../lib/http-service';
 
 export default function ContractDetailsStep() {
@@ -17,22 +18,9 @@ export default function ContractDetailsStep() {
     if (!startDate) return '';
     const date = new Date(startDate);
     date.setDate(date.getDate() + 1);
-    return date.toISOString().slice(0, 16); // Return datetime-local format
+    return date.toISOString().split('T')[0]; // Return YYYY-MM-DD format
   };
 
-  // Handle start date change to reset end date if it's invalid
-  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newStartDate = e.target.value;
-    formik.setFieldValue('startDate', newStartDate);
-
-    // Calculate end date based on current duration type
-    calculateEndDate(newStartDate);
-
-    // Trigger validation
-    setTimeout(() => {
-      formik.validateForm();
-    }, 100);
-  };
 
   // Handle duration type change
   const handleDurationTypeChange = (value: string) => {
@@ -52,10 +40,7 @@ export default function ContractDetailsStep() {
       formik.validateForm();
     }, 100);
 
-    // Recalculate end date if start date exists
-    if (formik.values.startDate) {
-      calculateEndDate(formik.values.startDate);
-    }
+    // Recalculate end date if start date exists - will be handled by useEffect
   };
 
   // Handle duration in days change (real-time as user types)
@@ -63,10 +48,7 @@ export default function ContractDetailsStep() {
     const days = parseInt(e.target.value) || 0;
     formik.setFieldValue('durationInDays', days);
 
-    // Calculate end date immediately as user types
-    if (formik.values.startDate) {
-      calculateEndDate(formik.values.startDate);
-    }
+    // Calculate end date immediately as user types - will be handled by useEffect
 
     // Trigger validation
     setTimeout(() => {
@@ -87,10 +69,7 @@ export default function ContractDetailsStep() {
       setTotalFeesError('');
     }
 
-    // Calculate end date immediately as user types
-    if (formik.values.startDate && formik.values.vehicleDailyRentRate) {
-      calculateEndDate(formik.values.startDate);
-    }
+    // Calculate end date immediately as user types - will be handled by useEffect
 
     // Trigger validation
     setTimeout(() => {
@@ -98,9 +77,41 @@ export default function ContractDetailsStep() {
     }, 100);
   };
 
-  // Calculate end date based on start date and duration type
-  const calculateEndDate = (startDate: string) => {
-    if (!startDate) return;
+  // Sync durationType state with formik values when component mounts
+  useEffect(() => {
+    if (formik.values.durationType && formik.values.durationType !== durationType) {
+      setDurationType(formik.values.durationType);
+    }
+  }, [formik.values.durationType, durationType]);
+
+  // Validate total fees when vehicle daily rate changes
+  useEffect(() => {
+    if (durationType === 'fees' && formik.values.totalFees && formik.values.vehicleDailyRentRate) {
+      const fees = parseFloat(formik.values.totalFees) || 0;
+      const vehicleDailyRate = parseFloat(formik.values.vehicleDailyRentRate) || 0;
+      if (fees > 0 && vehicleDailyRate > 0 && fees < vehicleDailyRate) {
+        setTotalFeesError('Total fees must be equal or greater than vehicle daily rate');
+      } else {
+        setTotalFeesError('');
+      }
+    }
+  }, [durationType, formik.values.totalFees, formik.values.vehicleDailyRentRate]);
+
+  // Set default duration when component mounts
+  useEffect(() => {
+    if (formik.values.startDate && durationType === 'duration' && (!formik.values.durationInDays || formik.values.durationInDays === 0)) {
+      formik.setFieldValue('durationInDays', 1);
+    }
+  }, []); // Run only on mount
+
+  // Main effect: Recalculate end date when start date, duration type, or duration values change
+  useEffect(() => {
+    const startDate = formik.values.startDate;
+
+    if (!startDate || !durationType) {
+      formik.setFieldValue('endDate', '');
+      return;
+    }
 
     let daysToAdd = 0;
 
@@ -113,65 +124,36 @@ export default function ContractDetailsStep() {
     }
 
     if (daysToAdd > 0) {
+      // Parse startDate - CustomDateTime returns 'yyyy-MM-dd HH:mm:ss' format
       const start = new Date(startDate);
+      if (isNaN(start.getTime())) {
+        // If parsing fails, return empty
+        formik.setFieldValue('endDate', '');
+        return;
+      }
       const end = new Date(start);
       end.setDate(start.getDate() + daysToAdd);
-      const endDateString = end.toISOString().slice(0, 16); // Return datetime-local format
+
+      // Format as 'yyyy-MM-dd HH:mm:ss' for CustomDateTime datetime type
+      const year = end.getFullYear();
+      const month = String(end.getMonth() + 1).padStart(2, '0');
+      const day = String(end.getDate()).padStart(2, '0');
+      const hours = String(start.getHours()).padStart(2, '0');
+      const minutes = String(start.getMinutes()).padStart(2, '0');
+      const seconds = String(start.getSeconds()).padStart(2, '0');
+      const endDateString = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+
       formik.setFieldValue('endDate', endDateString);
     } else {
       formik.setFieldValue('endDate', '');
     }
-  };
-
-
-
-  // Sync durationType state with formik values when component mounts
-  useEffect(() => {
-    if (formik.values.durationType && formik.values.durationType !== durationType) {
-      setDurationType(formik.values.durationType);
-    }
-
-    // Calculate end date if we have start date and duration type
-    if (formik.values.startDate && formik.values.durationType) {
-      calculateEndDate(formik.values.startDate);
-    }
-
-    // Validate total fees when vehicle daily rate changes
-    if (durationType === 'fees' && formik.values.totalFees && formik.values.vehicleDailyRentRate) {
-      const fees = parseFloat(formik.values.totalFees) || 0;
-      const vehicleDailyRate = parseFloat(formik.values.vehicleDailyRentRate) || 0;
-      if (fees > 0 && vehicleDailyRate > 0 && fees < vehicleDailyRate) {
-        setTotalFeesError('Total fees must be equal or greater than vehicle daily rate');
-      } else {
-        setTotalFeesError('');
-      }
-    }
-
-  }, [formik.values.durationType, formik.values.startDate, formik.values.vehicleDailyRentRate, formik.values.totalFees, formik.values.durationInDays]);
-
-  // Calculate end date when component first loads if we have the required data
-  useEffect(() => {
-    if (formik.values.startDate && durationType) {
-      // Set default duration if not set
-      if (durationType === 'duration' && (!formik.values.durationInDays || formik.values.durationInDays === 0)) {
-        formik.setFieldValue('durationInDays', 1);
-      }
-
-      // Calculate end date
-      setTimeout(() => {
-        calculateEndDate(formik.values.startDate);
-      }, 100);
-    }
-  }, []); // Run only on mount
-
-  // Additional effect to ensure end date is calculated when step becomes active
-  useEffect(() => {
-    if (formik.values.startDate && !formik.values.endDate) {
-      setTimeout(() => {
-        calculateEndDate(formik.values.startDate);
-      }, 200);
-    }
-  }, [formik.values.startDate, formik.values.durationInDays, durationType]);
+  }, [
+    formik.values.startDate,
+    formik.values.durationInDays,
+    formik.values.totalFees,
+    formik.values.vehicleDailyRentRate,
+    durationType
+  ]);
 
 
   return (
@@ -186,23 +168,22 @@ export default function ContractDetailsStep() {
       <div className="grid grid-cols-2 gap-6">
         {/* Start Date */}
         <div>
-          <CustomInput
+          <CustomDateTime
             label="Start Date"
             name="startDate"
-            type="datetime-local"
+            type="datetime"
             placeholder="Select date and time"
             required={true}
-            min={new Date().toISOString().slice(0, 16)} // Prevent past dates and times
-            onChange={handleStartDateChange}
+            min={new Date().toISOString()} // Prevent past dates and times
           />
         </div>
 
             {/* End Date */}
             <div>
-              <CustomInput
+              <CustomDateTime
                 label="End Date"
                 name="endDate"
-                type="datetime-local"
+                type="datetime"
                 placeholder="Calculated automatically"
                 required={false}
                 disabled={true} // Always disabled as it's calculated

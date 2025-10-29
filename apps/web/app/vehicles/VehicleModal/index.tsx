@@ -198,7 +198,7 @@ const initialValues = {
   dailyMinimumRate: 120,
   dailyPermittedKm: 200,
   dailyExcessKmRate: 2,
-  dailyOpenKmRate: 1.5,
+  dailyOpenKmRate: 2,
   monthlyRentalRate: 3500,
   monthlyMinimumRate: 3000,
   monthlyPermittedKm: 5000,

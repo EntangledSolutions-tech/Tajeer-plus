@@ -4,6 +4,7 @@ import CustomInput from '../../../reusableComponents/CustomInput';
 import CustomSelect from '../../../reusableComponents/CustomSelect';
 import CustomSearchableDropdown, { SearchableDropdownOption } from '../../../reusableComponents/SearchableDropdown';
 import PhoneNumberInput from '../../../reusableComponents/PhoneNumberInput';
+import CustomDateTime from '../../../reusableComponents/CustomDateTime';
 import { countries } from '../../../reusableComponents/countryCodes';
 import { useHttpService } from '../../../../lib/http-service';
 
@@ -167,6 +168,18 @@ export default function CompanyDetailsStep() {
           label={field.label}
           required={field.isRequired}
           countryCodeName="countryCode"
+        />
+      );
+    } else if (field.type === 'date') {
+      return (
+        <CustomDateTime
+          label={field.label}
+          name={field.name}
+          required={field.isRequired}
+          type="date"
+          placeholder={field.placeholder}
+          min={field.min}
+          max={field.max}
         />
       );
     } else {
