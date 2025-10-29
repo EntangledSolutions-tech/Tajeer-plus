@@ -4,7 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useField, useFormikContext } from 'formik';
 import { Label } from '@kit/ui/label';
 import { ChevronDown, Search } from 'lucide-react';
-import { countries } from './countryCodes';
+import { countries, Country } from './countryCodes';
+import FlagIcon from './FlagIcon';
 
 interface PhoneNumberInputProps {
   name: string;
@@ -31,7 +32,7 @@ export default function PhoneNumberInput({
 
   const error = meta.touched && meta.error ? meta.error : undefined;
 
-  const selectedCountry = countries.find(c => c.dialCode === countryCodeField.value) || countries[0];
+  const selectedCountry = (countries.find(c => c.dialCode === countryCodeField.value) || countries[0])!;
 
   const filteredCountries = countries.filter(country =>
     country.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -62,8 +63,6 @@ export default function PhoneNumberInput({
     setFieldValue(name, value);
   };
 
-  if (!selectedCountry) return null;
-
   return (
     <div className={className}>
       {label && (
@@ -82,7 +81,7 @@ export default function PhoneNumberInput({
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="flex items-center gap-1 px-3 py-2 h-full border-r border-primary/20 hover:bg-gray-50 transition-colors"
             >
-              <span className="text-lg">{selectedCountry.flag}</span>
+              <FlagIcon countryCode={selectedCountry.code} size={24} />
               <ChevronDown className={`w-4 h-4 text-primary transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
@@ -115,7 +114,7 @@ export default function PhoneNumberInput({
                         country.dialCode === countryCodeField.value ? 'bg-primary/10' : ''
                       }`}
                     >
-                      <span className="text-lg">{country.flag}</span>
+                      <FlagIcon countryCode={country.code} size={24} />
                       <span className="text-sm font-medium text-primary">{country.dialCode}</span>
                       <span className="text-sm text-primary/70 flex-1 text-left">{country.name}</span>
                     </button>

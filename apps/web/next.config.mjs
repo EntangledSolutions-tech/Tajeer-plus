@@ -80,6 +80,12 @@ function getRemotePatterns() {
     hostname: 'cduocoouavydkenodbqn.supabase.co',
   });
 
+  // Add flagcdn.com for country flags
+  remotePatterns.push({
+    protocol: 'https',
+    hostname: 'flagcdn.com',
+  });
+
   return IS_PRODUCTION
     ? remotePatterns
     : [
