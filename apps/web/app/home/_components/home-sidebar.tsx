@@ -112,7 +112,7 @@ const getIconComponent = (label: string) => {
 
 // Check if a menu item is disabled
 const isMenuItemDisabled = (label: string): boolean => {
-  const disabledItems = [ 'Inspections', 'Help'];
+  const disabledItems = [ 'Help'];
   return disabledItems.includes(label);
 };
 
@@ -120,7 +120,6 @@ const isMenuItemDisabled = (label: string): boolean => {
 const getDisabledReason = (label: string): string => {
   const disabledReasons: Record<string, string> = {
     'Finance': 'Finance module is currently being updated.',
-    'Inspections': 'Inspection module is currently being updated.',
     'Help': 'Help documentation is being revised.'
   };
   return disabledReasons[label] || 'This feature is temporarily unavailable.';

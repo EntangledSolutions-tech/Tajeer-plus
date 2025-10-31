@@ -9,6 +9,7 @@ import CustomTable, { TableColumn, TableAction } from '../../reusableComponents/
 import { Filter, FileSpreadsheet, Loader2, Eye, ArrowRight, FileText, CheckCircle, Calendar } from 'lucide-react';
 import CustomCard from '../../reusableComponents/CustomCard';
 import { useHttpService } from '../../../lib/http-service';
+import { useBranch } from '../../../contexts/branch-context';
 
 interface Contract {
   id: string;
@@ -50,6 +51,7 @@ export default function VehicleContract() {
   const params = useParams();
   const router = useRouter();
   const vehicleId = params?.id as string;
+  const { selectedBranch } = useBranch();
 
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [summary, setSummary] = useState({
@@ -87,6 +89,11 @@ export default function VehicleContract() {
         ...(statusFilter !== 'all' && { status: statusFilter })
       });
 
+      // Add branch_id filter if a branch is selected
+      if (selectedBranch) {
+        params.append('branch_id', selectedBranch.id);
+      }
+
       const response = await getRequest(`/api/vehicles/${vehicleId}/contracts?${params}`);
 
       if (response.success && response.data) {
@@ -99,7 +106,7 @@ export default function VehicleContract() {
         setError(response.error || 'Failed to fetch contracts');
         setContracts([]);
         if (response.error) {
-          alert(`Error: ${response.error}`);
+          toast.error(`Error: ${response.error}`);
         }
       }
     } catch (err) {
@@ -114,7 +121,7 @@ export default function VehicleContract() {
   // Fetch contracts on component mount and when dependencies change
   useEffect(() => {
     fetchContracts();
-  }, [vehicleId, currentPage, statusFilter]);
+  }, [vehicleId, currentPage, statusFilter, selectedBranch]);
 
   // Debounce search
   useEffect(() => {

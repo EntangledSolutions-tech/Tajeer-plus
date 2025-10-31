@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { Search, Filter } from 'lucide-react';
+import { Filter, Pencil } from 'lucide-react';
 import CustomButton from '../../reusableComponents/CustomButton';
 import { RadioButtonGroup } from '../../reusableComponents/RadioButtonGroup';
 import { SearchBar } from '../../reusableComponents/SearchBar';
+import { CollapsibleSection } from '../../reusableComponents/CollapsibleSection';
+import CustomTable, { TableColumn } from '../../reusableComponents/CustomTable';
 
 const summaryCards = [
   { label: 'Net profit (SAR)', value: '39,248.72' },
   { label: 'Net Revenue (SAR)', value: '29,348.98' },
-  { label: 'Total Spending (SAR)', value: '7846.84' },
-  { label: 'Total Receivable (SAR)', value: '47095.89' },
+  { label: 'Total Spending (SAR)', value: '7,846.84' },
+  { label: 'Total Receivable (SAR)', value: '47,095.89' },
 ];
 
 const vehiclePricing = {
@@ -17,6 +19,59 @@ const vehiclePricing = {
   purchasePrice: 'SAR 24,252',
   leaseAmountIncrease: 'SAR 26,252',
 };
+
+const pricingDepreciationRows = [
+  {
+    year: '2022',
+    purchasePrice: 'SAR 24,252',
+    depreciationRate: '15%',
+    annualDepreciation: 'SAR 3,638',
+    accumulatedDepreciation: 'SAR 3,638',
+    bookValue: 'SAR 20,614',
+    operationDate: '06/04/2022',
+    acquisitionDate: '06/04/2022'
+  },
+  {
+    year: '2023',
+    purchasePrice: 'SAR 24,252',
+    depreciationRate: '15%',
+    annualDepreciation: 'SAR 3,638',
+    accumulatedDepreciation: 'SAR 7,276',
+    bookValue: 'SAR 16,976',
+    operationDate: '06/04/2022',
+    acquisitionDate: '06/04/2022'
+  },
+  {
+    year: '2024',
+    purchasePrice: 'SAR 24,252',
+    depreciationRate: '15%',
+    annualDepreciation: 'SAR 3,638',
+    accumulatedDepreciation: 'SAR 10,914',
+    bookValue: 'SAR 13,338',
+    operationDate: '06/04/2022',
+    acquisitionDate: '06/04/2022'
+  },
+  {
+    year: '2025',
+    purchasePrice: 'SAR 24,252',
+    depreciationRate: '15%',
+    annualDepreciation: 'SAR 3,638',
+    accumulatedDepreciation: 'SAR 14,552',
+    bookValue: 'SAR 9,700',
+    operationDate: '06/04/2022',
+    acquisitionDate: '06/04/2022'
+  },
+  {
+    year: '2026',
+    purchasePrice: 'SAR 24,252',
+    depreciationRate: '15%',
+    annualDepreciation: 'SAR 3,638',
+    accumulatedDepreciation: 'SAR 18,190',
+    bookValue: 'SAR 6,062',
+    operationDate: '06/04/2022',
+    acquisitionDate: '06/04/2022'
+  }
+];
 
 const revenueRows = [
   { date: '03/14/2022', type: 'Contract Closure', desc: 'Lorem Ipsum text', transaction: 'Income', method: 'Cash', amount: 'SAR 23,456', invoice: 'INV-9876' },
@@ -37,193 +92,219 @@ const salesRows = [
 export default function VehicleFinance() {
   const [revenueTab, setRevenueTab] = useState('All');
   const [salesTab, setSalesTab] = useState('All');
-  const [showRevenue, setShowRevenue] = useState(true);
-  const [showSales, setShowSales] = useState(true);
+
+  // Define table columns for Revenue
+  const revenueColumns: TableColumn[] = [
+    { key: 'date', label: 'Date', type: 'text' },
+    { key: 'type', label: 'Transaction type', type: 'text' },
+    { key: 'desc', label: 'Description', type: 'text' },
+    { key: 'transaction', label: 'Transaction', type: 'text' },
+    { key: 'method', label: 'Method', type: 'text' },
+    { key: 'amount', label: 'Amount', type: 'text' },
+    { key: 'invoice', label: 'Invoice', type: 'link' },
+    { key: 'actions', label: '', type: 'action' }
+  ];
+
+  // Define table columns for Sales & Return
+  const salesColumns: TableColumn[] = [
+    { key: 'date', label: 'Date', type: 'text' },
+    { key: 'type', label: 'Type', type: 'text' },
+    { key: 'customer', label: 'Customer', type: 'text' },
+    { key: 'price', label: 'Price', type: 'text' },
+    { key: 'invoice', label: '', type: 'link' }
+  ];
+
+  // Define table columns for Pricing & Depreciation Details
+  const pricingDepreciationColumns: TableColumn[] = [
+    { key: 'year', label: 'Year', type: 'text' },
+    { key: 'purchasePrice', label: 'Purchase Price', type: 'text' },
+    { key: 'depreciationRate', label: 'Depreciation Rate', type: 'text' },
+    { key: 'annualDepreciation', label: 'Annual Depreciation', type: 'text' },
+    { key: 'accumulatedDepreciation', label: 'Accumulated Depreciation', type: 'text' },
+    { key: 'bookValue', label: 'Book Value', type: 'text' },
+    { key: 'operationDate', label: 'Operation Date', type: 'text' },
+    { key: 'acquisitionDate', label: 'Acquisition Date', type: 'text' }
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       {/* Summary Cards */}
-      <div className="flex gap-4">
+      <div className="grid grid-cols-4 gap-4">
         {summaryCards.map((card, i) => (
-          <div key={i} className="flex-1 rounded-xl border border-border bg-card flex flex-col items-center py-5">
-            <span className="text-2xl font-bold text-primary">{card.value}</span>
-            <span className="text-base text-muted-foreground font-medium">{card.label}</span>
+          <div key={i} className="rounded-xl border border-primary/20 bg-white flex flex-col items-center py-6">
+            <span className="text-3xl font-bold text-primary mb-1">{card.value}</span>
+            <span className="text-sm text-primary/60 font-medium">{card.label}</span>
           </div>
         ))}
       </div>
+
       {/* Vehicle Pricing & Depreciation */}
-      <div className="rounded-xl border border-border bg-card px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="font-bold text-primary text-lg">Vehicle Pricing & Depreciation</div>
-          <CustomButton isSecondary size="sm">
+      <CollapsibleSection
+        title="Vehicle Pricing & Depreciation"
+        defaultOpen={true}
+        className="mx-0"
+        headerClassName="bg-primary/5"
+        headerButton={
+          <CustomButton
+            isSecondary
+            size="sm"
+            className="flex items-center gap-1 px-3 py-1"
+          >
+            <Pencil className="w-3 h-3" />
             Edit
           </CustomButton>
-        </div>
-        <div className="flex gap-8">
+        }
+      >
+        <div className="grid grid-cols-4 gap-8">
           <div>
-            <div className="text-xs text-muted-foreground font-medium mb-1">Purchase Date</div>
+            <div className="text-xs text-primary/60 font-medium mb-1">Purchase Date</div>
             <div className="text-base text-primary font-bold">{vehiclePricing.purchaseDate}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground font-medium mb-1">Number of depreciation years</div>
+            <div className="text-xs text-primary/60 font-medium mb-1">Number of depreciation years</div>
             <div className="text-base text-primary font-bold">{vehiclePricing.depreciationYears}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground font-medium mb-1">Purchase Price</div>
+            <div className="text-xs text-primary/60 font-medium mb-1">Purchase Price</div>
             <div className="text-base text-primary font-bold">{vehiclePricing.purchasePrice}</div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground font-medium mb-1">Lease Amount increase in case of insurance</div>
+            <div className="text-xs text-primary/60 font-medium mb-1">Lease Amount increase in case of insurance</div>
             <div className="text-base text-primary font-bold">{vehiclePricing.leaseAmountIncrease}</div>
           </div>
         </div>
-      </div>
-      {/* Revenue Table Collapsible */}
-      <div className="rounded-xl border border-border bg-card px-0 py-0 overflow-hidden">
-        <div className="-mx-0">
-          <button
-            onClick={() => setShowRevenue(v => !v)}
-            className="flex items-center gap-2 text-primary font-bold text-[18px] bg-muted/50 py-2 px-2 w-full text-left"
+      </CollapsibleSection>
+
+      {/* Pricing & Depreciation Details Table */}
+      <CollapsibleSection
+        title="Pricing & Depreciation Details"
+        defaultOpen={true}
+        className="mx-0"
+        headerClassName="bg-primary/5"
+        headerButton={
+          <CustomButton
+            isSecondary
+            size="sm"
+            className="flex items-center gap-1 px-3 py-1"
           >
-            <span className="text-[18px]">{showRevenue ? '▼' : '▶'}</span> Revenue
-          </button>
-        </div>
-        {showRevenue && (
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between mb-2 gap-4">
-              <RadioButtonGroup
-                options={[
-                  { value: 'All', label: 'All' },
-                  { value: 'Income', label: 'Income' },
-                  { value: 'Expenses', label: 'Expenses' }
-                ]}
-                value={revenueTab}
-                onChange={setRevenueTab}
-                name="revenueFilter"
-              />
-              <div className="flex items-center gap-4">
-                <SearchBar
-                  value=""
-                  onChange={() => {}}
-                  placeholder="Search"
-                  width="w-40"
-                  variant="white-bg"
-                />
-                <CustomButton isSecondary size="sm" className="p-2">
-                  <Filter className="w-4 h-4" />
-                </CustomButton>
-                <CustomButton isSecondary size="sm" className="p-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v16h16M4 4l8 8m0 0l8-8" /></svg>
-                </CustomButton>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="bg-muted/50">
-                    <th className="px-4 py-3 text-left font-semibold text-primary">Date</th>
-                    <th className="px-4 py-3 text-left font-semibold text-primary">Transaction type</th>
-                    <th className="px-4 py-3 text-left font-semibold text-primary">Description</th>
-                    <th className="px-4 py-3 text-left font-semibold text-primary">Transaction</th>
-                    <th className="px-4 py-3 text-left font-semibold text-primary">Method</th>
-                    <th className="px-4 py-3 text-left font-semibold text-primary">Amount</th>
-                    <th className="px-4 py-3 text-left font-semibold text-primary">Invoice</th>
-                    <th className="px-4 py-3 text-left font-semibold text-primary"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {revenueRows
-                    .filter(row => revenueTab === 'All' || row.transaction === revenueTab.slice(0, -1))
-                    .map((row, i) => (
-                      <tr key={i} className="border-t border-border">
-                        <td className="px-4 py-3 font-medium text-primary">{row.date}</td>
-                        <td className="px-4 py-3 font-medium text-primary cursor-pointer hover:underline">{row.type}</td>
-                        <td className="px-4 py-3 text-primary">{row.desc}</td>
-                        <td className="px-4 py-3 text-primary">{row.transaction}</td>
-                        <td className="px-4 py-3 text-primary">{row.method}</td>
-                        <td className="px-4 py-3 text-primary">{row.amount}</td>
-                        <td className="px-4 py-3 font-medium text-primary cursor-pointer hover:underline">{row.invoice}</td>
-                        <td className="px-4 py-3">
-                        <CustomButton isText>View Details</CustomButton>
-                      </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
+            <Pencil className="w-3 h-3" />
+            Edit
+          </CustomButton>
+        }
+      >
+        <div className="flex items-center justify-between mb-4 gap-4">
+          <div className="flex items-center gap-4">
+            <SearchBar
+              value=""
+              onChange={() => {}}
+              placeholder="Search pricing..."
+              width="w-40"
+              variant="white-bg"
+            />
+            <CustomButton isSecondary size="sm" className="p-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v16h16M4 4l8 8m0 0l8-8" /></svg>
+            </CustomButton>
           </div>
-        )}
-      </div>
-      {/* Sales & Return Table Collapsible */}
-      <div className="rounded-xl border border-border bg-card px-0 py-0 overflow-hidden">
-        <div className="-mx-0">
-          <button
-            onClick={() => setShowSales(v => !v)}
-            className="flex items-center gap-2 text-primary font-bold text-[18px] bg-muted/50 py-2 px-2 w-full text-left"
-          >
-            <span className="text-[18px]">{showSales ? '▼' : '▶'}</span> Sales & Return
-          </button>
         </div>
-        {showSales && (
-          <div className="px-6 py-4">
-            <div className="flex items-center justify-between mb-2 gap-4">
-              <RadioButtonGroup
-                options={[
-                  { value: 'All', label: 'All' },
-                  { value: 'Sale', label: 'Sale' },
-                  { value: 'Return', label: 'Return' }
-                ]}
-                value={salesTab}
-                onChange={setSalesTab}
-                name="salesFilter"
-              />
-              <div className="flex items-center gap-4">
-                <SearchBar
-                  value=""
-                  onChange={() => {}}
-                  placeholder="Search"
-                  width="w-40"
-                  variant="white-bg"
-                />
-                <CustomButton isSecondary size="sm" className="p-2">
-                  <Filter className="w-4 h-4" />
-                </CustomButton>
-                <CustomButton isSecondary size="sm" className="p-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v16h16M4 4l8 8m0 0l8-8" /></svg>
-                </CustomButton>
-                <CustomButton variant="primary" className="ml-2">
-                  Sell Car
-                </CustomButton>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="bg-muted/50">
-                    <th className="px-4 py-3 text-left font-semibold text-primary">Date</th>
-                    <th className="px-4 py-3 text-left font-semibold text-primary">Type</th>
-                    <th className="px-4 py-3 text-left font-semibold text-primary">Customer</th>
-                    <th className="px-4 py-3 text-left font-semibold text-primary">Price</th>
-                    <th className="px-4 py-3 text-left font-semibold text-primary"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {salesRows
-                    .filter(row => salesTab === 'All' || row.type === salesTab)
-                    .map((row, i) => (
-                      <tr key={i} className="border-t border-border">
-                        <td className="px-4 py-3 font-medium text-primary">{row.date}</td>
-                        <td className="px-4 py-3 font-medium text-primary cursor-pointer hover:underline">{row.type}</td>
-                        <td className="px-4 py-3 text-primary">{row.customer}</td>
-                        <td className="px-4 py-3 text-primary">{row.price}</td>
-                        <td className="px-4 py-3 font-semibold text-primary cursor-pointer hover:underline">{row.invoice}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
+        <CustomTable
+          data={pricingDepreciationRows}
+          columns={pricingDepreciationColumns}
+          tableBackground="transparent"
+          emptyMessage="No pricing and depreciation data found"
+          searchable={false}
+          pagination={false}
+        />
+      </CollapsibleSection>
+
+      {/* Revenue Table */}
+      <CollapsibleSection
+        title="Revenue"
+        defaultOpen={true}
+        className="mx-0"
+        headerClassName="bg-primary/5"
+      >
+        <div className="flex items-center justify-between mb-4 gap-4">
+          <RadioButtonGroup
+            options={[
+              { value: 'All', label: 'All' },
+              { value: 'Income', label: 'Income' },
+              { value: 'Expenses', label: 'Expenses' }
+            ]}
+            value={revenueTab}
+            onChange={setRevenueTab}
+            name="revenueFilter"
+          />
+          <div className="flex items-center gap-4">
+            <SearchBar
+              value=""
+              onChange={() => {}}
+              placeholder="Q Search"
+              width="w-40"
+              variant="white-bg"
+            />
+            <CustomButton isSecondary size="sm" className="p-2">
+              <Filter className="w-4 h-4" />
+            </CustomButton>
+            <CustomButton isSecondary size="sm" className="p-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v16h16M4 4l8 8m0 0l8-8" /></svg>
+            </CustomButton>
           </div>
-        )}
-      </div>
+        </div>
+        <CustomTable
+          data={revenueRows.filter(row => revenueTab === 'All' || row.transaction === revenueTab.slice(0, -1))}
+          columns={revenueColumns}
+          tableBackground="transparent"
+          emptyMessage="No revenue data found"
+          searchable={false}
+          pagination={false}
+        />
+      </CollapsibleSection>
+      {/* Sales & Return Table */}
+      <CollapsibleSection
+        title="Sales & Return"
+        defaultOpen={true}
+        className="mx-0"
+        headerClassName="bg-primary/5"
+        headerButton={
+          <CustomButton variant="primary" className="ml-2">
+            Sell Car
+          </CustomButton>
+        }
+      >
+        <div className="flex items-center justify-between mb-4 gap-4">
+          <RadioButtonGroup
+            options={[
+              { value: 'All', label: 'All' },
+              { value: 'Sale', label: 'Sale' },
+              { value: 'Return', label: 'Return' }
+            ]}
+            value={salesTab}
+            onChange={setSalesTab}
+            name="salesFilter"
+          />
+          <div className="flex items-center gap-4">
+            <SearchBar
+              value=""
+              onChange={() => {}}
+              placeholder="Q Search"
+              width="w-40"
+              variant="white-bg"
+            />
+            <CustomButton isSecondary size="sm" className="p-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v16h16M4 4l8 8m0 0l8-8" /></svg>
+            </CustomButton>
+          </div>
+        </div>
+        <CustomTable
+          data={salesRows.filter(row => salesTab === 'All' || row.type === salesTab)}
+          columns={salesColumns}
+          tableBackground="transparent"
+          emptyMessage="No sales data found"
+          searchable={false}
+          pagination={false}
+        />
+      </CollapsibleSection>
+
     </div>
   );
 }

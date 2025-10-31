@@ -16,8 +16,12 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       );
     }
 
+    // Get branch_id from query params for validation
+    const { searchParams } = new URL(request.url);
+    const branchId = searchParams.get('branch_id');
+
     // Fetch vehicle by ID with all related data
-    const { data: vehicle, error } = await supabase
+    let query = supabase
       .from('vehicles')
       .select(`
         *,
@@ -37,10 +41,23 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         )
       `)
       .eq('id', vehicleId)
-      .eq('user_id', user.id)
-      .single();
+      .eq('user_id', user.id);
+
+    // Also filter by branch_id if provided
+    if (branchId) {
+      query = query.eq('branch_id', branchId);
+    }
+
+    const { data: vehicle, error } = await query.single();
 
     if (error) {
+      if (error.code === 'PGRST116') {
+        // Not found or unauthorized
+        return NextResponse.json(
+          { error: 'Vehicle not found or access denied', code: 'UNAUTHORIZED_ACCESS' },
+          { status: 403 }
+        );
+      }
       console.error('Database error:', error);
       return NextResponse.json(
         { error: 'Failed to fetch vehicle' },
@@ -50,8 +67,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
     if (!vehicle) {
       return NextResponse.json(
-        { error: 'Vehicle not found' },
-        { status: 404 }
+        { error: 'Vehicle not found or access denied', code: 'UNAUTHORIZED_ACCESS' },
+        { status: 403 }
       );
     }
     return NextResponse.json(vehicle);

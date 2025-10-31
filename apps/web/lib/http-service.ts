@@ -7,6 +7,7 @@ export interface HttpResponse<T = any> {
   data: T | null;
   error: string | null;
   success: boolean;
+  status?: number;
 }
 
 // Global sign out function - we'll initialize this when the service is used
@@ -90,6 +91,7 @@ export const getRequest = async <T = any>(url: string, options?: RequestInit): P
           data: null,
           error: 'Session expired. Please log in again.',
           success: false,
+          status: response.status,
         };
       }
 
@@ -97,6 +99,7 @@ export const getRequest = async <T = any>(url: string, options?: RequestInit): P
         data: null,
         error: errorMessage,
         success: false,
+        status: response.status,
       };
     }
 
@@ -105,6 +108,7 @@ export const getRequest = async <T = any>(url: string, options?: RequestInit): P
       data,
       error: null,
       success: true,
+      status: response.status,
     };
   } catch (error) {
     const errorMessage = extractErrorMessage(error);
@@ -153,6 +157,7 @@ export const postRequest = async <T = any>(url: string, data?: any, options?: Re
           data: null,
           error: 'Session expired. Please log in again.',
           success: false,
+          status: response.status,
         };
       }
 
@@ -160,6 +165,7 @@ export const postRequest = async <T = any>(url: string, data?: any, options?: Re
         data: null,
         error: errorMessage,
         success: false,
+        status: response.status,
       };
     }
 
@@ -168,6 +174,7 @@ export const postRequest = async <T = any>(url: string, data?: any, options?: Re
       data: responseData,
       error: null,
       success: true,
+      status: response.status,
     };
   } catch (error) {
     const errorMessage = extractErrorMessage(error);
@@ -216,6 +223,7 @@ export const putRequest = async <T = any>(url: string, data?: any, options?: Req
           data: null,
           error: 'Session expired. Please log in again.',
           success: false,
+          status: response.status,
         };
       }
 
@@ -223,6 +231,7 @@ export const putRequest = async <T = any>(url: string, data?: any, options?: Req
         data: null,
         error: errorMessage,
         success: false,
+        status: response.status,
       };
     }
 
@@ -231,6 +240,7 @@ export const putRequest = async <T = any>(url: string, data?: any, options?: Req
       data: responseData,
       error: null,
       success: true,
+      status: response.status,
     };
   } catch (error) {
     const errorMessage = extractErrorMessage(error);
@@ -274,6 +284,7 @@ export const deleteRequest = async <T = any>(url: string, options?: RequestInit)
           data: null,
           error: 'Session expired. Please log in again.',
           success: false,
+          status: response.status,
         };
       }
 
@@ -281,6 +292,7 @@ export const deleteRequest = async <T = any>(url: string, options?: RequestInit)
         data: null,
         error: errorMessage,
         success: false,
+        status: response.status,
       };
     }
 
@@ -289,6 +301,7 @@ export const deleteRequest = async <T = any>(url: string, options?: RequestInit)
       data: responseData,
       error: null,
       success: true,
+      status: response.status,
     };
   } catch (error) {
     const errorMessage = extractErrorMessage(error);

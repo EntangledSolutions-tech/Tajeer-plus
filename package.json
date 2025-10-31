@@ -17,6 +17,7 @@
     "clean": "git clean -xdf node_modules dist .next",
     "clean:workspaces": "turbo clean",
     "dev": "cross-env FORCE_COLOR=1 turbo dev --parallel",
+    "prod": "cross-env FORCE_COLOR=1 turbo prod --parallel",
     "format": "turbo format --cache-dir=.turbo --continue -- --cache --cache-location='node_modules/.cache/.prettiercache' --ignore-path='../../.gitignore'",
     "format:fix": "turbo format --cache-dir=.turbo --continue -- --write --cache --cache-location='node_modules/.cache/.prettiercache' --ignore-path='../../.gitignore'",
     "lint": "turbo lint --cache-dir=.turbo --continue -- --cache --cache-location 'node_modules/.cache/.eslintcache' && manypkg check",
@@ -31,7 +32,6 @@
     "supabase:web:typegen": "pnpm --filter web supabase:typegen",
     "supabase:web:reset": "pnpm --filter web supabase:reset",
     "supabase:cloud:reset": "supabase db reset --db-url \"postgresql://postgres:EntangledSolutions123@db.cduocoouavydkenodbqn.supabase.co:5432/postgres\""
-
   },
   "prettier": "@kit/prettier-config",
   "packageManager": "pnpm@9.12.0",

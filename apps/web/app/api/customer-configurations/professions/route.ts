@@ -13,8 +13,18 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = getSupabaseServerClient();
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+    let limit = parseInt(searchParams.get('limit') || '10');
+
+    // Validate limit - must be positive, default to 10 if invalid
+    if (isNaN(limit) || limit < 1) {
+      limit = 10;
+    }
+    // Cap limit at 1000 to prevent excessive queries
+    if (limit > 1000) {
+      limit = 1000;
+    }
+
     const search = searchParams.get('search') || '';
     const active = searchParams.get('active');
 

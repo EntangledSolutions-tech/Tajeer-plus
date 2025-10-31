@@ -8,11 +8,11 @@ import ContractDetailsStep from './ContractStepper/ContractDetailsStep';
 import CustomerDetailsStep from './ContractStepper/CustomerDetailsStep';
 import VehicleDetailsStep from './ContractStepper/VehicleDetailsStep';
 import PricingTermsStep from './ContractStepper/PricingTermsStep';
-import VehicleInspectionStep from './ContractStepper/VehicleInspectionStep';
 import SummaryStep from './ContractStepper/SummaryStep';
 import * as Yup from 'yup';
 import { useHttpService } from '../../../lib/http-service';
-import { contractValidationSchema, customerDetailsSchema, vehicleDetailsSchema, vehicleInspectionSchema, documentsSchema, pricingTermsSchema, contractDetailsSchema } from './validation-schema';
+import { contractValidationSchema, customerDetailsSchema, vehicleDetailsSchema, documentsSchema, pricingTermsSchema, contractDetailsSchema } from './validation-schema';
+import { useBranch } from '../../../contexts/branch-context';
 
 const steps: StepperModalStep[] = [
   {
@@ -36,11 +36,6 @@ const steps: StepperModalStep[] = [
     component: PricingTermsStep
   },
   {
-    id: 'vehicle-inspection',
-    name: 'Vehicle Inspection',
-    component: VehicleInspectionStep
-  },
-  {
     id: 'summary',
     name: 'Summary',
     component: SummaryStep
@@ -53,8 +48,7 @@ const stepSchemas = [
   vehicleDetailsSchema,     // Step 2 - Vehicle Details
   contractDetailsSchema,    // Step 3 - Contract Details
   pricingTermsSchema,       // Step 4 - Pricing & Terms
-  vehicleInspectionSchema,  // Step 5 - Vehicle Inspection
-  Yup.object({}),          // Step 6 - Summary (no validation needed)
+  Yup.object({}),          // Step 5 - Summary (no validation needed)
 ];
 
 const initialValues = {
@@ -71,6 +65,16 @@ const initialValues = {
   customerStatus: '',
   customerStatusId: '',
   customerNationality: '',
+  relatedToCompany: false,
+  companyId: '',
+  companyName: '',
+  companyTaxNumber: '',
+  companyCommercialRegistration: '',
+  companyEmail: '',
+  companyMobile: '',
+  companyAddress: '',
+  companyCity: '',
+  companyCountry: '',
 
   // Step 2 - Vehicle Details
   selectedVehicleId: '',
@@ -84,6 +88,9 @@ const initialValues = {
   vehicleMileage: 0,
   vehicleStatus: '',
   vehicleDailyRentRate: 0,
+  vehicleHourlyDelayRate: 0,
+  vehiclePermittedDailyKm: 0,
+  vehicleExcessKmRate: 0,
 
   // Step 3 - Contract Details
   startDate: new Date().toISOString().split('T')[0], // Current date in YYYY-MM-DD format
@@ -91,8 +98,6 @@ const initialValues = {
   durationType: 'duration',
   durationInDays: 1, // Default to 1 day
   totalFees: 0,
-  statusId: '',
-  contractNumber: '',
 
   // Step 4 - Pricing & Terms
   dailyRentalRate: '0',
@@ -102,12 +107,10 @@ const initialValues = {
   permittedDailyKm: '0',
   excessKmRate: '0',
   paymentMethod: 'cash',
-  membershipEnabled: false,
   totalAmount: '0',
+  depositAmount: '',
+  addOns: [],
 
-  // Step 5 - Vehicle Inspection
-  selectedInspector: '',
-  inspectorName: '',
 
   // Step 6 - Summary (no additional fields needed)
 };
@@ -127,6 +130,7 @@ export default function ContractModal({
 }: ContractModalProps) {
   const supabase = useSupabase();
   const { postRequest, putRequest } = useHttpService();
+  const { selectedBranch } = useBranch();
 
   // Get initial values for edit mode
   const getEditInitialValues = () => {
@@ -185,12 +189,9 @@ export default function ContractModal({
       permittedDailyKm: initialContract.permitted_daily_km?.toString() || '0',
       excessKmRate: initialContract.excess_km_rate?.toString() || '0',
       paymentMethod: initialContract.payment_method || 'cash',
-      membershipEnabled: Boolean(initialContract.membership_enabled),
       totalAmount: initialContract.total_amount?.toString() || '0',
+      deposit: initialContract.deposit?.toString() || '0',
 
-      // Step 5 - Vehicle Inspection
-      selectedInspector: initialContract.selected_inspector || '',
-      inspectorName: initialContract.inspector_name || '',
 
       // Step 6 - Summary (no additional fields needed)
     };
@@ -198,29 +199,23 @@ export default function ContractModal({
 
   const submitContract = async (values: any, stepData: any) => {
     try {
-      // Prepare contract data for database insertion
+      // Validate that a branch is selected
+      if (!selectedBranch) {
+        throw new Error("Please select a branch before creating a contract");
+      }
+
+      // Prepare contract data for database insertion - only foreign keys and contract-specific data
       const contractData = {
         // Contract Details
         start_date: values.startDate,
         end_date: values.endDate,
         contract_number: values.contractNumber || null,
 
-        // Customer Details
+        // Foreign Keys - Link to customer and vehicle
         selected_customer_id: values.selectedCustomerId || null,
-        customer_name: values.customerName || null,
-        customer_id_type: values.customerIdType || null,
-        customer_id_number: values.customerIdNumber || null,
-        customer_classification: values.customerClassification || null,
-        customer_date_of_birth: values.customerDateOfBirth && values.customerDateOfBirth.trim() ? values.customerDateOfBirth : null,
-        customer_license_type: values.customerLicenseType || null,
-        customer_address: values.customerAddress || null,
-
-        // Vehicle Details
         selected_vehicle_id: values.selectedVehicleId,
-        vehicle_plate: values.vehiclePlate,
-        vehicle_serial_number: values.vehicleSerialNumber,
 
-        // Pricing & Terms
+        // Pricing & Terms (contract-specific pricing, may differ from vehicle base rates)
         daily_rental_rate: parseFloat(values.dailyRentalRate) || 0,
         hourly_delay_rate: parseFloat(values.hourlyDelayRate) || 0,
         current_km: values.currentKm || '0',
@@ -228,15 +223,11 @@ export default function ContractModal({
         permitted_daily_km: parseInt(values.permittedDailyKm) || 0,
         excess_km_rate: parseFloat(values.excessKmRate) || 0,
         payment_method: values.paymentMethod || 'cash',
-        membership_enabled: Boolean(values.membershipEnabled),
         total_amount: parseFloat(values.totalAmount) || 0,
+        deposit: parseFloat(values.deposit) || 0,
 
-        // Vehicle Inspection
-        selected_inspector: values.selectedInspector,
-        inspector_name: values.inspectorName,
-
-        // Status - use status_id from the form
-        status_id: values.statusId
+        // Branch
+        branch_id: selectedBranch.id
       };
 
       // Log the contract data being sent for debugging

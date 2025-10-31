@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { Database } from '../../../lib/database.types';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseServerClient<Database>();
 
     // Check if user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
     const limitParam = searchParams.get('limit') || '10';
     const limit = limitParam === '-1' ? -1 : parseInt(limitParam);
     const search = searchParams.get('search') || '';
+    const hideContractsVehicle = searchParams.get('hide_contracts_vehicle') === 'true';
 
     // Enhanced filtering parameters
     const filter = searchParams.get('filter') || '';
@@ -69,8 +71,7 @@ export async function GET(request: NextRequest) {
       `, { count: 'exact' });
 
     // Filter by user_id for proper authentication
-    // Temporarily commented out to debug
-    // query = query.eq('user_id', user.id);
+    query = query.eq('user_id', user.id);
 
     // Apply specific filters - support both single and multiple IDs
     if (plateNumber) {
@@ -232,19 +233,65 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Filter out vehicles that have active contracts (only if hide_contracts_vehicle is true)
+    let availableVehicles = vehicles || [];
+
+    if (hideContractsVehicle && availableVehicles.length > 0) {
+      // Get all vehicle IDs
+      const vehicleIds = availableVehicles.map(vehicle => vehicle.id);
+
+      // Find vehicles that have active contracts - filter by user to avoid security issues
+      let contractsQuery = supabase
+        .from('contracts')
+        .select('selected_vehicle_id, status_id')
+        .in('selected_vehicle_id', vehicleIds)
+        .eq('user_id', user.id); // Only check contracts belonging to this user
+
+      // Also filter by branch if branch_id is provided
+      if (branchId) {
+        contractsQuery = contractsQuery.eq('branch_id', branchId);
+      }
+
+      const { data: activeContracts } = await contractsQuery;
+
+      if (activeContracts && activeContracts.length > 0) {
+        // Get active status IDs
+        const { data: activeStatuses } = await supabase
+          .from('contract_statuses')
+          .select('id')
+          .eq('name', 'Active');
+
+        const activeStatusIds = activeStatuses?.map(status => status.id) || [];
+
+        // Find vehicle IDs that have active contracts
+        const vehiclesWithActiveContracts = activeContracts
+          .filter(contract => contract.status_id && activeStatusIds.includes(contract.status_id))
+          .map(contract => contract.selected_vehicle_id);
+
+        // Filter out vehicles with active contracts
+        availableVehicles = availableVehicles.filter(
+          vehicle => !vehiclesWithActiveContracts.includes(vehicle.id)
+        );
+
+        console.log(`Filtered out ${vehicles?.length - availableVehicles.length} vehicles with active contracts`);
+      }
+    }
 
 
-    const totalPages = limit === -1 ? 1 : Math.ceil((count || 0) / limit);
+
+    // Update count to reflect filtered results
+    const filteredCount = availableVehicles.length;
+    const totalPages = limit === -1 ? 1 : Math.ceil(filteredCount / limit);
     const hasNextPage = limit === -1 ? false : page < totalPages;
     const hasPrevPage = limit === -1 ? false : page > 1;
 
     return NextResponse.json({
       success: true,
-      vehicles: vehicles || [],
+      vehicles: availableVehicles,
       pagination: {
         page: limit === -1 ? 1 : page,
-        limit: limit === -1 ? count || 0 : limit,
-        total: count || 0,
+        limit: limit === -1 ? filteredCount : limit,
+        total: filteredCount,
         totalPages,
         hasNextPage,
         hasPrevPage
@@ -262,7 +309,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseServerClient<Database>();
 
     // Check if user is authenticated
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -276,10 +323,19 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    // Validate that branch_id is provided
+    if (!body.branch_id) {
+      return NextResponse.json(
+        { error: 'Branch ID is required' },
+        { status: 400 }
+      );
+    }
+
     // Add user_id to the vehicle data
     const vehicleData = {
       ...body,
-      user_id: user.id
+      user_id: user.id,
+      branch_id: body.branch_id
     };
 
     const { data: vehicle, error } = await supabase

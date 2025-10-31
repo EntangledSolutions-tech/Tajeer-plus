@@ -6,17 +6,19 @@ import { SearchBar } from '../reusableComponents/SearchBar';
 import CustomButton from '../reusableComponents/CustomButton';
 import CustomCard from '../reusableComponents/CustomCard';
 import { SummaryCard } from '../reusableComponents/SummaryCard';
+import CustomTabs from '../reusableComponents/CustomTabs';
 import { Filter, Plus, FileSpreadsheet, ChevronLeft, ChevronRight, Search, AlertTriangle, Eye, ArrowRight, Users, UserX, DollarSign, CheckCircle } from 'lucide-react';
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription } from '@kit/ui/alert-dialog';
 import CustomerModal from './CustomerModal/index';
+import CompanyModal from './CompanyModal/index';
 import CustomTable, { TableColumn, TableAction } from '../reusableComponents/CustomTable';
 import Link from 'next/link';
 import { Badge } from '@kit/ui/badge';
 import { useHttpService } from '../../lib/http-service';
+import { useBranch } from '../../contexts/branch-context';
 
 interface Customer {
   id: string;
-  name: string;
   id_number: string;
   mobile: string;
   classification: 'Individual' | 'Company';
@@ -24,6 +26,18 @@ interface Customer {
   status: 'Active' | 'Blacklisted';
   last_contract_no: string;
   dues: number;
+  created_at: string;
+}
+
+interface Company {
+  id: string;
+  company_name: string;
+  tax_number: string;
+  commercial_registration_number: string;
+  mobile: string;
+  email: string;
+  city: string;
+  rental_type: string;
   created_at: string;
 }
 
@@ -40,19 +54,15 @@ export default function CustomerList() {
   const router = useRouter();
   const { getRequest } = useHttpService();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const [currentLimit, setCurrentLimit] = useState(10);
+  const { selectedBranch, isLoading: isBranchLoading } = useBranch();
 
-  // Column definitions for CustomTable
-  const columns: TableColumn[] = [
-    {
-      key: 'name',
-      label: 'Name',
-      type: 'text',
-      sortable: true
-    },
+  // Column definitions for Customers table
+  const customerColumns: TableColumn[] = [
     {
       key: 'id_number',
       label: 'ID Number',
@@ -139,8 +149,48 @@ export default function CustomerList() {
     }
   ];
 
-  // Actions for CustomTable
-  const actions: TableAction[] = [
+  // Column definitions for Companies table
+  const companyColumns: TableColumn[] = [
+    {
+      key: 'company_name',
+      label: 'Company Name',
+      type: 'text',
+      sortable: true
+    },
+    {
+      key: 'tax_number',
+      label: 'Tax Number',
+      type: 'text'
+    },
+    {
+      key: 'commercial_registration_number',
+      label: 'CR Number',
+      type: 'text'
+    },
+    {
+      key: 'mobile',
+      label: 'Mobile',
+      type: 'text'
+    },
+    {
+      key: 'email',
+      label: 'Email',
+      type: 'text'
+    },
+    {
+      key: 'city',
+      label: 'City',
+      type: 'text'
+    },
+    {
+      key: 'rental_type',
+      label: 'Rental Type',
+      type: 'text'
+    }
+  ];
+
+  // Actions for CustomTable - conditionally based on active tab
+  const getActions = (): TableAction[] => [
     {
       key: 'view',
       label: 'Details',
@@ -149,7 +199,12 @@ export default function CustomerList() {
       variant: 'ghost',
       className: 'text-primary flex items-center gap-2',
       onClick: (row) => {
-        router.push(`/customers/${row.id}`);
+        // Route based on active tab
+        if (activeTab === 'companies') {
+          router.push(`/customers/companies/${row.id}`);
+        } else {
+          router.push(`/customers/${row.id}`);
+        }
       }
     }
   ];
@@ -166,6 +221,9 @@ export default function CustomerList() {
     hasNextPage: false,
     hasPrevPage: false
   });
+
+  // Tab state
+  const [activeTab, setActiveTab] = useState('customers');
 
   // Filter state
   const [search, setSearch] = useState('');
@@ -209,7 +267,7 @@ export default function CustomerList() {
   const fetchCustomerStatuses = useCallback(async () => {
     try {
       // Fetch customer classifications
-      const classificationResult = await getRequest('/api/customer-configurations/classifications?limit=100');
+      const classificationResult = await getRequest('/api/customer-configurations/classifications?limit=-1');
 
       if (classificationResult.success && classificationResult.data) {
         // Convert statuses to the format expected by CustomTable
@@ -347,43 +405,100 @@ export default function CustomerList() {
   }, [search]);
 
   const fetchCustomers = useCallback(async () => {
+    // Don't fetch if branch context is still loading
+    if (isBranchLoading) {
+      return;
+    }
+
     try {
       setLoading(true);
 
-      // Build query parameters
-      const params = new URLSearchParams({
-        page: pagination.page.toString(),
-        limit: currentLimit.toString(),
-        search: debouncedSearch,
-        classification: classification,
-        status: status,
-        blacklisted: blacklisted.toString(),
-        withDues: withDues.toString(),
-        myOfficeOnly: myOfficeOnly.toString()
-      });
-
-      const result = await getRequest(`/api/customers?${params}`);
-
-      if (result.success && result.data) {
-        setCustomers(result.data.customers || []);
-        setPagination(result.data.pagination || pagination);
-        setSummaryStats(result.data.summaryStats || {
-          total: 0,
-          active: 0,
-          blacklisted: 0,
-          withDues: 0
+      if (activeTab === 'companies') {
+        // Fetch companies from /api/companies
+        const params = new URLSearchParams({
+          page: pagination.page.toString(),
+          limit: currentLimit.toString(),
+          search: debouncedSearch,
         });
+
+        // Add selected branch filter if a branch is selected
+        if (selectedBranch) {
+          params.append('branch_id', selectedBranch.id);
+        }
+
+        const result = await getRequest(`/api/companies?${params}`);
+
+        if (result.success && result.data) {
+          const companiesData = result.data.companies || [];
+
+          // Set companies state
+          setCompanies(companiesData);
+
+          // Update pagination with fresh data
+          if (result.data.pagination) {
+            setPagination({
+              page: result.data.pagination.page,
+              limit: result.data.pagination.limit,
+              total: result.data.pagination.total,
+              totalPages: result.data.pagination.totalPages,
+              hasNextPage: result.data.pagination.hasNextPage,
+              hasPrevPage: result.data.pagination.hasPrevPage
+            });
+          }
+
+          // Update summary stats for companies
+          setSummaryStats({
+            total: result.data.pagination?.total || 0,
+            active: 0,
+            blacklisted: 0,
+            withDues: 0
+          });
+        } else {
+          setError(result.error || 'Failed to fetch companies');
+          setTimeout(() => setError(null), 5000);
+        }
       } else {
-        setError(result.error || 'Failed to fetch customers');
-        setTimeout(() => setError(null), 5000);
+        // Fetch customers from /api/customers (all classifications)
+        const params = new URLSearchParams({
+          page: pagination.page.toString(),
+          limit: currentLimit.toString(),
+          search: debouncedSearch,
+          classification: classification, // Use the filter selection, defaults to 'all'
+          status: status,
+          blacklisted: blacklisted.toString(),
+          withDues: withDues.toString(),
+          myOfficeOnly: myOfficeOnly.toString()
+        });
+
+        // Add selected branch filter if a branch is selected
+        if (selectedBranch) {
+          params.append('branch_id', selectedBranch.id);
+        }
+
+        const result = await getRequest(`/api/customers?${params}`);
+
+        if (result.success && result.data) {
+          setCustomers(result.data.customers || []);
+          setPagination(result.data.pagination || pagination);
+
+          setSummaryStats(result.data.summaryStats || {
+            total: 0,
+            active: 0,
+            blacklisted: 0,
+            withDues: 0
+          });
+        } else {
+          setError(result.error || 'Failed to fetch customers');
+          setTimeout(() => setError(null), 5000);
+        }
       }
     } catch (err: any) {
-      setError('Error fetching customers: ' + (err?.message || 'Unknown error'));
+      setError('Error fetching data: ' + (err?.message || 'Unknown error'));
       setTimeout(() => setError(null), 5000);
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, pagination.page, currentLimit, classification, status, blacklisted, withDues, myOfficeOnly, getRequest]);
+  }, [debouncedSearch, pagination.page, currentLimit, classification, status, blacklisted, withDues, myOfficeOnly, selectedBranch, isBranchLoading, getRequest, activeTab]);
 
   useEffect(() => {
     fetchCustomerStatuses();
@@ -449,8 +564,32 @@ export default function CustomerList() {
     }).format(amount);
   };
 
+  // Tab configuration
+  const tabs = [
+    {
+      key: 'customers',
+      label: 'Customer List',
+    },
+    {
+      key: 'companies',
+      label: 'Companies List',
+    },
+  ];
+
+  const handleTabChange = (tabKey: string) => {
+    setActiveTab(tabKey);
+    setPagination(prev => ({ ...prev, page: 1 })); // Reset to first page when switching tabs
+
+    // Clear the opposite data set when switching tabs
+    if (tabKey === 'companies') {
+      setCustomers([]);
+    } else {
+      setCompanies([]);
+    }
+  };
+
   return (
-    <div className="w-full max-w-[1400px] mx-auto">
+    <div className="w-full  mx-auto">
       {/* Error AlertDialog */}
       {error && (
         <AlertDialog open={!!error}>
@@ -465,6 +604,7 @@ export default function CustomerList() {
       <div className="flex items-center gap-4 mb-6">
         <h1 className="text-3xl font-bold text-white">Customers</h1>
         <CustomerModal onCustomerAdded={handleCustomerAdded} />
+        <CompanyModal onCompanyAdded={handleCustomerAdded} />
       </div>
 
       {/* Summary Cards */}
@@ -477,57 +617,72 @@ export default function CustomerList() {
         padding="none"
         className="overflow-hidden"
       >
+        {/* Tabs */}
+        <div className="px-6 pt-6 pb-2">
+          <CustomTabs
+          className='justify-center'
+            tabs={tabs}
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+          />
+        </div>
+
         {/* Filter/Search Bar */}
         <div className="flex items-center gap-2 p-6 border-b border-gray-100">
-          <CustomButton
-            isSecondary
-            isOval
-            isDropdown
-            size="sm"
-            dropdownOptions={[
-              { label: 'All Classifications', value: 'all' },
-              { label: 'Individual', value: 'individual' },
-              { label: 'Company', value: 'company' }
-            ]}
-            onDropdownSelect={(option) => setClassification(option.value)}
-          >
-            Classification
-          </CustomButton>
-          <CustomButton
-            isSecondary
-            isOval
-            isDropdown
-            size="sm"
-            dropdownOptions={[
-              { label: 'All', value: 'all' },
-              { label: 'Blacklisted', value: 'blacklisted' },
-              { label: 'Not Blacklisted', value: 'not_blacklisted' }
-            ]}
-            onDropdownSelect={(option) => setBlacklisted(option.value === 'blacklisted')}
-          >
-            Blacklisted
-          </CustomButton>
-          <CustomButton
-            isSecondary
-            isOval
-            isDropdown
-            size="sm"
-            dropdownOptions={[
-              { label: 'All', value: 'all' },
-              { label: 'With Dues', value: 'with_dues' },
-              { label: 'No Dues', value: 'no_dues' }
-            ]}
-            onDropdownSelect={(option) => setWithDues(option.value === 'with_dues')}
-          >
-            With Dues
-          </CustomButton>
-          <CustomButton
-            isSecondary
-            isOval
-            size="sm"
-          >
-            My Office only
-          </CustomButton>
+          {/* Show filter buttons only for Customer List tab */}
+          {activeTab === 'customers' && (
+            <>
+              <CustomButton
+                isSecondary
+                isOval
+                isDropdown
+                size="sm"
+                dropdownOptions={[
+                  { label: 'All Classifications', value: 'all' },
+                  { label: 'Individual', value: 'individual' },
+                  { label: 'Company', value: 'company' }
+                ]}
+                onDropdownSelect={(option) => setClassification(option.value)}
+              >
+                Classification
+              </CustomButton>
+              <CustomButton
+                isSecondary
+                isOval
+                isDropdown
+                size="sm"
+                dropdownOptions={[
+                  { label: 'All', value: 'all' },
+                  { label: 'Blacklisted', value: 'blacklisted' },
+                  { label: 'Not Blacklisted', value: 'not_blacklisted' }
+                ]}
+                onDropdownSelect={(option) => setBlacklisted(option.value === 'blacklisted')}
+              >
+                Blacklisted
+              </CustomButton>
+              <CustomButton
+                isSecondary
+                isOval
+                isDropdown
+                size="sm"
+                dropdownOptions={[
+                  { label: 'All', value: 'all' },
+                  { label: 'With Dues', value: 'with_dues' },
+                  { label: 'No Dues', value: 'no_dues' }
+                ]}
+                onDropdownSelect={(option) => setWithDues(option.value === 'with_dues')}
+              >
+                With Dues
+              </CustomButton>
+              <CustomButton
+                isSecondary
+                isOval
+                size="sm"
+              >
+                My Office only
+              </CustomButton>
+            </>
+          )}
           <div className="flex-1 flex justify-end gap-2">
             <SearchBar
               value={search}
@@ -551,14 +706,16 @@ export default function CustomerList() {
 
         {/* CustomTable */}
         <CustomTable
-          data={customers}
-          columns={columns}
+          data={activeTab === 'companies' ? companies : customers}
+          columns={activeTab === 'companies' ? companyColumns : customerColumns}
           loading={loading}
           tableBackground="transparent"
           emptyMessage={
             search || classification !== 'all' || status !== 'all'
               ? 'Try adjusting your search or filters.'
-              : 'Get started by adding your first customer.'
+              : activeTab === 'companies'
+                ? 'Get started by adding your first company.'
+                : 'Get started by adding your first customer.'
           }
           emptyIcon={
             <svg className="h-12 w-12 mb-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -566,7 +723,7 @@ export default function CustomerList() {
             </svg>
           }
           statusConfig={statusConfig}
-          actions={actions}
+          actions={getActions()}
           searchable={false}
           pagination={true}
           currentPage={pagination.page}

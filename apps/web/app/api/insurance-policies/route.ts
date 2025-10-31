@@ -1,24 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getAuthenticatedUser, addUserIdToData } from '../../../lib/api-helpers';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
-
-    // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const { user, supabase } = await getAuthenticatedUser(request);
 
     const { data: policies, error } = await (supabase as any)
       .from('insurance_policies')
       .select('*')
       .eq('is_active', true)
+      .eq('user_id', user.id) // Filter by user
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -48,17 +40,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
-
-    // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+    const { user, supabase } = await getAuthenticatedUser(request);
 
     const body = await request.json();
     const {
@@ -86,12 +68,13 @@ export async function POST(request: NextRequest) {
       return date.toISOString().split('T')[0]; // Return YYYY-MM-DD format
     };
 
-    // Check if policy number already exists
+    // Check if policy number already exists for this user
     const { data: existingPolicy } = await (supabase as any)
       .from('insurance_policies')
       .select('id')
       .eq('policy_number', policyNumber)
       .eq('is_active', true)
+      .eq('user_id', user.id)
       .single();
 
     if (existingPolicy) {
@@ -101,20 +84,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Prepare policy data
+    const policyData = {
+      name,
+      policy_number: policyNumber,
+      policy_amount: parseFloat(policyAmount) || 0,
+      deductible_premium: parseFloat(deductiblePremium) || 0,
+      policy_type: policyType,
+      policy_company: policyCompany,
+      expiry_date: parseDate(expiryDate),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    // Add user_id to ensure user ownership
+    const policyDataWithUserId = addUserIdToData(policyData, user.id);
+
     // Insert new policy
     const { data: newPolicy, error } = await (supabase as any)
       .from('insurance_policies')
-      .insert({
-        name,
-        policy_number: policyNumber,
-        policy_amount: parseFloat(policyAmount) || 0,
-        deductible_premium: parseFloat(deductiblePremium) || 0,
-        policy_type: policyType,
-        policy_company: policyCompany,
-        expiry_date: parseDate(expiryDate),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
+      .insert(policyDataWithUserId)
       .select()
       .single();
 

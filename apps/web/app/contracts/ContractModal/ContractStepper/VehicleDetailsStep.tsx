@@ -7,6 +7,7 @@ import CustomButton from '../../../reusableComponents/CustomButton';
 import FilterModal, { FilterSection } from '../../../reusableComponents/FilterModal';
 import { Car, Calendar, Palette, MapPin, Fuel, Gauge, Plus, Filter, DollarSign } from 'lucide-react';
 import { useHttpService } from '../../../../lib/http-service';
+import { useBranch } from '../../../../contexts/branch-context';
 
 interface Vehicle {
   id: string;
@@ -30,6 +31,7 @@ export default function VehicleDetailsStep() {
   const formik = useFormikContext<any>();
   const { getRequest } = useHttpService();
   const router = useRouter();
+  const { selectedBranch } = useBranch();
   const [searchTerm, setSearchTerm] = useState('');
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(false);
@@ -138,8 +140,14 @@ export default function VehicleDetailsStep() {
       const params = new URLSearchParams({
         search: query,
         limit: '-1', // Increased limit for better search results
-        page: '1'
+        page: '1',
+        hide_contracts_vehicle: 'true' // Hide vehicles with active contracts when selecting for contracts
       });
+
+      // Add branch_id filter if a branch is selected
+      if (selectedBranch) {
+        params.append('branch_id', selectedBranch.id);
+      }
 
       // Apply filters to API call
       // selectedFilters.colors is an object like {white: true, black: true}
@@ -217,6 +225,7 @@ export default function VehicleDetailsStep() {
       const response = await getRequest(`/api/vehicles?${params}`);
       if (response.success && response.data) {
         console.log('Vehicles API response:', response.data); // Debug log
+        console.log('First vehicle raw data:', response.data.vehicles?.[0]); // Debug log
 
         // Filter only available vehicles and map to expected format
         const availableVehicles = response.data.vehicles
@@ -225,22 +234,33 @@ export default function VehicleDetailsStep() {
             vehicle.status?.name === 'Active' ||
             !vehicle.status
           )
-          .map((vehicle: any) => ({
-            id: vehicle.id,
-            plate_number: vehicle.plate_number || 'N/A',
-            serial_number: vehicle.serial_number || 'N/A',
-            plate_registration_type: vehicle.plate_registration_type || 'Private',
-            make_year: vehicle.make_year || vehicle.year_of_manufacture || 'N/A',
-            model: vehicle.model?.name || 'N/A',
-            make: vehicle.make?.name || 'N/A',
-            color: vehicle.color?.name || 'N/A',
-            mileage: vehicle.mileage || 0,
-            status: vehicle.status?.name || 'Available',
-            daily_rent_rate: vehicle.daily_rental_rate || 0,
-            daily_hourly_delay_rate: vehicle.daily_hourly_delay_rate || 0,
-            daily_permitted_km: vehicle.daily_permitted_km || 0,
-            daily_excess_km_rate: vehicle.daily_excess_km_rate || 0
-          }));
+          .map((vehicle: any) => {
+            console.log('Mapping vehicle:', {
+              id: vehicle.id,
+              daily_rental_rate: vehicle.daily_rental_rate,
+              daily_hourly_delay_rate: vehicle.daily_hourly_delay_rate,
+              daily_permitted_km: vehicle.daily_permitted_km,
+              daily_excess_km_rate: vehicle.daily_excess_km_rate,
+              mileage: vehicle.mileage
+            });
+
+            return {
+              id: vehicle.id,
+              plate_number: vehicle.plate_number || 'N/A',
+              serial_number: vehicle.serial_number || 'N/A',
+              plate_registration_type: vehicle.plate_registration_type || 'Private',
+              make_year: vehicle.make_year || vehicle.year_of_manufacture || 'N/A',
+              model: vehicle.model?.name || 'N/A',
+              make: vehicle.make?.name || 'N/A',
+              color: vehicle.color?.name || 'N/A',
+              mileage: vehicle.mileage || 0,
+              status: vehicle.status?.name || 'Available',
+              daily_rent_rate: vehicle.daily_rental_rate || 0,
+              daily_hourly_delay_rate: vehicle.hourly_delay_rate || vehicle.daily_hourly_delay_rate || 0,
+              daily_permitted_km: vehicle.daily_permitted_km || 0,
+              daily_excess_km_rate: vehicle.daily_excess_km_rate || 0
+            };
+          });
         setVehicles(availableVehicles);
       } else {
         setVehicles([]);
@@ -271,9 +291,12 @@ export default function VehicleDetailsStep() {
       setVehicles([]);
       setSearchInitiated(false);
     }
-  }, [searchTerm, selectedFilters, activeFiltersCount]);
+  }, [searchTerm, selectedFilters, activeFiltersCount, selectedBranch]);
 
   const handleVehicleSelect = (vehicle: Vehicle) => {
+    console.log('Selected vehicle:', vehicle);
+    console.log('daily_hourly_delay_rate:', vehicle.daily_hourly_delay_rate);
+
     // Update Formik values with all vehicle data
     formik.setFieldValue('selectedVehicleId', vehicle.id);
     formik.setFieldValue('vehiclePlate', vehicle.plate_number);
@@ -289,6 +312,8 @@ export default function VehicleDetailsStep() {
     formik.setFieldValue('vehicleHourlyDelayRate', vehicle.daily_hourly_delay_rate);
     formik.setFieldValue('vehiclePermittedDailyKm', vehicle.daily_permitted_km);
     formik.setFieldValue('vehicleExcessKmRate', vehicle.daily_excess_km_rate);
+
+    console.log('Set vehicleHourlyDelayRate to:', vehicle.daily_hourly_delay_rate);
 
     // Trigger validation to enable the next button
     setTimeout(() => {
@@ -449,18 +474,16 @@ export default function VehicleDetailsStep() {
 
       {/* No Results */}
       {searchInitiated && !loading && vehicles.length === 0 && searchTerm && (
-        <div className="text-center py-16">
-          <div className="w-16 h-16 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-            <Car className="w-8 h-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No vehicles found</h3>
-          <p className="text-gray-600 mb-6 max-w-sm mx-auto">Try adjusting your search terms or create a new vehicle</p>
+        <div className="text-center py-8 text-muted-foreground">
+          <Car className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-lg font-medium mb-2">No vehicles found</p>
+          <p className="text-sm mb-4">Try adjusting your search terms</p>
           <CustomButton
-            variant="outline"
             onClick={handleCreateVehicle}
-            className="inline-flex items-center gap-2"
-            icon={<Plus className="w-4 h-4" />}
+            variant="ghost"
+            className="text-primary underline hover:text-primary/80 font-medium flex items-center gap-2 mx-auto p-0 h-auto"
           >
+            <Plus className="w-4 h-4" />
             Create Vehicle
           </CustomButton>
         </div>
@@ -468,18 +491,16 @@ export default function VehicleDetailsStep() {
 
       {/* Show create vehicle option when no search is initiated */}
       {!searchInitiated && !searchTerm && (
-        <div className="text-center py-16">
-          <div className="w-16 h-16 mx-auto mb-6 bg-primary/10 rounded-full flex items-center justify-center">
-            <Car className="w-8 h-8 text-primary" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Search for a vehicle</h3>
-          <p className="text-gray-600 mb-6 max-w-md mx-auto">Enter a make, model, color, plate number, or serial number to find existing vehicles</p>
+        <div className="text-center py-8 text-muted-foreground">
+          <Car className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-lg font-medium mb-2">Search for a vehicle</p>
+          <p className="text-sm mb-4">Enter a make, model, color, plate number, or serial number to find existing vehicles</p>
           <CustomButton
-            variant="outline"
             onClick={handleCreateVehicle}
-            className="inline-flex items-center gap-2"
-            icon={<Plus className="w-4 h-4" />}
+            variant="ghost"
+            className="text-primary underline hover:text-primary/80 font-medium flex items-center gap-2 mx-auto p-0 h-auto"
           >
+            <Plus className="w-4 h-4" />
             Create New Vehicle
           </CustomButton>
         </div>

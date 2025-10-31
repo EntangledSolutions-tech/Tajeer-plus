@@ -74,7 +74,7 @@ export default function DashboardMain() {
           // Count vehicles by status and get their colors
           const statusCounts: Record<string, { count: number; color: string }> = {};
           data.vehicles.forEach((vehicle: any) => {
-            debugger
+
             const status = vehicle.status?.name || 'Unknown';
             const color = vehicle.status?.color || '#6B7280';
 

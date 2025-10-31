@@ -24,20 +24,25 @@ export default function PricingTermsStep() {
   const [dailyRentalRate, setDailyRentalRate] = useState('0');
   const [hourlyDelayRate, setHourlyDelayRate] = useState('0');
   const [currentKm, setCurrentKm] = useState('0');
-  const [rentalDays, setRentalDays] = useState('1'); // Default to 1 day
+  const [rentalDays, setRentalDays] = useState('1'); // Calculated from dates
   const [permittedDailyKm, setPermittedDailyKm] = useState('0');
   const [excessKmRate, setExcessKmRate] = useState('0');
   const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [membershipEnabled, setMembershipEnabled] = useState(false);
+  const [depositAmount, setDepositAmount] = useState('');
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [isLoadingAddOns, setIsLoadingAddOns] = useState(true);
+  const [canEditRentalDays, setCanEditRentalDays] = useState(false);
+
+  // Display validation errors from formik
+  const depositError = formik.errors.depositAmount && formik.touched.depositAmount
+    ? String(formik.errors.depositAmount)
+    : '';
 
   // Add-ons state - will be populated from database
   const [addOns, setAddOns] = useState<AddOn[]>([]);
 
   // Pricing state - calculated values
   const [baseRent, setBaseRent] = useState(0);
-  const [membershipDiscount, setMembershipDiscount] = useState(0);
   const [addOnTotal, setAddOnTotal] = useState(0);
   const [total, setTotal] = useState(0);
 
@@ -70,9 +75,20 @@ export default function PricingTermsStep() {
       setExcessKmRate(vehicleExcessKmRate.toString());
     }
 
-    // Set rental days from form values if available, otherwise default to 1
-    const days = formik.values.rentalDays || formik.values.rental_days || '1';
-    setRentalDays(days.toString());
+    // Calculate rental days from start and end dates
+    const startDate = formik.values.startDate;
+    const endDate = formik.values.endDate;
+    let calculatedDays = 1;
+
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const timeDiff = end.getTime() - start.getTime();
+      calculatedDays = Math.ceil(timeDiff / (1000 * 3600 * 24));
+      if (calculatedDays < 1) calculatedDays = 1;
+    }
+
+    setRentalDays(calculatedDays.toString());
 
     console.log('Vehicle data populated:', {
       vehicleDailyRate,
@@ -80,7 +96,14 @@ export default function PricingTermsStep() {
       vehicleMileage,
       vehiclePermittedDailyKm,
       vehicleExcessKmRate,
-      rentalDays: days
+      rentalDays: calculatedDays
+    });
+
+    console.log('Formik values:', {
+      vehicleHourlyDelayRate: formik.values.vehicleHourlyDelayRate,
+      vehicleDailyRentRate: formik.values.vehicleDailyRentRate,
+      vehiclePermittedDailyKm: formik.values.vehiclePermittedDailyKm,
+      vehicleExcessKmRate: formik.values.vehicleExcessKmRate
     });
   };
 
@@ -117,14 +140,19 @@ export default function PricingTermsStep() {
   useEffect(() => {
     populateVehicleData();
     fetchAddOns();
+
+    // Initialize deposit from formik if available
+    if (formik.values.depositAmount) {
+      setDepositAmount(formik.values.depositAmount);
+    }
   }, []);
 
-  // Also populate when formik values change (in case vehicle is selected later)
+  // Also populate when formik values change (in case vehicle is selected later or dates change)
   useEffect(() => {
-    if (formik.values.vehicleDailyRentRate || formik.values.vehicleMileage || formik.values.vehicleHourlyDelayRate || formik.values.vehiclePermittedDailyKm || formik.values.vehicleExcessKmRate) {
+    if (formik.values.vehicleDailyRentRate || formik.values.vehicleMileage || formik.values.vehicleHourlyDelayRate || formik.values.vehiclePermittedDailyKm || formik.values.vehicleExcessKmRate || formik.values.startDate || formik.values.endDate) {
       populateVehicleData();
     }
-  }, [formik.values.vehicleDailyRentRate, formik.values.vehicleMileage, formik.values.vehicleHourlyDelayRate, formik.values.vehiclePermittedDailyKm, formik.values.vehicleExcessKmRate]);
+  }, [formik.values.vehicleDailyRentRate, formik.values.vehicleMileage, formik.values.vehicleHourlyDelayRate, formik.values.vehiclePermittedDailyKm, formik.values.vehicleExcessKmRate, formik.values.startDate, formik.values.endDate]);
 
   // Calculate and update all pricing
   const calculatePricing = () => {
@@ -132,12 +160,10 @@ export default function PricingTermsStep() {
     const dailyRate = parseFloat(dailyRentalRate) || 0;
 
     const newBaseRent = dailyRate * rentalDaysNum;
-    const newMembershipDiscount = membershipEnabled ? 123.00 : 0;
     const newAddOnTotal = addOns.filter(addon => addon.enabled).reduce((sum, addon) => sum + addon.price, 0);
-    const newTotal = newBaseRent + newAddOnTotal - newMembershipDiscount;
+    const newTotal = newBaseRent + newAddOnTotal;
 
     setBaseRent(newBaseRent);
-    setMembershipDiscount(newMembershipDiscount);
     setAddOnTotal(newAddOnTotal);
     setTotal(newTotal);
 
@@ -145,8 +171,6 @@ export default function PricingTermsStep() {
       dailyRentalRate,
       rentalDays: rentalDaysNum,
       baseRent: newBaseRent,
-      membershipEnabled,
-      membershipDiscount: newMembershipDiscount,
       addOns: addOns.filter(addon => addon.enabled),
       addOnTotal: newAddOnTotal,
       total: newTotal
@@ -156,10 +180,26 @@ export default function PricingTermsStep() {
 
 
 
+  // Trigger validation when depositAmount or total changes
+  useEffect(() => {
+    if (formik.touched.depositAmount) {
+      formik.validateField('depositAmount');
+    }
+  }, [depositAmount, total]);
+
   // Calculate pricing whenever relevant state changes
   useEffect(() => {
     calculatePricing();
-  }, [dailyRentalRate, rentalDays, membershipEnabled, JSON.stringify(addOns)]);
+  }, [dailyRentalRate, rentalDays, JSON.stringify(addOns)]);
+
+  // Auto-fill deposit amount when total changes
+  useEffect(() => {
+    if (total > 0 && !depositAmount) {
+      setDepositAmount(total.toString());
+    } else if (total > 0 && parseFloat(depositAmount.replace(/,/g, '')) !== total) {
+      setDepositAmount(total.toString());
+    }
+  }, [total]);
 
   // Update Formik values whenever state changes
   useEffect(() => {
@@ -170,7 +210,7 @@ export default function PricingTermsStep() {
     formik.setFieldValue('permittedDailyKm', permittedDailyKm);
     formik.setFieldValue('excessKmRate', excessKmRate);
     formik.setFieldValue('paymentMethod', paymentMethod);
-    formik.setFieldValue('membershipEnabled', membershipEnabled);
+    formik.setFieldValue('depositAmount', depositAmount);
     formik.setFieldValue('addOns', addOns);
     formik.setFieldValue('totalAmount', total);
 
@@ -181,7 +221,7 @@ export default function PricingTermsStep() {
 
     // Force re-render to update UI
     console.log('Formik values updated, total:', total);
-  }, [dailyRentalRate, hourlyDelayRate, currentKm, rentalDays, permittedDailyKm, excessKmRate, paymentMethod, membershipEnabled, addOns, total]);
+  }, [dailyRentalRate, hourlyDelayRate, currentKm, rentalDays, permittedDailyKm, excessKmRate, paymentMethod, depositAmount, addOns, total]);
 
   const handleAddOnToggle = (addOnId: string) => {
     console.log('Toggling add-on:', addOnId);
@@ -225,17 +265,32 @@ export default function PricingTermsStep() {
       <div className="mb-8">
         <h3 className="text-lg font-semibold text-primary mb-4">Daily rent</h3>
         <div className="grid grid-cols-2 gap-6">
-          <CustomInput
-            label="Daily rental rate (From vehicle)"
-            name="dailyRentalRate"
-            type="text"
-            value={dailyRentalRate}
-            readOnly
-            disabled
-            className="bg-gray-50 cursor-not-allowed"
-            placeholder="0.00"
-            isCurrency={true}
-          />
+          <div>
+            <CustomInput
+              label="Daily rental rate (From vehicle)"
+              name="dailyRentalRate"
+              type="text"
+              value={dailyRentalRate}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const value = e.target.value;
+                // Allow any input while typing
+                setDailyRentalRate(value);
+              }}
+              onBlur={() => {
+                // Validate on blur - ensure it meets minimum requirement
+                const currentValue = parseFloat(dailyRentalRate.replace(/,/g, '')) || 0;
+                const minDailyRate = parseFloat(formik.values.vehicleDailyRentRate) || 0;
+                if (currentValue > 0 && currentValue < minDailyRate) {
+                  setDailyRentalRate(minDailyRate.toString());
+                }
+              }}
+              placeholder="0.00"
+              isCurrency={true}
+            />
+            <p className="text-xs text-primary/60 mt-1">
+              Minimum: {formik.values.vehicleDailyRentRate || 0} SAR
+            </p>
+          </div>
           <CustomInput
             label="Hourly delay rate (From vehicle)"
             name="hourlyDelayRate"
@@ -264,21 +319,32 @@ export default function PricingTermsStep() {
             className="bg-gray-50 cursor-not-allowed"
             placeholder="0"
           />
-          <CustomInput
-            label="Rental days (Editable)"
-            name="rentalDays"
-            type="number"
-            min="1"
-            value={rentalDays}
-            onChange={(e) => {
-              const value = parseInt(e.target.value) || 1;
-              // Ensure minimum value is 1
-              const validValue = Math.max(1, value);
-              setRentalDays(validValue.toString());
-            }}
-            placeholder="1"
-            required={true}
-          />
+          <div>
+            <CustomInput
+              label="Rental days (Auto-calculated)"
+              name="rentalDays"
+              type="text"
+              value={rentalDays}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                if (canEditRentalDays) {
+                  const value = e.target.value;
+                  // Only allow numeric values
+                  if (/^\d+$/.test(value) || value === '') {
+                    setRentalDays(value);
+                  }
+                }
+              }}
+              readOnly={!canEditRentalDays}
+              disabled={!canEditRentalDays}
+              className={!canEditRentalDays ? "bg-gray-50 cursor-not-allowed" : ""}
+              placeholder="Auto-calculated from dates"
+            />
+            {canEditRentalDays && (
+              <p className="text-xs text-primary/60 mt-1">
+                Editable when deposit is less than total price
+              </p>
+            )}
+          </div>
           <CustomInput
             label="Permitted daily km"
             name="permittedDailyKm"
@@ -300,39 +366,6 @@ export default function PricingTermsStep() {
             placeholder="0.00"
             isCurrency={true}
           />
-        </div>
-      </div>
-
-      {/* Payment method Section */}
-      <div className="mb-8">
-        <h3 className="text-lg font-semibold text-primary mb-4">Payment method</h3>
-        <CustomSelect
-          label="Payment Method"
-          name="paymentMethod"
-          options={[
-            { value: 'cash', label: 'Cash' },
-            { value: 'card', label: 'Card' }
-          ]}
-          value={paymentMethod}
-          disabled
-        />
-      </div>
-
-      {/* Membership Section */}
-      <div className="mb-8">
-        <h3 className="text-lg font-semibold text-primary mb-4">Membership</h3>
-        <div className="flex items-center gap-3">
-          <CustomSwitch
-            name="membershipEnabled"
-            checked={membershipEnabled}
-            onChange={(checked: boolean) => {
-              console.log('Toggling membership:', checked);
-              setMembershipEnabled(checked);
-            }}
-          />
-          <span className="text-primary">
-            You have <span className="font-semibold">SAR 123</span> (12,564pts) as loyalty rewards. Redeem it to get a discount on this contract!
-          </span>
         </div>
       </div>
 
@@ -368,12 +401,53 @@ export default function PricingTermsStep() {
         )}
       </div>
 
+      {/* Payment method & Deposit Section */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold text-primary mb-4">Payment & Deposit</h3>
+        <div className="grid grid-cols-2 gap-6">
+          <CustomSelect
+            label="Payment Method"
+            name="paymentMethod"
+            options={[
+              { value: 'cash', label: 'Cash' },
+              { value: 'card', label: 'Card' }
+            ]}
+            value={paymentMethod}
+            disabled
+          />
+          <div>
+            <CustomInput
+              label="Deposit amount"
+              name="depositAmount"
+              type="text"
+              value={depositAmount}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                setDepositAmount(e.target.value);
+                formik.setFieldTouched('depositAmount', true);
+              }}
+              placeholder="0.00"
+              isCurrency={true}
+              required
+                             error={depositError}
+             />
+             {total > 0 && !depositError && (
+               <p className="text-xs text-primary/60 mt-1">
+                 Must equal: {total.toFixed(2)} SAR
+               </p>
+             )}
+           </div>
+         </div>
+       </div>
+
       {/* Bottom Section with Total and Breakdown */}
       <div className="mt-8 pt-6 border-t border-primary/30 flex justify-between items-end">
         {/* Total and View Breakdown */}
         <div className="relative">
           <div className="text-right mb-2">
-            <span className="text-2xl font-bold text-primary">{formatPrice(total)}</span>
+            <span className="text-2xl font-bold text-primary">{formatPrice(total - (parseFloat(depositAmount.replace(/,/g, '')) || 0))}</span>
+            {depositAmount && parseFloat(depositAmount.replace(/,/g, '')) > 0 && (
+              <span className="text-sm text-gray-500 ml-2">(Due)</span>
+            )}
           </div>
           <div className="relative">
             <CustomButton
@@ -416,13 +490,6 @@ export default function PricingTermsStep() {
                     </>
                   )}
 
-                  {/* Membership Discount */}
-                  {membershipEnabled && membershipDiscount > 0 && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-red-500">Membership Discount</span>
-                      <span className="font-semibold text-red-500">-{formatPrice(membershipDiscount)}</span>
-                    </div>
-                  )}
 
                   {/* Divider */}
                   <hr className="border-primary/30" />
@@ -432,6 +499,25 @@ export default function PricingTermsStep() {
                     <span className="font-bold text-primary">Total</span>
                     <span className="font-bold text-primary">{formatPrice(total)}</span>
                   </div>
+
+                  {/* Deposit (in red) */}
+                  {depositAmount && parseFloat(depositAmount.replace(/,/g, '')) > 0 && (
+                    <>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-red-600">Deposit</span>
+                        <span className="font-semibold text-red-600">-{formatPrice(parseFloat(depositAmount.replace(/,/g, '')) || 0)}</span>
+                      </div>
+
+                      {/* Divider */}
+                      <hr className="border-primary/30" />
+
+                      {/* Amount Due */}
+                      <div className="flex justify-between items-center text-lg">
+                        <span className="font-bold text-primary">Amount Due</span>
+                        <span className="font-bold text-primary">{formatPrice(total - (parseFloat(depositAmount.replace(/,/g, '')) || 0))}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             )}

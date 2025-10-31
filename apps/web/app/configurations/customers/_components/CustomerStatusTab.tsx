@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@kit/ui/dialog';
+import { toast } from '@kit/ui/sonner';
 import { Plus, Pencil, Trash2, FileSpreadsheet } from 'lucide-react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
@@ -148,9 +149,9 @@ export default function CustomerStatusTab({ loading, onDelete }: CustomerStatusT
     } catch (error) {
       console.error('Error saving status:', error);
       if (error instanceof Error) {
-        alert(`Error: ${error.message}`);
+        toast.error(`Error: ${error.message}`);
       } else {
-        alert('An unexpected error occurred while saving the status');
+        toast.error('An unexpected error occurred while saving the status');
       }
     } finally {
       setSubmitting(false);

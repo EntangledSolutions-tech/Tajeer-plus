@@ -3,6 +3,11 @@ import * as Yup from 'yup';
 // Step-specific validation schemas
 export const customerDetailsSchema = Yup.object({
   selectedCustomerId: Yup.string().required('Please select a customer'),
+  companyId: Yup.string().when('relatedToCompany', {
+    is: true,
+    then: (schema) => schema.required('Company selection is required'),
+    otherwise: (schema) => schema.nullable().notRequired()
+  }),
 });
 
 export const vehicleDetailsSchema = Yup.object({
@@ -51,9 +56,7 @@ export const contractDetailsSchema = Yup.object({
     is: 'fees',
     then: (schema) => schema.required('Total fees is required').min(0.01, 'Total fees must be greater than 0'),
     otherwise: (schema) => schema.nullable().notRequired()
-  }),
-  statusId: Yup.string().required('Status is required'),
-  contractNumber: Yup.string().required('Contract number is required')
+  })
 });
 
 export const documentsSchema = Yup.object({
@@ -73,13 +76,30 @@ export const pricingTermsSchema = Yup.object({
   hourlyDelayRate: Yup.string().required('Hourly delay rate is required'),
   currentKm: Yup.string().required('Current km is required'),
   rentalDays: Yup.number()
-    .required('Rental days is required')
     .min(1, 'Rental days must be at least 1')
     .integer('Rental days must be a whole number'),
   permittedDailyKm: Yup.string().required('Permitted daily km is required'),
   excessKmRate: Yup.string().required('Excess km rate is required'),
   paymentMethod: Yup.string().required('Payment method is required'),
   totalAmount: Yup.number().min(0, 'Total amount must be positive').required('Total amount is required'),
+  depositAmount: Yup.string()
+    .required('Deposit is required')
+    .test('is-number', 'Deposit must be a valid number', (value) => {
+      if (!value) return false;
+      const numValue = parseFloat(value.replace(/,/g, ''));
+      return !isNaN(numValue);
+    })
+    .test('is-positive', 'Deposit must be zero or positive', (value) => {
+      if (!value) return false;
+      const numValue = parseFloat(value.replace(/,/g, ''));
+      return numValue >= 0;
+    })
+    .test('equals-total', 'Deposit amount must equal total amount', function(value) {
+      const { totalAmount } = this.parent;
+      if (!value || !totalAmount) return false;
+      const numValue = parseFloat(value.replace(/,/g, ''));
+      return numValue === totalAmount;
+    }),
 });
 
 // Comprehensive schema for final validation

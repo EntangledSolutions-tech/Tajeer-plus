@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get('q') || '';
     const limit = parseInt(searchParams.get('limit') || '3');
     const type = searchParams.get('type') || 'all'; // all, vehicles, customers, contracts
+    const branchId = searchParams.get('branch_id'); // Optional branch filter
 
     if (!query.trim()) {
       return NextResponse.json({
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
     let vehicleResults: any[] = [];
     if (type === 'all' || type === 'vehicles') {
       // First search by direct vehicle fields
-      const { data: vehicles, error: vehicleError } = await supabase
+      let vehicleQuery = supabase
         .from('vehicles')
         .select(`
           id,
@@ -51,8 +52,16 @@ export async function GET(request: NextRequest) {
           status:vehicle_statuses!status_id(name)
         `)
         .eq('user_id', user.id)
-        .or(`plate_number.ilike.${searchTerm},serial_number.ilike.${searchTerm}`)
-        .limit(limit);
+        .or(`plate_number.ilike.${searchTerm},serial_number.ilike.${searchTerm}`);
+
+      // Add branch filter if provided
+      if (branchId) {
+        vehicleQuery = vehicleQuery.eq('branch_id', branchId);
+      }
+
+      vehicleQuery = vehicleQuery.limit(limit);
+
+      const { data: vehicles, error: vehicleError } = await vehicleQuery;
 
       if (!vehicleError && vehicles) {
         // Also search by make, model, color names
@@ -69,7 +78,7 @@ export async function GET(request: NextRequest) {
         let additionalVehicles: any[] = [];
 
         if (makeIds.length > 0 || modelIds.length > 0 || colorIds.length > 0) {
-          const { data: additionalVehiclesData, error: additionalError } = await supabase
+          let additionalVehicleQuery = supabase
             .from('vehicles')
             .select(`
               id,
@@ -86,8 +95,16 @@ export async function GET(request: NextRequest) {
               ...(makeIds.length > 0 ? [`make_id.in.(${makeIds.join(',')})`] : []),
               ...(modelIds.length > 0 ? [`model_id.in.(${modelIds.join(',')})`] : []),
               ...(colorIds.length > 0 ? [`color_id.in.(${colorIds.join(',')})`] : [])
-            ].join(','))
-            .limit(limit);
+            ].join(','));
+
+          // Add branch filter if provided
+          if (branchId) {
+            additionalVehicleQuery = additionalVehicleQuery.eq('branch_id', branchId);
+          }
+
+          additionalVehicleQuery = additionalVehicleQuery.limit(limit);
+
+          const { data: additionalVehiclesData, error: additionalError } = await additionalVehicleQuery;
 
           if (!additionalError && additionalVehiclesData) {
             additionalVehicles = additionalVehiclesData;
@@ -117,11 +134,20 @@ export async function GET(request: NextRequest) {
     if (type === 'all' || type === 'customers') {
       console.log('🔍 Searching customers with term:', searchTerm);
 
-      const { data: customers, error: customerError } = await supabase
+      let customerQuery = supabase
         .from('customers')
         .select('*')
-        .or(`name.ilike.${searchTerm},mobile_number.ilike.${searchTerm},id_number.ilike.${searchTerm},address.ilike.${searchTerm}`)
-        .limit(limit);
+        .eq('user_id', user.id)
+        .or(`name.ilike.${searchTerm},mobile_number.ilike.${searchTerm},id_number.ilike.${searchTerm},address.ilike.${searchTerm}`);
+
+      // Add branch filter if provided
+      if (branchId) {
+        customerQuery = customerQuery.eq('branch_id', branchId);
+      }
+
+      customerQuery = customerQuery.limit(limit);
+
+      const { data: customers, error: customerError } = await customerQuery;
 
       console.log('👤 Customer search results:', {
         customers: customers?.length || 0,
@@ -148,18 +174,74 @@ export async function GET(request: NextRequest) {
     // Search contracts
     let contractResults: any[] = [];
     if (type === 'all' || type === 'contracts') {
-      const { data: contracts, error: contractError } = await supabase
+      // Find matching customer and vehicle IDs for search
+      let matchingCustomerIds: string[] = [];
+      let matchingVehicleIds: string[] = [];
+
+      // Search for customers
+      const { data: customers } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('user_id', user.id)
+        .ilike('name', searchTerm);
+
+      if (customers) {
+        matchingCustomerIds = customers.map((c: any) => c.id);
+      }
+
+      // Search for vehicles
+      const { data: vehicles } = await supabase
+        .from('vehicles')
+        .select('id')
+        .eq('user_id', user.id)
+        .ilike('plate_number', searchTerm);
+
+      if (vehicles) {
+        matchingVehicleIds = vehicles.map((v: any) => v.id);
+      }
+
+      // Build OR conditions for contract search
+      const conditions: string[] = [];
+      conditions.push(`contract_number.ilike.${searchTerm}`);
+      conditions.push(`tajeer_number.ilike.${searchTerm}`);
+
+      if (matchingCustomerIds.length > 0) {
+        conditions.push(`selected_customer_id.in.(${matchingCustomerIds.join(',')})`);
+      }
+
+      if (matchingVehicleIds.length > 0) {
+        conditions.push(`selected_vehicle_id.in.(${matchingVehicleIds.join(',')})`);
+      }
+
+      let contractQuery = supabase
         .from('contracts')
-        .select('*')
-        .or(`contract_number.ilike.${searchTerm},tajeer_number.ilike.${searchTerm},customer_name.ilike.${searchTerm},vehicle_plate.ilike.${searchTerm},vehicle_serial_number.ilike.${searchTerm}`)
-        .limit(limit);
+        .select(`
+          *,
+          customer:customers!selected_customer_id(name, id_number),
+          vehicle:vehicles!selected_vehicle_id(plate_number, serial_number)
+        `)
+        .eq('user_id', user.id);
+
+      // Add OR conditions if any
+      if (conditions.length > 0) {
+        contractQuery = contractQuery.or(conditions.join(','));
+      }
+
+      // Add branch filter if provided
+      if (branchId) {
+        contractQuery = contractQuery.eq('branch_id', branchId);
+      }
+
+      contractQuery = contractQuery.limit(limit);
+
+      const { data: contracts, error: contractError } = await contractQuery;
 
       if (!contractError && contracts) {
         contractResults = contracts.map(contract => ({
           id: contract.id,
           type: 'contract',
           title: contract.contract_number || contract.tajeer_number || `Contract #${contract.id.slice(-6)}`,
-          subtitle: `${contract.customer_name} • ${contract.vehicle_plate || 'N/A'}`,
+          subtitle: `${contract.customer?.name || 'N/A'} • ${contract.vehicle?.plate_number || 'N/A'}`,
           badge: 'Contract',
           badgeColor: 'bg-purple-100 text-purple-800',
           status: { name: 'Open' },

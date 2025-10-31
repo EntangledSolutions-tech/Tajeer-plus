@@ -74,6 +74,18 @@ function getRemotePatterns() {
     });
   }
 
+  // Add Supabase storage hostname for damage photos
+  remotePatterns.push({
+    protocol: 'https',
+    hostname: 'cduocoouavydkenodbqn.supabase.co',
+  });
+
+  // Add flagcdn.com for country flags
+  remotePatterns.push({
+    protocol: 'https',
+    hostname: 'flagcdn.com',
+  });
+
   return IS_PRODUCTION
     ? remotePatterns
     : [
@@ -85,5 +97,6 @@ function getRemotePatterns() {
           protocol: 'http',
           hostname: 'localhost',
         },
+        ...remotePatterns,
       ];
 }

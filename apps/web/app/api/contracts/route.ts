@@ -1,38 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { Database } from '../../../lib/database.types';
+import { getAuthenticatedUser, addUserIdToData, updateUserRecord, getUserData, buildPaginationResponse, getPaginationParams } from '../../../lib/api-helpers';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
-
-    // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError) {
-      console.error('Auth error:', authError);
-      return NextResponse.json(
-        { error: 'Authentication failed', details: authError.message },
-        { status: 401 }
-      );
-    }
-
-    if (!user) {
-      console.error('No user found in session');
-      return NextResponse.json(
-        { error: 'No authenticated user found' },
-        { status: 401 }
-      );
-    }
+    const { user, supabase } = await getAuthenticatedUser(request);
 
     const body = await request.json();
 
-    // Validate required fields
+    // Validate required fields - only foreign keys and essential contract data
     const requiredFields = [
-      'start_date', 'end_date', 'status_id',
-      'selected_vehicle_id', 'vehicle_plate', 'vehicle_serial_number',
+      'start_date', 'end_date',
+      'selected_vehicle_id', 'selected_customer_id',
       'daily_rental_rate', 'hourly_delay_rate', 'current_km', 'rental_days',
       'permitted_daily_km', 'excess_km_rate', 'payment_method', 'total_amount',
-      'selected_inspector', 'inspector_name'
+      'branch_id'
     ];
 
     for (const field of requiredFields) {
@@ -44,31 +27,74 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Prepare contract data
+    // Get default status (first active status, fallback to first status)
+    let defaultStatusId = null;
+    try {
+      // First try to find "Active" status specifically
+      const { data: activeStatus, error: activeStatusError } = await supabase
+        .from('contract_statuses')
+        .select('id')
+        .eq('name', 'On Hold')
+        .eq('is_active', true)
+        .single();
+
+      if (!activeStatusError && activeStatus) {
+        defaultStatusId = activeStatus.id;
+      } else {
+        console.log('Active status not found, trying first active status');
+        // Fallback: get first active status
+        const { data: statuses, error: statusError } = await supabase
+          .from('contract_statuses')
+          .select('id')
+          .eq('is_active', true)
+          .order('code')
+          .limit(1);
+
+        if (statusError) {
+          console.error('Error fetching default status:', statusError);
+        } else if (statuses && statuses.length > 0) {
+          defaultStatusId = statuses[0]?.id;
+        } else {
+          // Final fallback: get any status
+          const { data: fallbackStatuses } = await supabase
+            .from('contract_statuses')
+            .select('id')
+            .order('code')
+            .limit(1);
+          if (fallbackStatuses && fallbackStatuses.length > 0) {
+            defaultStatusId = fallbackStatuses[0]?.id;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching default status:', error);
+    }
+
+    // Generate 8-character alphanumeric contract number
+    const generateContractNumber = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let result = '';
+      for (let i = 0; i < 8; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    };
+    const contractNumber = generateContractNumber();
+
+    // Prepare contract data - only foreign keys and essential contract data
     const contractData = {
       // Contract Details
       start_date: body.start_date,
       end_date: body.end_date,
-      contract_number_type: body.contract_number_type || 'dynamic',
-      contract_number: body.contract_number || null,
+      contract_number_type: 'alphanumeric',
+      contract_number: contractNumber,
       tajeer_number: body.tajeer_number || null,
 
-      // Customer Details
-      selected_customer_id: body.selected_customer_id || null,
-      customer_name: body.customer_name || null,
-      customer_id_type: body.customer_id_type || null,
-      customer_id_number: body.customer_id_number || null,
-      customer_classification: body.customer_classification || null,
-      customer_date_of_birth: body.customer_date_of_birth || null,
-      customer_license_type: body.customer_license_type || null,
-      customer_address: body.customer_address || null,
-
-      // Vehicle Details
+      // Foreign Keys - Link to customer and vehicle
+      selected_customer_id: body.selected_customer_id,
       selected_vehicle_id: body.selected_vehicle_id,
-      vehicle_plate: body.vehicle_plate,
-      vehicle_serial_number: body.vehicle_serial_number,
 
-      // Pricing & Terms
+      // Pricing & Terms (contract-specific pricing, may differ from vehicle base rates)
       daily_rental_rate: parseFloat(body.daily_rental_rate) || 0,
       hourly_delay_rate: parseFloat(body.hourly_delay_rate) || 0,
       current_km: body.current_km || '0',
@@ -76,42 +102,80 @@ export async function POST(request: NextRequest) {
       permitted_daily_km: parseInt(body.permitted_daily_km) || 0,
       excess_km_rate: parseFloat(body.excess_km_rate) || 0,
       payment_method: body.payment_method || 'cash',
-      membership_enabled: Boolean(body.membership_enabled),
       total_amount: parseFloat(body.total_amount) || 0,
-
-      // Vehicle Inspection
-      selected_inspector: body.selected_inspector,
-      inspector_name: body.inspector_name,
+      deposit: body.deposit !== undefined ? parseFloat(body.deposit) || 0 : 0,
 
       // Documents
       documents_count: body.documents_count || 0,
       documents: body.documents || [],
 
-      // Status
-      status_id: body.status_id,
+      // Vehicle Inspection (set to empty since we removed this step)
+      selected_inspector: '',
+      inspector_name: '',
 
-      // Metadata
-      created_by: user.id,
-      updated_by: user.id
+      // Status (use default status)
+      status_id: defaultStatusId,
+
+      // Branch
+      branch_id: body.branch_id
     };
 
+    // Add user_id to ensure user ownership
+    const contractDataWithUserId = addUserIdToData(contractData, user.id);
+
     // Log the contract data being inserted for debugging
-    console.log('Contract data being inserted:', contractData);
+    console.log('Contract data being inserted:', contractDataWithUserId);
 
     // Insert contract into database
-    const { data, error: insertError } = await (supabase as any)
+    const { data, error: insertError } = await supabase
       .from('contracts')
-      .insert(contractData as any)
+      .insert(contractDataWithUserId)
       .select()
       .single();
 
     if (insertError) {
       console.error('Database insert error:', insertError);
-      console.error('Contract data that failed:', contractData);
+      console.error('Contract data that failed:', contractDataWithUserId);
       return NextResponse.json(
         { error: `Failed to create contract: ${insertError.message || JSON.stringify(insertError)}` },
         { status: 500 }
       );
+    }
+
+    // Update vehicle status to "In Contract"
+    try {
+      // Get the "In Contract" status by name (more reliable than code)
+      const { data: inContractStatus, error: statusError } = await supabase
+        .from('vehicle_statuses')
+        .select('id')
+        .eq('name', 'In Contract')
+        .single();
+
+      if (statusError) {
+        console.error('Error fetching "In Contract" vehicle status:', statusError);
+      } else if (inContractStatus) {
+        // Update the vehicle's status
+        const { error: vehicleUpdateError } = await supabase
+          .from('vehicles')
+          .update({
+            status_id: inContractStatus.id,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', body.selected_vehicle_id)
+          .eq('user_id', user.id);
+
+        if (vehicleUpdateError) {
+          console.error('Error updating vehicle status:', vehicleUpdateError);
+          // Don't fail the contract creation, just log the error
+        } else {
+          console.log(`Vehicle ${body.selected_vehicle_id} status updated to "In Contract"`);
+        }
+      } else {
+        console.warn('Vehicle status "In Contract" not found');
+      }
+    } catch (statusUpdateError) {
+      console.error('Exception while updating vehicle status:', statusUpdateError);
+      // Don't fail the contract creation, just log the error
     }
 
     // Return success response with the created contract
@@ -132,26 +196,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
-
-    // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError) {
-      console.error('Auth error:', authError);
-      return NextResponse.json(
-        { error: 'Authentication failed', details: authError.message },
-        { status: 401 }
-      );
-    }
-
-    if (!user) {
-      console.error('No user found in session');
-      return NextResponse.json(
-        { error: 'No authenticated user found' },
-        { status: 401 }
-      );
-    }
+    const { user, supabase } = await getAuthenticatedUser(request);
 
     const body = await request.json();
     const { id, ...updateData } = body;
@@ -163,16 +208,13 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Remove any fields that shouldn't be updated
+    // Remove any fields that shouldn't be updated - only foreign keys and contract-specific data
     const allowedFields = [
       'start_date', 'end_date', 'status_id',
       'contract_number_type', 'contract_number', 'tajeer_number',
-      'selected_customer_id', 'customer_name',
-      'customer_id_type', 'customer_id_number', 'customer_classification',
-      'customer_date_of_birth', 'customer_license_type', 'customer_address',
-      'selected_vehicle_id', 'vehicle_plate', 'vehicle_serial_number',
+      'selected_customer_id', 'selected_vehicle_id',
       'daily_rental_rate', 'hourly_delay_rate', 'current_km', 'rental_days',
-      'permitted_daily_km', 'excess_km_rate', 'payment_method',
+      'permitted_daily_km', 'excess_km_rate', 'payment_method', 'deposit',
       'membership_enabled', 'total_amount', 'selected_inspector',
       'inspector_name', 'documents_count', 'documents'
     ];
@@ -185,19 +227,19 @@ export async function PUT(request: NextRequest) {
       }
     });
 
-    // Add metadata
-    filteredUpdateData.updated_by = user.id;
+    // No need to add updated_by since we're using user_id for ownership
 
     // Log the contract data being updated for debugging
     console.log('Contract data being updated:', filteredUpdateData);
 
-    // Update contract in database
-    const { data, error: updateError } = await supabase
-      .from('contracts')
-      .update(filteredUpdateData)
-      .eq('id', id)
-      .select()
-      .single();
+    // Update contract in database with user ownership validation
+    const { data, error: updateError } = await updateUserRecord(
+      supabase,
+      'contracts',
+      id,
+      filteredUpdateData,
+      user.id
+    );
 
     if (updateError) {
       console.error('Database update error:', updateError);
@@ -228,49 +270,85 @@ export async function PUT(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     console.log('Contracts API called');
-    const supabase = getSupabaseServerClient();
+    const { user, supabase } = await getAuthenticatedUser(request);
 
-    // Check if user is authenticated
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { page, limit, search, offset } = getPaginationParams(request);
+    const status = new URL(request.url).searchParams.get('status') || '';
+    const branchId = new URL(request.url).searchParams.get('branch_id');
 
-    if (authError) {
-      console.error('Auth error:', authError);
-      return NextResponse.json(
-        { error: 'Authentication failed', details: authError.message },
-        { status: 401 }
-      );
+    // If search is provided, find matching customer and vehicle IDs
+    let matchingCustomerIds: string[] = [];
+    let matchingVehicleIds: string[] = [];
+
+    if (search) {
+      // Search for customers
+      const { data: customers } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('user_id', user.id)
+        .ilike('name', `%${search}%`);
+
+      if (customers) {
+        matchingCustomerIds = customers.map((c: any) => c.id);
+      }
+
+      // Search for vehicles
+      const { data: vehicles } = await supabase
+        .from('vehicles')
+        .select('id')
+        .eq('user_id', user.id)
+        .ilike('plate_number', `%${search}%`);
+
+      if (vehicles) {
+        matchingVehicleIds = vehicles.map((v: any) => v.id);
+      }
     }
 
-    if (!user) {
-      console.error('No user found in session');
-      return NextResponse.json(
-        { error: 'No authenticated user found' },
-        { status: 401 }
-      );
-    }
-
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limitParam = searchParams.get('limit') || '10';
-    const limit = limitParam === '-1' ? -1 : parseInt(limitParam);
-    const search = searchParams.get('search') || '';
-    const status = searchParams.get('status') || '';
-
-    // Calculate offset - only apply pagination if limit is not -1
-    const offset = limit === -1 ? 0 : (page - 1) * limit;
-
+    // Use a JOIN to fetch contracts with status, customer, and vehicle information
     let query = supabase
       .from('contracts')
-      .select('*', { count: 'exact' });
+      .select(`
+        *,
+        contract_statuses (
+          name,
+          color
+        ),
+        customer:customers!selected_customer_id (
+          name,
+          id_number
+        ),
+        vehicle:vehicles!selected_vehicle_id (
+          plate_number,
+          serial_number
+        )
+      `, { count: 'exact' })
+      .eq('user_id', user.id); // Filter by user
 
-    // Add search filter
+    // Filter by branch if branch_id is provided
+    if (branchId) {
+      query = query.eq('branch_id', branchId);
+    }
+
+    // Add search filter - search across contracts, customers, and vehicles
     if (search) {
-      query = query.or(`
-        contract_number.ilike.%${search}%,
-        tajeer_number.ilike.%${search}%,
-        customer_name.ilike.%${search}%,
-        vehicle_plate.ilike.%${search}%
-      `);
+      // Build OR conditions for contract fields, customer IDs, and vehicle IDs
+      const conditions: string[] = [];
+      conditions.push(`contract_number.ilike.%${search}%`);
+      conditions.push(`tajeer_number.ilike.%${search}%`);
+
+      // Add customer ID matches
+      if (matchingCustomerIds.length > 0) {
+        conditions.push(`selected_customer_id.in.(${matchingCustomerIds.join(',')})`);
+      }
+
+      // Add vehicle ID matches
+      if (matchingVehicleIds.length > 0) {
+        conditions.push(`selected_vehicle_id.in.(${matchingVehicleIds.join(',')})`);
+      }
+
+      if (conditions.length > 0) {
+        query = query.or(conditions.join(','));
+      }
     }
 
     // Add status filter - need to find status_id by status name
@@ -316,30 +394,18 @@ export async function GET(request: NextRequest) {
     const hasNextPage = limit === -1 ? false : page < totalPages;
     const hasPrevPage = limit === -1 ? false : page > 1;
 
-    // Format contracts to include status object
-    const formattedContracts = await Promise.all((contracts || []).map(async (contract: any) => {
-      let statusInfo = null;
-
-      if (contract.status_id) {
-        const { data: statusData } = await (supabase as any)
-          .from('contract_statuses')
-          .select('id, name, color, description')
-          .eq('id', contract.status_id)
-          .single();
-
-        if (statusData) {
-          statusInfo = {
-            name: statusData.name,
-            color: statusData.color
-          };
-        }
-      }
+    // Format contracts to flatten the status object
+    const formattedContracts = (contracts || []).map((contract: any) => {
+      const { contract_statuses, ...restContract } = contract;
 
       return {
-        ...contract,
-        status: statusInfo
+        ...restContract,
+        status: contract_statuses ? {
+          name: contract_statuses.name,
+          color: contract_statuses.color
+        } : null
       };
-    }));
+    });
 
     return NextResponse.json({
       success: true,

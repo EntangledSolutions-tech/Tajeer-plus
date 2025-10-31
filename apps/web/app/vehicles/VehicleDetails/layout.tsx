@@ -31,6 +31,8 @@ import StatusChangeModal from './StatusChangeModal';
 import * as Yup from 'yup';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { useHttpService } from '../../../lib/http-service';
+import { useBranch } from '../../../contexts/branch-context';
+import { toast } from '@kit/ui/sonner';
 
 interface Vehicle {
   id: string;
@@ -53,19 +55,18 @@ interface Vehicle {
   // Pricing fields
   daily_rental_rate?: number;
   daily_minimum_rate?: number;
-  daily_hourly_delay_rate?: number;
   daily_permitted_km?: number;
   daily_excess_km_rate?: number;
   daily_open_km_rate?: number;
   monthly_rental_rate?: number;
   monthly_minimum_rate?: number;
-  monthly_hourly_delay_rate?: number;
   monthly_permitted_km?: number;
   monthly_excess_km_rate?: number;
   monthly_open_km_rate?: number;
   hourly_rental_rate?: number;
   hourly_permitted_km?: number;
   hourly_excess_km_rate?: number;
+  hourly_delay_rate?: number;
   // Expiration dates
   form_license_expiration?: string;
   insurance_policy_expiration?: string;
@@ -110,33 +111,33 @@ const vehicleDetailsSchema = Yup.object({
   model: Yup.string().required('Car Model is required'),
   makeYear: Yup.string().required('Make Year is required'),
   color: Yup.string().required('Car color is required'),
-  ageRange: Yup.string().required('Age range is required'),
   serialNumber: Yup.string().required('Serial number is required'),
   plateNumber: Yup.string().required('Plate number is required'),
   mileage: Yup.string().required('Mileage is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
-  yearOfManufacture: Yup.string().required('Year of Manufacture is required'),
   carClass: Yup.string().required('Car class classification is required'),
   plateRegistrationType: Yup.string().required('Plate registration type is required'),
-  expectedSalePrice: Yup.string().required('Expected Sale Price is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
   branch_id: Yup.string().required('Branch is required'),
+  ownerName: Yup.string().required('Owner Name is required'),
+  ownerId: Yup.string(),
+  actualUser: Yup.string().required('Actual User is required'),
+  userId: Yup.string(),
 });
 
 const pricingFeeSchema = Yup.object({
   dailyRentalRate: Yup.number().typeError('Must be a number').required('Daily rental rate is required'),
   dailyMinimumRate: Yup.number().typeError('Must be a number').required('Daily minimum rate is required'),
-  dailyHourlyDelayRate: Yup.number().typeError('Must be a number').required('Daily hourly delay rate is required'),
   dailyPermittedKm: Yup.number().typeError('Must be a number').required('Permitted daily km is required'),
   dailyExcessKmRate: Yup.number().typeError('Must be a number').required('Excess km rate is required'),
   dailyOpenKmRate: Yup.number().typeError('Must be a number').required('Open km rate is required'),
   monthlyRentalRate: Yup.number().typeError('Must be a number').required('Monthly rental rate is required'),
   monthlyMinimumRate: Yup.number().typeError('Must be a number').required('Monthly minimum rate is required'),
-  monthlyHourlyDelayRate: Yup.number().typeError('Must be a number').required('Monthly hourly delay rate is required'),
   monthlyPermittedKm: Yup.number().typeError('Must be a number').required('Permitted daily km (monthly) is required'),
   monthlyExcessKmRate: Yup.number().typeError('Must be a number').required('Excess km rate (monthly) is required'),
   monthlyOpenKmRate: Yup.number().typeError('Must be a number').required('Open km rate (monthly) is required'),
   hourlyRentalRate: Yup.number().typeError('Must be a number').required('Hourly rental rate is required'),
   hourlyPermittedKm: Yup.number().typeError('Must be a number').required('Permitted km per hour is required'),
   hourlyExcessKmRate: Yup.number().typeError('Must be a number').required('Excess km rate (hourly) is required'),
+  hourlyDelayRate: Yup.number().typeError('Must be a number').required('Hourly delay rate is required'),
 });
 
 const expirationDatesSchema = Yup.object({
@@ -147,6 +148,8 @@ const expirationDatesSchema = Yup.object({
 });
 
 const vehiclePricingSchema = Yup.object({
+  ageRange: Yup.string().required('Age range is required'),
+  expectedSalePrice: Yup.string().required('Expected Sale Price is required').test('is-number', 'Must be a number', value => !isNaN(Number(value)) && Number(value) > 0),
   carPricing: Yup.number().typeError('Must be a number').required('Car Pricing is required').min(1, 'Car Pricing cannot be 0'),
   acquisitionDate: Yup.string().required('Acquisition Date is required'),
   operationDate: Yup.string().required('Operation Date is required'),
@@ -155,11 +158,6 @@ const vehiclePricingSchema = Yup.object({
 });
 
 const additionalDetailsSchema = Yup.object({
-  carStatus: Yup.string().required('Car Status is required'),
-  ownerName: Yup.string().required('Owner Name is required'),
-  ownerId: Yup.string(),
-  actualUser: Yup.string().required('Actual User is required'),
-  userId: Yup.string(),
   insuranceCompany: Yup.string().required('Insurance Company is required'),
   insuranceType: Yup.string().required('Insurance Type is required'),
   policyNumber: Yup.string(),
@@ -217,6 +215,7 @@ export default function VehicleDetailsLayout() {
   const vehicleId = params?.id as string;
   const supabase = useSupabase();
   const router = useRouter();
+  const { selectedBranch } = useBranch();
 
   // Vehicle data state
   const [vehicle, setVehicle] = useState<Vehicle | null>(null);
@@ -245,7 +244,7 @@ export default function VehicleDetailsLayout() {
     { label: 'Finance', key: 'finance' },
     { label: 'Documents', key: 'documents' },
     { label: 'Transfers & Logs', key: 'transfers-logs' },
-    { label: 'Registration & Key', key: 'registration-key', disabled: true, disabledReason: 'This feature is not yet implemented' },
+    { label: 'Registration & Key', key: 'registration-key'},
   ];
 
   const [activeTab, setActiveTab] = useState('overview');
@@ -354,32 +353,28 @@ export default function VehicleDetailsLayout() {
       model: typeof vehicle.model === 'object' ? vehicle.model?.name : vehicle.model || '',
       makeYear: vehicle.make_year ? vehicle.make_year.toString() : '',
       color: typeof vehicle.color === 'object' ? vehicle.color?.name : vehicle.color || '',
-      ageRange: vehicle.age_range || '',
       serialNumber: vehicle.serial_number || '',
       plateNumber: vehicle.plate_number || '',
       mileage: vehicle.mileage || '',
-      yearOfManufacture: vehicle.year_of_manufacture ? vehicle.year_of_manufacture.toString() : '',
       carClass: vehicle.car_class || '',
       plateRegistrationType: vehicle.plate_registration_type || '',
-      expectedSalePrice: vehicle.expected_sale_price || '',
       branch: vehicle.branch_id || '',
 
       // Pricing
       dailyRentalRate: vehicle.daily_rental_rate || 0,
       dailyMinimumRate: vehicle.daily_minimum_rate || 0,
-      dailyHourlyDelayRate: vehicle.daily_hourly_delay_rate || 0,
       dailyPermittedKm: vehicle.daily_permitted_km || 0,
       dailyExcessKmRate: vehicle.daily_excess_km_rate || 0,
       dailyOpenKmRate: vehicle.daily_open_km_rate || 0,
       monthlyRentalRate: vehicle.monthly_rental_rate || 0,
       monthlyMinimumRate: vehicle.monthly_minimum_rate || 0,
-      monthlyHourlyDelayRate: vehicle.monthly_hourly_delay_rate || 0,
       monthlyPermittedKm: vehicle.monthly_permitted_km || 0,
       monthlyExcessKmRate: vehicle.monthly_excess_km_rate || 0,
       monthlyOpenKmRate: vehicle.monthly_open_km_rate || 0,
       hourlyRentalRate: vehicle.hourly_rental_rate || 0,
       hourlyPermittedKm: vehicle.hourly_permitted_km || 0,
       hourlyExcessKmRate: vehicle.hourly_excess_km_rate || 0,
+      hourlyDelayRate: vehicle.hourly_delay_rate || 0,
 
       // Expiration dates
       formLicenseExpiration: vehicle.form_license_expiration || '',
@@ -393,9 +388,10 @@ export default function VehicleDetailsLayout() {
       operationDate: vehicle.operation_date || '',
       depreciationRate: vehicle.depreciation_rate || 0,
       depreciationYears: vehicle.depreciation_years ? vehicle.depreciation_years.toString() : '',
+      ageRange: vehicle.age_range || '',
+      expectedSalePrice: vehicle.expected_sale_price || '',
 
       // Additional details
-      carStatus: vehicle.status_id || '',
       ownerName: typeof vehicle.owner === 'object' ? vehicle.owner?.name : vehicle.owner || '',
       ownerId: vehicle.owner_id || '',
       actualUser: typeof vehicle.actual_user === 'object' ? vehicle.actual_user?.name : vehicle.actual_user || '',
@@ -420,7 +416,7 @@ export default function VehicleDetailsLayout() {
       } else {
         console.error('Error fetching vehicle statuses:', response.error);
         if (response.error) {
-          alert(`Error: ${response.error}`);
+          toast.error(`Error: ${response.error}`);
         }
       }
     } catch (err) {
@@ -495,12 +491,25 @@ export default function VehicleDetailsLayout() {
           }
         }
 
-        // Fetch vehicle details
-        const response = await getRequest(`/api/vehicles/${actualVehicleId}`);
+        // Fetch vehicle details with branch validation
+        const url = selectedBranch
+          ? `/api/vehicles/${actualVehicleId}?branch_id=${selectedBranch.id}`
+          : `/api/vehicles/${actualVehicleId}`;
+
+        const response = await getRequest(url);
 
         if (response.success && response.data) {
           setVehicle(response.data);
         } else {
+          // Check if it's an unauthorized access error
+          const isUnauthorized = response.error && response.error.includes('access denied');
+          const isForbidden = (response as any).status === 403;
+
+          if (!response.success && (isUnauthorized || isForbidden)) {
+            toast.error('Access denied: This vehicle belongs to a different branch or user');
+            router.push('/home');
+            return;
+          }
           throw new Error(response.error || 'Failed to fetch vehicle details');
         }
       } catch (err) {
@@ -516,7 +525,7 @@ export default function VehicleDetailsLayout() {
       fetchVehicleStatuses();
       fetchExistingDocuments();
     }
-  }, [vehicleId]);
+  }, [vehicleId, selectedBranch]);
 
 
 

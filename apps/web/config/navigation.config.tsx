@@ -78,8 +78,9 @@ const routes = [
     children: [
       {
         label: 'Inspections',
-        path: '/inspections',
+        path: pathsConfig.app.inspections,
         Icon: null, // Icons are now handled in the sidebar component
+        end: (path: string) => !path.startsWith('/inspections'),
       },
     ],
   },

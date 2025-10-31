@@ -1,28 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getAuthenticatedUser, addUserIdToData, getUserData, buildPaginationResponse, getPaginationParams } from '../../../lib/api-helpers';
+import { validateCustomerData } from './validation';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
+    const { user, supabase } = await getAuthenticatedUser(request);
 
-    // Check authentication
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limitParam = searchParams.get('limit') || '10';
-    const limit = limitParam === '-1' ? -1 : parseInt(limitParam);
-    const search = searchParams.get('search') || '';
-    const status = searchParams.get('status') || '';
-    const classification = searchParams.get('classification') || '';
-    const blacklisted = searchParams.get('blacklisted') === 'true';
-    const withDues = searchParams.get('withDues') === 'true';
-
-    // Calculate offset - only apply pagination if limit is not -1
-    const offset = limit === -1 ? 0 : (page - 1) * limit;
+    const { page, limit, search, offset } = getPaginationParams(request);
+    const status = new URL(request.url).searchParams.get('status') || '';
+    const classification = new URL(request.url).searchParams.get('classification') || '';
+    const blacklisted = new URL(request.url).searchParams.get('blacklisted') === 'true';
+    const withDues = new URL(request.url).searchParams.get('withDues') === 'true';
+    const branchId = new URL(request.url).searchParams.get('branch_id');
 
     // Build query with joins to get related data
     let query = supabase
@@ -33,7 +23,13 @@ export async function GET(request: NextRequest) {
         license_type:customer_license_types(license_type),
         nationality:customer_nationalities(nationality),
         status:customer_statuses(name)
-      `, { count: 'exact' });
+      `, { count: 'exact' })
+      .eq('user_id', user.id); // Filter by user
+
+    // Filter by branch if branch_id is provided
+    if (branchId) {
+      query = query.eq('branch_id', branchId);
+    }
 
     // Apply filters
     if (search) {
@@ -55,7 +51,22 @@ export async function GET(request: NextRequest) {
       }
     }
     if (classification && classification !== 'all') {
-      query = query.eq('classification_id', classification);
+      // If classification is a name (not UUID), look it up first
+      if (!classification.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        // Classification is a name, need to look up the ID
+        const { data: classificationData } = await (supabase as any)
+          .from('customer_classifications')
+          .select('id')
+          .ilike('classification', classification)
+          .single();
+
+        if (classificationData) {
+          query = query.eq('classification_id', classificationData.id);
+        }
+      } else {
+        // Classification is already a UUID
+        query = query.eq('classification_id', classification);
+      }
     }
     if (blacklisted) {
       query = query.eq('status_id', (await (supabase as any).from('customer_statuses').select('id').eq('name', 'Blacklisted').single()).data?.id);
@@ -76,10 +87,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Database error' }, { status: 500 });
     }
 
-    // Get summary statistics
-    const { data: summaryData, error: summaryError } = await (supabase as any)
+    // Get summary statistics for this user - filter by same criteria as main query
+    let summaryQuery = supabase
       .from('customers')
-      .select('status_id, customer_statuses(name)');
+      .select('status_id, customer_statuses(name)')
+      .eq('user_id', user.id);
+
+    // Apply same branch filter to summary stats
+    if (branchId) {
+      summaryQuery = summaryQuery.eq('branch_id', branchId);
+    }
+
+    const { data: summaryData, error: summaryError } = await summaryQuery;
 
     if (summaryError) {
       console.error('Summary error:', summaryError);
@@ -139,64 +158,154 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = getSupabaseServerClient();
-
-    // Check authentication
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const { user, supabase } = await getAuthenticatedUser(request);
 
     const body = await request.json();
-    const {
-      name,
-      id_type,
-      id_number,
-      classification,
-      license_type,
-      date_of_birth,
-      address,
-      mobile_number,
-      nationality,
-      status
-    } = body;
 
-    // Validate required fields
-    if (!name || !id_type || !id_number || !classification || !license_type) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    // Validate customer data with dynamic validation based on ID type
+    const validation = validateCustomerData(body);
+
+    if (!validation.success) {
+      return NextResponse.json({
+        error: 'Validation failed',
+        details: validation.errors
+      }, { status: 400 });
     }
 
-    // Check if ID number already exists
-    const { data: existingCustomerByID, error: idCheckError } = await supabase
-      .from('customers')
-      .select('id')
-      .eq('id_number', id_number)
-      .single();
+    // At this point, validation is successful and data is guaranteed to exist
+    const validatedData = validation.data!;
 
-    if (idCheckError && idCheckError.code !== 'PGRST116') {
-      console.error('Error checking existing customer by ID number:', idCheckError);
+    // Prepare customer data based on ID type
+    let idNumber = '';
+
+    // Determine the main ID number based on ID type
+    switch (validatedData.id_type) {
+      case 'National ID':
+        idNumber = body.nationalOrResidentIdNumber || body.national_id_number;
+        break;
+      case 'Resident ID':
+        idNumber = body.nationalOrResidentIdNumber || body.resident_id_number;
+        break;
+      case 'GCC Countries Citizens':
+        idNumber = body.nationalOrGccIdNumber || body.gcc_id_number;
+        break;
+      case 'Visitor':
+        idNumber = body.passport_number;
+        break;
+    }
+
+    const customerData: any = {
+      id_type: validatedData.id_type,
+      id_number: idNumber, // Map the type-specific ID to the main id_number field
+      mobile_number: validatedData.mobile_number,
+      email: validatedData.email,
+      branch_id: validatedData.branch_id,
+      status_id: body.status || (await supabase.from('customer_statuses').select('id').eq('name', 'Active').single()).data?.id,
+      // name and nationality_id are not required for any ID type now
+      name: null,
+      nationality_id: null,
+      // classification_id and license_type_id are optional
+      classification_id: null,
+      license_type_id: null,
+    };
+
+    // Add ID type specific fields dynamically
+    switch (validatedData.id_type) {
+      case 'National ID':
+        customerData.national_id_number = body.nationalOrResidentIdNumber || body.national_id_number;
+        customerData.date_of_birth = body.birthDate || body.date_of_birth;
+        customerData.address = body.address;
+        customerData.rental_type = body.rentalType || body.rental_type;
+
+        // Automatically set nationality to Saudi Arabia for National ID
+        if (!body.nationality) {
+          const { data: saudiNationality } = await supabase
+            .from('customer_nationalities')
+            .select('id')
+            .or('nationality.ilike.%Saudi%,nationality.ilike.%سعودي%')
+            .limit(1)
+            .single();
+          if (saudiNationality) {
+            customerData.nationality_id = saudiNationality.id;
+          }
+        } else {
+          customerData.nationality_id = body.nationality;
+        }
+        break;
+      case 'Resident ID':
+        customerData.resident_id_number = body.nationalOrResidentIdNumber || body.resident_id_number;
+        customerData.date_of_birth = body.birthDate || body.date_of_birth;
+        customerData.address = body.address;
+        customerData.rental_type = body.rentalType || body.rental_type;
+
+        // Automatically set nationality to Saudi Arabia for Resident ID
+        if (!body.nationality) {
+          const { data: saudiNationality } = await supabase
+            .from('customer_nationalities')
+            .select('id')
+            .or('nationality.ilike.%Saudi%,nationality.ilike.%سعودي%')
+            .limit(1)
+            .single();
+          if (saudiNationality) {
+            customerData.nationality_id = saudiNationality.id;
+          }
+        } else {
+          customerData.nationality_id = body.nationality;
+        }
+        break;
+      case 'GCC Countries Citizens':
+        customerData.gcc_id_number = body.nationalOrGccIdNumber || body.gcc_id_number;
+        customerData.country = body.country;
+        customerData.id_copy_number = body.idCopyNumber || body.id_copy_number;
+        customerData.license_number = body.licenseNumber || body.license_number;
+        customerData.id_expiry_date = body.idExpiryDate || body.id_expiry_date;
+        customerData.license_expiry_date = body.licenseExpiryDate || body.license_expiry_date;
+        customerData.license_type = body.licenseType || body.license_type;
+        customerData.place_of_id_issue = body.placeOfIdIssue || body.place_of_id_issue;
+        customerData.address = body.address;
+        customerData.rental_type = body.rentalType || body.rental_type;
+        break;
+      case 'Visitor':
+        customerData.border_number = body.border_number;
+        customerData.passport_number = body.passport_number;
+        customerData.license_number = body.license_number;
+        customerData.id_expiry_date = body.id_expiry_date;
+        customerData.place_of_id_issue = body.place_of_id_issue;
+        customerData.license_expiry_date = body.license_expiry_date;
+        customerData.license_type = body.license_type;
+        customerData.address = body.address;
+        customerData.country = body.country;
+        customerData.id_copy_number = body.id_copy_number;
+        break;
+    }
+
+    // Check if a customer with this ID number already exists for this user
+    const { data: existingCustomer, error: existingError } = await supabase
+      .from('customers')
+      .select('id, name, id_type')
+      .eq('id_number', idNumber)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (existingError && existingError.code !== 'PGRST116') {
+      console.error('Error checking existing customer:', existingError);
       return NextResponse.json({ error: 'Database error' }, { status: 500 });
     }
 
-    if (existingCustomerByID) {
-      return NextResponse.json({ error: 'Customer with this ID number already exists' }, { status: 400 });
+    if (existingCustomer) {
+      return NextResponse.json({
+        error: `A customer with this ${validatedData.id_type} number already exists`,
+        details: `Customer "${existingCustomer.name}" already has this ID number.`
+      }, { status: 400 });
     }
 
+    // Add user_id to ensure user ownership
+    const customerDataWithUserId = addUserIdToData(customerData, user.id);
+
     // Insert new customer with foreign key relationships
-    const { data: newCustomer, error: insertError } = await (supabase as any)
+    const { data: newCustomer, error: insertError } = await supabase
       .from('customers')
-      .insert({
-        name: name,
-        id_type: id_type,
-        id_number: id_number,
-        classification_id: classification,
-        license_type_id: license_type,
-        date_of_birth: date_of_birth,
-        address: address,
-        mobile_number: mobile_number,
-        nationality_id: nationality,
-        status_id: status || (await (supabase as any).from('customer_statuses').select('id').eq('name', 'Active').single()).data?.id
-      })
+      .insert(customerDataWithUserId)
       .select(`
         *,
         classification:customer_classifications(classification),

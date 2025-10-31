@@ -2,29 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useFormikContext } from 'formik';
 import CustomInput from '../../../reusableComponents/CustomInput';
 import SearchableSelect from '../../../reusableComponents/SearchableSelect';
-import CustomButton from '../../../reusableComponents/CustomButton';
 import { useHttpService } from '../../../../lib/http-service';
 
-const vehicleFeatures = [
-  { key: 'gps', id: 'gps', value: 'GPS Navigation', subValue: 'Built-in GPS navigation system' },
-  { key: 'bluetooth', id: 'bluetooth', value: 'Bluetooth Connectivity', subValue: 'Bluetooth for phone and audio connectivity' },
-  { key: 'backup-camera', id: 'backup-camera', value: 'Backup Camera', subValue: 'Rear-view backup camera' },
-  { key: 'leather-seats', id: 'leather-seats', value: 'Leather Seats', subValue: 'Premium leather upholstery' },
-  { key: 'sunroof', id: 'sunroof', value: 'Sunroof', subValue: 'Electric or manual sunroof' },
-  { key: 'heated-seats', id: 'heated-seats', value: 'Heated Seats', subValue: 'Front and/or rear heated seats' },
-  { key: 'ventilated-seats', id: 'ventilated-seats', value: 'Ventilated Seats', subValue: 'Air-conditioned seats' },
-  { key: 'premium-sound', id: 'premium-sound', value: 'Premium Sound System', subValue: 'High-quality audio system' },
-  { key: 'wireless-charging', id: 'wireless-charging', value: 'Wireless Charging', subValue: 'Wireless phone charging pad' },
-  { key: 'adaptive-cruise', id: 'adaptive-cruise', value: 'Adaptive Cruise Control', subValue: 'Advanced cruise control with distance sensing' },
-  { key: 'lane-departure', id: 'lane-departure', value: 'Lane Departure Warning', subValue: 'System that warns when leaving lane' },
-  { key: 'blind-spot', id: 'blind-spot', value: 'Blind Spot Monitoring', subValue: 'Sensors to detect vehicles in blind spots' },
-  { key: 'parking-sensors', id: 'parking-sensors', value: 'Parking Sensors', subValue: 'Front and rear parking sensors' },
-  { key: 'keyless-entry', id: 'keyless-entry', value: 'Keyless Entry', subValue: 'Keyless entry and start system' },
-  { key: 'dual-zone-climate', id: 'dual-zone-climate', value: 'Dual Zone Climate Control', subValue: 'Separate temperature controls for driver and passenger' }
-];
 
 interface FormValues {
-  carStatus: string;
   ownerName: string;
   ownerId: string;
   actualUser: string;
@@ -34,7 +15,6 @@ interface FormValues {
   policyNumber: string;
   insuranceValue: string;
   deductiblePremium: string;
-  chassisNumber: string;
 }
 
 interface DropdownOption {
@@ -56,131 +36,17 @@ export default function AdditionalDetailsStep() {
 
   // State for dropdown options
   const [loading, setLoading] = useState({
-    statuses: false,
-    owners: false,
-    actualUsers: false,
     insuranceCompanies: false,
     insuranceTypes: false,
   });
 
   const [options, setOptions] = useState<{
-    statuses: DropdownOption[];
-    owners: DropdownOption[];
-    actualUsers: DropdownOption[];
     insuranceCompanies: DropdownOption[];
     insuranceTypes: DropdownOption[];
   }>({
-    statuses: [],
-    owners: [],
-    actualUsers: [],
     insuranceCompanies: [],
     insuranceTypes: [],
   });
-
-  // Fetch vehicle statuses
-  const fetchStatuses = async () => {
-    try {
-      setLoading(prev => ({ ...prev, statuses: true }));
-      const result = await getRequest('/api/vehicle-configuration/statuses?page=1&limit=100');
-      console.log('Statuses API response:', result);
-      if (result.success && result.data) {
-        // Map the data to the format needed for SearchableSelect
-        const mappedStatuses = result.data.statuses?.map((status: any) => {
-          console.log('Mapping status:', status);
-          // Ensure all values are strings and not undefined
-          const code = status.code || '';
-          const id = status.id || '';
-          const name = status.name || '';
-
-          if (!code || !id || !name) {
-            console.warn('Invalid status data:', status);
-            return null;
-          }
-
-          return {
-            key: code,
-            id: id,
-            value: name,
-            subValue: `Code: ${code}`
-          };
-        }).filter(Boolean) || [];
-        console.log('Mapped statuses:', mappedStatuses);
-        setOptions(prev => ({ ...prev, statuses: mappedStatuses }));
-      }
-    } catch (error) {
-      console.error('Error fetching statuses:', error);
-    } finally {
-      setLoading(prev => ({ ...prev, statuses: false }));
-    }
-  };
-
-  // Fetch vehicle owners
-  const fetchOwners = async () => {
-    try {
-      setLoading(prev => ({ ...prev, owners: true }));
-      const result = await getRequest('/api/vehicle-configuration/owners?page=1&limit=100');
-      if (result.success && result.data) {
-        // Map the data to the format needed for SearchableSelect
-        const mappedOwners = result.data.owners?.map((owner: any) => {
-          // Ensure all values are strings and not undefined
-          const code = owner.code || '';
-          const id = owner.id || '';
-          const name = owner.name || '';
-
-          if (!code || !id || !name) {
-            console.warn('Invalid owner data:', owner);
-            return null;
-          }
-
-          return {
-            key: code,
-            id: id,
-            value: name,
-            subValue: `Code: ${code}`
-          };
-        }).filter(Boolean) || [];
-        setOptions(prev => ({ ...prev, owners: mappedOwners }));
-      }
-    } catch (error) {
-      console.error('Error fetching owners:', error);
-    } finally {
-      setLoading(prev => ({ ...prev, owners: false }));
-    }
-  };
-
-  // Fetch actual users
-  const fetchActualUsers = async () => {
-    try {
-      setLoading(prev => ({ ...prev, actualUsers: true }));
-      const result = await getRequest('/api/vehicle-configuration/actual-users?page=1&limit=100');
-      if (result.success && result.data) {
-        // Map the data to the format needed for SearchableSelect
-        const mappedUsers = result.data.actualUsers?.map((user: any) => {
-          // Ensure all values are strings and not undefined
-          const code = user.code || '';
-          const id = user.id || '';
-          const name = user.name || '';
-
-          if (!code || !id || !name) {
-            console.warn('Invalid user data:', user);
-            return null;
-          }
-
-          return {
-            key: code,
-            id: id,
-            value: name,
-            subValue: `Code: ${code}`
-          };
-        }).filter(Boolean) || [];
-        setOptions(prev => ({ ...prev, actualUsers: mappedUsers }));
-      }
-    } catch (error) {
-      console.error('Error fetching actual users:', error);
-    } finally {
-      setLoading(prev => ({ ...prev, actualUsers: false }));
-    }
-  };
 
   // Fetch insurance companies
   const fetchInsuranceCompanies = async () => {
@@ -220,7 +86,7 @@ export default function AdditionalDetailsStep() {
           .map((policy: any) => ({
             key: policy.policy_number,
             id: policy.id,
-            value: `${policy.policy_type} - ${policy.name}`,
+            value: policy.name,
             subValue: `Policy: ${policy.policy_number} | Amount: ${policy.policy_amount}`,
             // Store additional data for form population
             policy_type: policy.policy_type,
@@ -241,44 +107,12 @@ export default function AdditionalDetailsStep() {
   // Load data on component mount
   useEffect(() => {
     console.log('AdditionalDetailsStep mounted, fetching data...');
-    fetchStatuses();
-    fetchOwners();
-    fetchActualUsers();
     fetchInsuranceCompanies();
   }, []);
 
   // Restore insurance types when companies are loaded and company is selected
   useEffect(() => {
     if (values.insuranceCompany && options.insuranceCompanies.length > 0) {
-      const selectedCompany = options.insuranceCompanies.find(company => company.id === values.insuranceCompany);
-      if (selectedCompany) {
-        fetchInsuranceTypes(selectedCompany.value);
-      }
-    }
-  }, [values.insuranceCompany, options.insuranceCompanies]);
-
-  // Watch for form value changes and update related fields
-  useEffect(() => {
-    if (values.ownerName && options.owners.length > 0) {
-      const selectedOwner = options.owners.find((owner) => owner.id === values.ownerName);
-      if (selectedOwner && selectedOwner.key !== values.ownerId) {
-        setFieldValue('ownerId', selectedOwner.key || '');
-      }
-    }
-  }, [values.ownerName, options.owners, setFieldValue, values.ownerId]);
-
-  useEffect(() => {
-    if (values.actualUser && options.actualUsers.length > 0) {
-      const selectedUser = options.actualUsers.find((user) => user.id === values.actualUser);
-      if (selectedUser && selectedUser.key !== values.userId) {
-        setFieldValue('userId', selectedUser.key || '');
-      }
-    }
-  }, [values.actualUser, options.actualUsers, setFieldValue, values.userId]);
-
-  useEffect(() => {
-    if (values.insuranceCompany) {
-      // Find the company name from the selected ID
       const selectedCompany = options.insuranceCompanies.find(company => company.id === values.insuranceCompany);
       if (selectedCompany) {
         fetchInsuranceTypes(selectedCompany.value);
@@ -317,71 +151,6 @@ export default function AdditionalDetailsStep() {
   return (
     <>
       <h2 className="text-2xl font-bold text-primary mb-8">Additional Details</h2>
-
-      {/* Main Details Section */}
-      <div className="grid grid-cols-2 gap-6 mb-8">
-        {/* Car Status */}
-        <SearchableSelect
-          label="Car Status"
-          name="carStatus"
-          required={true}
-          options={Array.isArray(options.statuses) ? options.statuses : []}
-          placeholder="Select car status..."
-          searchPlaceholder="Search statuses..."
-          disabled={loading.statuses}
-        />
-
-        {/* Owner Name */}
-        <SearchableSelect
-          label="Owner's Name"
-          name="ownerName"
-          required={true}
-          options={Array.isArray(options.owners) ? options.owners : []}
-          placeholder="Select owner..."
-          searchPlaceholder="Search owners..."
-          disabled={loading.owners}
-        />
-
-        {/* Owner ID (code) */}
-        <CustomInput
-          label="Owner ID"
-          name="ownerId"
-          required={false}
-          type="text"
-          disabled={true}
-          readOnly={true}
-        />
-
-        {/* Actual User */}
-        <SearchableSelect
-          label="Actual User"
-          name="actualUser"
-          required={true}
-          options={Array.isArray(options.actualUsers) ? options.actualUsers : []}
-          placeholder="Select actual user..."
-          searchPlaceholder="Search users..."
-          disabled={loading.actualUsers}
-        />
-
-        {/* User ID (code) */}
-        <CustomInput
-          label="User ID"
-          name="userId"
-          required={false}
-          type="text"
-          disabled={true}
-          readOnly={true}
-        />
-
-        {/* Chassis Number */}
-        <CustomInput
-          label="Chassis Number"
-          name="chassisNumber"
-          required={true}
-          type="text"
-          disabled={false}
-        />
-      </div>
 
       {/* Insurance Section */}
       <h3 className="text-xl font-bold text-primary mb-6">Insurance</h3>

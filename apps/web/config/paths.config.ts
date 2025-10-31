@@ -13,6 +13,7 @@ const PathsSchema = z.object({
     home: z.string().min(1),
     profileSettings: z.string().min(1),
     vehicles: z.string().min(1),
+    inspections: z.string().min(1),
   }),
 });
 
@@ -29,6 +30,7 @@ const pathsConfig = PathsSchema.parse({
     home: '/home',
     profileSettings: '/home/settings',
     vehicles: '/vehicles',
+    inspections: '/inspections',
   },
 } satisfies z.infer<typeof PathsSchema>);
 

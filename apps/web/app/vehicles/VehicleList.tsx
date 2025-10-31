@@ -11,6 +11,7 @@ import { SearchBar } from '../reusableComponents/SearchBar';
 import { SummaryCard } from '../reusableComponents/SummaryCard';
 import VehicleModal from './VehicleModal/index';
 import { useHttpService } from '../../lib/http-service';
+import { useBranch } from '../../contexts/branch-context';
 
 interface Vehicle {
   id: string;
@@ -41,6 +42,7 @@ export default function VehicleList() {
   const [loading, setLoading] = useState(true);
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const { getRequest, postRequest, putRequest, deleteRequest } = useHttpService();
+  const { selectedBranch, isLoading: isBranchLoading } = useBranch();
 
   // Column definitions for CustomTable
   const columns: TableColumn[] = [
@@ -373,6 +375,11 @@ export default function VehicleList() {
   }, [search]);
 
   const fetchVehicles = useCallback(async () => {
+    // Don't fetch if branch context is still loading
+    if (isBranchLoading) {
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -385,6 +392,11 @@ export default function VehicleList() {
         model: model,
         year: year
       });
+
+      // Add selected branch filter if a branch is selected
+      if (selectedBranch) {
+        params.append('branch_id', selectedBranch.id);
+      }
 
       // Add enhanced filters
       if (filters.make) params.append('make_id', filters.make);
@@ -430,7 +442,7 @@ export default function VehicleList() {
       } else {
         console.error('Error fetching vehicles:', response.error);
         if (response.error) {
-          alert(`Error: ${response.error}`);
+          toast.error(`Error: ${response.error}`);
         }
         setVehicles([]);
       }
@@ -439,7 +451,7 @@ export default function VehicleList() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, pagination.page, pagination.limit, status, model, year, filters]);
+  }, [debouncedSearch, pagination.page, pagination.limit, status, model, year, filters, selectedBranch, isBranchLoading]);
 
   useEffect(() => {
     fetchVehicleStatuses();
@@ -522,26 +534,53 @@ export default function VehicleList() {
         year: year
       });
 
-      const response = await getRequest(`/api/vehicles/export?${params}`);
-
-      if (response.success && response.data) {
-        // Create blob and download
-        const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `vehicles_export_${new Date().toISOString().split('T')[0]}.xlsx`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        toast.success('Vehicles exported successfully');
-      } else {
-        throw new Error(response.error || 'Failed to export vehicles');
+      // Add selected branch filter if a branch is selected
+      if (selectedBranch) {
+        params.append('branch_id', selectedBranch.id);
       }
-    } catch (error) {
+
+      // Fetch the Excel file directly as a blob
+      const response = await fetch(`/api/vehicles/export?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to export vehicles');
+      }
+
+      // Get the blob from the response
+      const blob = await response.blob();
+
+      // Format filename with complete date and time: DD_MM_YYYY__HH_mm_ss
+      const now = new Date();
+      const day = String(now.getDate()).padStart(2, '0');
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const fullYear = now.getFullYear();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const filename = `vehicles_export_${day}_${month}_${fullYear}__${hours}_${minutes}_${seconds}.xlsx`;
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast.success('Vehicles exported successfully');
+    } catch (error: any) {
       console.error('Export error:', error);
-      toast.error('Failed to export vehicles');
+      toast.error(error.message || 'Failed to export vehicles');
     }
   };
 
@@ -581,7 +620,7 @@ export default function VehicleList() {
 
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto">
+    <div className="w-full mx-auto">
       {/* Error AlertDialog */}
       {/* Error AlertDialog */}
 

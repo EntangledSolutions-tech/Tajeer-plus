@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useFormikContext } from 'formik';
+import { toast } from '@kit/ui/sonner';
 import { Plus, Upload, X, FileText, Trash2 } from 'lucide-react';
 import { SimpleInput } from '../../../reusableComponents/CustomInput';
 import CustomButton from '../../../reusableComponents/CustomButton';
@@ -92,7 +93,7 @@ export default function DocumentsStep() {
     if (file) {
       const error = validateFile(file);
       if (error) {
-        alert(error);
+        toast.error(error);
         e.target.value = '';
         return;
       }

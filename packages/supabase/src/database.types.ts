@@ -86,6 +86,7 @@ export type Database = {
           customer_name: string | null
           customer_type: string
           daily_rental_rate: number
+          deposit: number
           documents: Json | null
           documents_count: number | null
           end_date: string
@@ -126,6 +127,7 @@ export type Database = {
           customer_name?: string | null
           customer_type: string
           daily_rental_rate: number
+          deposit?: number
           documents?: Json | null
           documents_count?: number | null
           end_date: string
@@ -166,6 +168,7 @@ export type Database = {
           customer_name?: string | null
           customer_type?: string
           daily_rental_rate?: number
+          deposit?: number
           documents?: Json | null
           documents_count?: number | null
           end_date?: string

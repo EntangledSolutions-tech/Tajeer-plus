@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar } from '@kit/ui/calendar';
 import { Label } from '@kit/ui/label';
 import { Input } from '@kit/ui/input';
@@ -9,7 +9,8 @@ import { Button } from '@kit/ui/button';
 import { CalendarIcon, Clock } from 'lucide-react';
 import { useField, useFormikContext } from 'formik';
 import { format } from 'date-fns';
-import { cn } from '@kit/ui/lib/utils';
+import { enUS } from 'date-fns/locale';
+import { cn } from '@kit/ui/utils';
 
 // Simple DateTime Input without Formik
 export const SimpleDateTime = ({
@@ -22,6 +23,8 @@ export const SimpleDateTime = ({
   onChange,
   placeholder,
   disabled = false,
+  min,
+  max,
   ...props
 }: {
   label?: string;
@@ -33,12 +36,26 @@ export const SimpleDateTime = ({
   onChange?: (value: Date | string) => void;
   placeholder?: string;
   disabled?: boolean;
+  min?: string | Date;
+  max?: string | Date;
   [key: string]: any;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     value ? (typeof value === 'string' ? new Date(value) : value) : undefined
   );
+
+  // Sync internal state with external value changes
+  useEffect(() => {
+    if (value) {
+      const newDate = typeof value === 'string' ? new Date(value) : value;
+      if (!isNaN(newDate.getTime())) {
+        setSelectedDate(newDate);
+      }
+    } else {
+      setSelectedDate(undefined);
+    }
+  }, [value]);
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedDate(date);
@@ -59,10 +76,12 @@ export const SimpleDateTime = ({
   const handleTimeChange = (timeString: string) => {
     if (selectedDate && onChange) {
       const [hours, minutes] = timeString.split(':');
-      const newDate = new Date(selectedDate);
-      newDate.setHours(parseInt(hours), parseInt(minutes), 0);
-      setSelectedDate(newDate);
-      onChange(format(newDate, 'yyyy-MM-dd HH:mm:ss'));
+      if (hours && minutes) {
+        const newDate = new Date(selectedDate);
+        newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0);
+        setSelectedDate(newDate);
+        onChange(format(newDate, 'yyyy-MM-dd HH:mm:ss'));
+      }
     }
   };
 
@@ -70,11 +89,11 @@ export const SimpleDateTime = ({
     if (!selectedDate) return '';
 
     if (type === 'date') {
-      return format(selectedDate, 'MMM dd, yyyy');
+      return format(selectedDate, 'MMM dd, yyyy', { locale: enUS });
     } else if (type === 'time') {
-      return format(selectedDate, 'HH:mm');
+      return format(selectedDate, 'HH:mm', { locale: enUS });
     } else {
-      return format(selectedDate, 'MMM dd, yyyy HH:mm');
+      return format(selectedDate, 'MMM dd, yyyy HH:mm', { locale: enUS });
     }
   };
 
@@ -128,6 +147,25 @@ export const SimpleDateTime = ({
               onSelect={handleDateSelect}
               initialFocus
               className="border-primary/30"
+              locale={enUS}
+              disabled={(date) => {
+                const day = new Date(date);
+                day.setHours(0, 0, 0, 0);
+
+                if (min) {
+                  const minDate = typeof min === 'string' ? new Date(min) : min;
+                  minDate.setHours(0, 0, 0, 0);
+                  if (day < minDate) return true;
+                }
+
+                if (max) {
+                  const maxDate = typeof max === 'string' ? new Date(max) : max;
+                  maxDate.setHours(0, 0, 0, 0);
+                  if (day > maxDate) return true;
+                }
+
+                return false;
+              }}
             />
           )}
 
@@ -161,6 +199,8 @@ const CustomDateTime = ({
   required = false,
   className = '',
   type = 'date',
+  min,
+  max,
   ...otherProps
 }: {
   name: string;
@@ -168,6 +208,8 @@ const CustomDateTime = ({
   required?: boolean;
   className?: string;
   type?: 'date' | 'time' | 'datetime';
+  min?: string | Date;
+  max?: string | Date;
   [key: string]: any;
 }) => {
   const { setFieldValue } = useFormikContext();
@@ -193,6 +235,8 @@ const CustomDateTime = ({
       required={required}
       className={className}
       type={type}
+      min={min}
+      max={max}
     />
   );
 };

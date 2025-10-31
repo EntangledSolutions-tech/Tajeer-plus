@@ -14,6 +14,9 @@ type BaseField = {
   isRequired: boolean;
   disabled?: boolean;
   readOnly?: boolean;
+  placeholder?: string;
+  min?: number;
+  max?: number;
 };
 
 type SearchableSelectField = BaseField & {
@@ -46,11 +49,15 @@ export default function VehicleDetailsStep() {
   const [models, setModels] = useState<any[]>([]);
   const [colors, setColors] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
+  const [owners, setOwners] = useState<any[]>([]);
+  const [actualUsers, setActualUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState({
     makes: false,
     models: false,
     colors: false,
-    branches: false
+    branches: false,
+    owners: false,
+    actualUsers: false
   });
   const [selectedMakeId, setSelectedMakeId] = useState<string>('');
 
@@ -151,23 +158,70 @@ export default function VehicleDetailsStep() {
     }
   };
 
+  // Fetch owners from API
+  const fetchOwners = async () => {
+    try {
+      setLoading(prev => ({ ...prev, owners: true }));
+      const result = await getRequest('/api/vehicle-configuration/owners?page=1&limit=100');
+      if (result.success && result.data) {
+        const ownerOptions = result.data.owners?.map((owner: any) => ({
+          key: owner.code || '',
+          id: owner.id,
+          value: owner.name,
+          subValue: `Code: ${owner.code}`
+        })) || [];
+        setOwners(ownerOptions);
+      }
+    } catch (error) {
+      console.error('Error fetching owners:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, owners: false }));
+    }
+  };
+
+  // Fetch actual users from API
+  const fetchActualUsers = async () => {
+    try {
+      setLoading(prev => ({ ...prev, actualUsers: true }));
+      const result = await getRequest('/api/vehicle-configuration/actual-users?page=1&limit=100');
+      if (result.success && result.data) {
+        const userOptions = result.data.actualUsers?.map((user: any) => ({
+          key: user.code || '',
+          id: user.id,
+          value: user.name,
+          subValue: `Code: ${user.code}`
+        })) || [];
+        setActualUsers(userOptions);
+      }
+    } catch (error) {
+      console.error('Error fetching actual users:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, actualUsers: false }));
+    }
+  };
+
   // Fetch data on component mount
   useEffect(() => {
     fetchMakes();
     fetchColors();
     fetchBranches();
+    fetchOwners();
+    fetchActualUsers();
   }, []);
 
   // Watch for make changes and fetch models accordingly
   useEffect(() => {
-    if (values.make && values.make !== selectedMakeId) {
+    // Check if make is a valid UUID (not a string name from initial values)
+    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(values.make);
+
+    if (values.make && values.make !== selectedMakeId && isValidUUID) {
       setSelectedMakeId(values.make);
       // Clear model selection when make changes
       if (values.model) {
         setFieldValue('model', '');
       }
       fetchModels(values.make);
-    } else if (!values.make) {
+    } else if (!values.make || !isValidUUID) {
       setSelectedMakeId('');
       setModels([]);
       if (values.model) {
@@ -237,10 +291,31 @@ export default function VehicleDetailsStep() {
           setFieldValue('branch', branchOption.id);
         }
       }
+
     };
 
     handleInitialValues();
-  }, [values.make, values.color, values.branch, values.yearOfManufacture, values.makeYear, values.model, makes, colors, branches, initialModelValue, setFieldValue]);
+  }, [values.make, values.color, values.branch, values.makeYear, values.model, makes, colors, branches, initialModelValue, setFieldValue]);
+
+  // Watch for owner changes and update ownerId
+  useEffect(() => {
+    if (values.ownerName && owners.length > 0) {
+      const selectedOwner = owners.find((owner) => owner.id === values.ownerName);
+      if (selectedOwner && selectedOwner.key !== values.ownerId) {
+        setFieldValue('ownerId', selectedOwner.key || '');
+      }
+    }
+  }, [values.ownerName, owners, setFieldValue, values.ownerId]);
+
+  // Watch for actual user changes and update userId
+  useEffect(() => {
+    if (values.actualUser && actualUsers.length > 0) {
+      const selectedUser = actualUsers.find((user) => user.id === values.actualUser);
+      if (selectedUser && selectedUser.key !== values.userId) {
+        setFieldValue('userId', selectedUser.key || '');
+      }
+    }
+  }, [values.actualUser, actualUsers, setFieldValue, values.userId]);
 
   const vehicleDetailsFields: VehicleField[] = [
     {
@@ -284,19 +359,6 @@ export default function VehicleDetailsStep() {
       disabled: false
     },
     {
-      label: 'Age Range',
-      name: 'ageRange',
-      type: 'select',
-      isRequired: true,
-      options: [
-        { value: '0-1', label: '0-1 years' },
-        { value: '2-3', label: '2-3 years' },
-        { value: '4-5', label: '4-5 years' },
-        { value: '6-7', label: '6-7 years' },
-        { value: '8+', label: '8+ years' }
-      ]
-    },
-    {
       label: 'Serial number',
       name: 'serialNumber',
       type: 'text',
@@ -309,7 +371,8 @@ export default function VehicleDetailsStep() {
       name: 'plateNumber',
       type: 'text',
       isRequired: true,
-      placeholder: 'Enter plate number'
+      placeholder: 'Enter plate number',
+      max: 10
     },
     {
       label: 'Mileage',
@@ -318,16 +381,6 @@ export default function VehicleDetailsStep() {
       isRequired: true,
       placeholder: 'Enter mileage',
       min: 0
-    },
-    {
-      label: 'Year of Manufacture',
-      name: 'yearOfManufacture',
-      type: 'select',
-      isRequired: true,
-      options: Array.from({ length: 10 }, (_, i) => {
-        const year = new Date().getFullYear() - i;
-        return { value: year.toString(), label: year.toString() };
-      })
     },
     {
       label: 'Car Class',
@@ -358,15 +411,6 @@ export default function VehicleDetailsStep() {
       ]
     },
     {
-      label: 'Expected Sale Price',
-      name: 'expectedSalePrice',
-      type: 'number',
-      isRequired: true,
-      placeholder: 'Enter expected sale price',
-      min: 0,
-      isCurrency: true
-    },
-    {
       label: 'Branch',
       name: 'branch_id',
       type: 'searchable-select',
@@ -375,13 +419,71 @@ export default function VehicleDetailsStep() {
       placeholder: 'Select Branch',
       searchPlaceholder: 'Search branches...',
       disabled: loading.branches
+    },
+    {
+      label: 'Chassis Number',
+      name: 'chassis_number',
+      type: 'text',
+      isRequired: true,
+      placeholder: 'Enter chassis number',
+      max: 20
+    },
+    {
+      label: 'Vehicle Load Capacity',
+      name: 'vehicle_load_capacity',
+      type: 'number',
+      isRequired: true,
+      placeholder: 'Enter vehicle load capacity',
+      min: 1
     }
   ];
 
   return (
     <>
       <h2 className="text-2xl font-bold text-primary mb-8">Vehicle Details</h2>
-      <div className="grid grid-cols-2 gap-6">
+
+      {/* Owner & User Section */}
+      <h3 className="text-xl font-bold text-primary mb-6">Owner & User Details</h3>
+      <div className="grid grid-cols-2 gap-6 mb-8">
+        <SearchableSelect
+          label="Owner's Name"
+          name="ownerName"
+          required={true}
+          options={owners}
+          placeholder="Select owner..."
+          searchPlaceholder="Search owners..."
+          disabled={loading.owners}
+        />
+        <CustomInput
+          label="Owner ID"
+          name="ownerId"
+          required={false}
+          type="text"
+          disabled={true}
+          readOnly={true}
+        />
+        <SearchableSelect
+          label="Actual User"
+          name="actualUser"
+          required={true}
+          options={actualUsers}
+          placeholder="Select actual user..."
+          searchPlaceholder="Search users..."
+          disabled={loading.actualUsers}
+        />
+        <CustomInput
+          label="User ID"
+          name="userId"
+          required={false}
+          type="text"
+          disabled={true}
+          readOnly={true}
+        />
+      </div>
+
+      {/* Vehicle Details Section */}
+      <h3 className="text-xl font-bold text-primary mb-6">Vehicle Details</h3>
+      <div className="grid grid-cols-2 gap-6 mb-8">
         {vehicleDetailsFields.map((field, idx) => (
           <div key={field.name} className="flex flex-col gap-4">
             {field.type === 'searchable-select' ? (
@@ -418,6 +520,7 @@ export default function VehicleDetailsStep() {
                 readOnly={field.readOnly}
                 isCurrency={field.isCurrency}
                 iconPosition="left"
+                maxLength={field.max}
               />
             )}
           </div>

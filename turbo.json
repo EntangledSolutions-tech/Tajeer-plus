@@ -30,6 +30,10 @@
       "persistent": true,
       "cache": false
     },
+    "prod": {
+      "persistent": true,
+      "cache": false
+    },
     "format": {
       "outputs": [
         "node_modules/.cache/.prettiercache"

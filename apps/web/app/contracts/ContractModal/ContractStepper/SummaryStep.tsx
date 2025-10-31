@@ -2,32 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useFormikContext } from 'formik';
 import { User, Car, FileText, DollarSign, ClipboardCheck } from 'lucide-react';
 
+interface AddOn {
+  id: string;
+  name: string;
+  price: number;
+  enabled: boolean;
+}
+
 const SummaryStep: React.FC = () => {
   const formik = useFormikContext<any>();
-  const [contractStatuses, setContractStatuses] = useState<any[]>([]);
-
-  // Fetch contract statuses
-  useEffect(() => {
-    const fetchContractStatuses = async () => {
-      try {
-        const response = await fetch('/api/contract-configuration/statuses');
-        if (response.ok) {
-          const result = await response.json();
-          setContractStatuses(result.data?.statuses || []);
-        }
-      } catch (error) {
-        console.error('Error fetching contract statuses:', error);
-      }
-    };
-
-    fetchContractStatuses();
-  }, []);
-
-  // Helper function to get status details by ID
-  const getStatusDetails = (statusId: string) => {
-    const status = contractStatuses.find(s => s.id === statusId);
-    return status || null;
-  };
+  const [showAddOnsTooltip, setShowAddOnsTooltip] = useState(false);
 
   const renderCustomerDetails = () => {
     const {
@@ -40,7 +24,9 @@ const SummaryStep: React.FC = () => {
       customerAddress,
       customerMobile,
       customerStatus,
-      customerNationality
+      customerNationality,
+      relatedToCompany,
+      companyName
     } = formik.values;
 
     return (
@@ -108,6 +94,12 @@ const SummaryStep: React.FC = () => {
             <div className="md:col-span-2">
               <span className="font-medium text-gray-600">Address:</span>
               <span className="ml-2 text-gray-900">{customerAddress}</span>
+            </div>
+          )}
+          {relatedToCompany && companyName && (
+            <div>
+              <span className="font-medium text-gray-600">Related to Company:</span>
+              <span className="ml-2 text-gray-900">{companyName}</span>
             </div>
           )}
         </div>
@@ -188,8 +180,7 @@ const SummaryStep: React.FC = () => {
   };
 
   const renderContractDetails = () => {
-    const { startDate, endDate, type, insuranceType, statusId, contractNumberType, contractNumber, tajeerNumber } = formik.values;
-    const statusDetails = getStatusDetails(statusId);
+    const { startDate, endDate, durationType, durationInDays, totalFees } = formik.values;
 
     return (
       <div className="bg-gray-50 p-4 rounded-lg">
@@ -210,49 +201,16 @@ const SummaryStep: React.FC = () => {
               <span className="ml-2 text-gray-900">{endDate}</span>
             </div>
           )}
-          {type && (
+          {durationType === 'duration' && durationInDays && (
             <div>
-              <span className="font-medium text-gray-600">Type:</span>
-              <span className="ml-2 text-gray-900">{type}</span>
+              <span className="font-medium text-gray-600">Duration:</span>
+              <span className="ml-2 text-gray-900">{durationInDays} days</span>
             </div>
           )}
-          {insuranceType && (
+          {durationType === 'fees' && totalFees && (
             <div>
-              <span className="font-medium text-gray-600">Insurance Type:</span>
-              <span className="ml-2 text-gray-900">{insuranceType}</span>
-            </div>
-          )}
-          {statusId && statusDetails && (
-            <div>
-              <span className="font-medium text-gray-600">Status:</span>
-              <span
-                className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                style={{
-                  backgroundColor: `${statusDetails.color}20`, // 20% opacity
-                  color: statusDetails.color,
-                  border: `1px solid ${statusDetails.color}40` // 40% opacity for border
-                }}
-              >
-                {statusDetails.name}
-              </span>
-            </div>
-          )}
-          {contractNumberType && (
-            <div>
-              <span className="font-medium text-gray-600">Contract Number Type:</span>
-              <span className="ml-2 text-gray-900 capitalize">{contractNumberType}</span>
-            </div>
-          )}
-          {contractNumber && (
-            <div>
-              <span className="font-medium text-gray-600">Contract Number:</span>
-              <span className="ml-2 text-gray-900">{contractNumber}</span>
-            </div>
-          )}
-          {tajeerNumber && (
-            <div>
-              <span className="font-medium text-gray-600">Tajeer Number:</span>
-              <span className="ml-2 text-gray-900">{tajeerNumber}</span>
+              <span className="font-medium text-gray-600">Total Fees:</span>
+              <span className="ml-2 text-gray-900">{totalFees} SAR</span>
             </div>
           )}
         </div>
@@ -261,7 +219,12 @@ const SummaryStep: React.FC = () => {
   };
 
   const renderPricingTerms = () => {
-    const { dailyRentalRate, hourlyDelayRate, currentKm, rentalDays, permittedDailyKm, excessKmRate, paymentMethod, membershipEnabled, totalAmount } = formik.values;
+    const { dailyRentalRate, hourlyDelayRate, currentKm, rentalDays, permittedDailyKm, excessKmRate, paymentMethod, totalAmount, depositAmount, addOns } = formik.values;
+
+    const addOnsArray: AddOn[] = Array.isArray(addOns) ? addOns : [];
+    const enabledAddOns = addOnsArray.filter((addon: AddOn) => addon.enabled);
+    const depositAmountNum = parseFloat(depositAmount?.replace(/,/g, '') || '0') || 0;
+    const amountAfterDeposit = (totalAmount || 0) - depositAmountNum;
 
     return (
       <div className="bg-gray-50 p-4 rounded-lg">
@@ -312,50 +275,60 @@ const SummaryStep: React.FC = () => {
               <span className="ml-2 text-gray-900 capitalize">{paymentMethod}</span>
             </div>
           )}
-          <div>
-            <span className="font-medium text-gray-600">Membership Enabled:</span>
-            <span className="ml-2 text-gray-900">{membershipEnabled ? 'Yes' : 'No'}</span>
-          </div>
           {totalAmount && (
             <div>
               <span className="font-medium text-gray-600">Total Amount:</span>
               <span className="ml-2 text-gray-900 font-semibold">{totalAmount} SAR</span>
             </div>
           )}
+          {enabledAddOns.length > 0 && (
+            <div>
+              <span className="font-medium text-gray-600">Add-ons:</span>
+              <span
+                className="ml-2 text-gray-900 underline cursor-help relative"
+                onMouseEnter={() => setShowAddOnsTooltip(true)}
+                onMouseLeave={() => setShowAddOnsTooltip(false)}
+              >
+                {enabledAddOns.length} add-on{enabledAddOns.length !== 1 ? 's' : ''}
+                {showAddOnsTooltip && (
+                  <div className="absolute bottom-full left-0 mb-2 w-64 bg-white border-2 border-primary/30 rounded-lg p-3 shadow-lg z-10">
+                    <div className="text-sm font-semibold text-primary mb-2">Selected Add-ons:</div>
+                    <div className="space-y-1">
+                      {enabledAddOns.map((addon: AddOn) => (
+                        <div key={addon.id} className="flex justify-between text-sm">
+                          <span className="text-gray-700">• {addon.name}</span>
+                          <span className="text-gray-900 font-medium">+{addon.price} SAR</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </span>
+            </div>
+          )}
+          {depositAmount && (
+            <div>
+              <span className="font-medium text-gray-600">Deposit Amount:</span>
+              <span className="ml-2 text-gray-900">{depositAmount} SAR</span>
+            </div>
+          )}
+          {amountAfterDeposit > 0 && (
+            <div>
+              <span className="font-medium text-gray-600">Amount Due:</span>
+              <span className="ml-2 text-gray-900 font-semibold">{amountAfterDeposit.toFixed(2)} SAR</span>
+            </div>
+          )}
+          {amountAfterDeposit === 0 && depositAmount && (
+            <div>
+              <span className="font-medium text-gray-600">Amount Due:</span>
+              <span className="ml-2 text-gray-900 font-semibold">0.00 SAR</span>
+            </div>
+          )}
         </div>
       </div>
     );
   };
 
-  const renderVehicleInspection = () => {
-    const { selectedInspector, inspectorName } = formik.values;
-
-    return (
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <h3 className="text-lg font-semibold text-primary mb-3 flex items-center gap-2">
-          <ClipboardCheck className="w-5 h-5" />
-          Vehicle Inspection
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-          {selectedInspector && (
-            <div>
-              <span className="font-medium text-gray-600">Inspector ID:</span>
-              <span className="ml-2 text-gray-900">{selectedInspector}</span>
-            </div>
-          )}
-          {inspectorName && (
-            <div>
-              <span className="font-medium text-gray-600">Inspector Name:</span>
-              <span className="ml-2 text-gray-900">{inspectorName}</span>
-            </div>
-          )}
-          {!selectedInspector && !inspectorName && (
-            <div className="text-gray-500 italic">No inspection details provided</div>
-          )}
-        </div>
-      </div>
-    );
-  };
 
   return (
     <>
@@ -367,7 +340,6 @@ const SummaryStep: React.FC = () => {
         {renderVehicleDetails()}
         {renderContractDetails()}
         {renderPricingTerms()}
-        {renderVehicleInspection()}
       </div>
     </>
   );

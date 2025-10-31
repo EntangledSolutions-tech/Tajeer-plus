@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.4"
+  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -157,7 +162,7 @@ export type Database = {
         }
         Insert: {
           amount: number
-          code?: never
+          code?: number
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -169,7 +174,7 @@ export type Database = {
         }
         Update: {
           amount?: number
-          code?: never
+          code?: number
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -186,47 +191,44 @@ export type Database = {
           code: number
           color: string | null
           created_at: string | null
-          created_by: string | null
           description: string | null
           id: string
           is_active: boolean | null
           name: string
           updated_at: string | null
-          updated_by: string | null
+          user_id: string | null
         }
         Insert: {
           code?: never
           color?: string | null
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           name: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Update: {
           code?: never
           color?: string | null
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
       contracts: {
         Row: {
           add_ons: Json | null
+          branch_id: string | null
           contract_number: string | null
           contract_number_type: string | null
           created_at: string | null
-          created_by: string | null
           current_km: string
           customer_address: string | null
           customer_classification: string | null
@@ -239,12 +241,16 @@ export type Database = {
           customer_nationality: string | null
           customer_status_id: string | null
           daily_rental_rate: number
+          deposit: number
           documents: Json | null
           documents_count: number | null
           duration_in_days: number | null
           duration_type: string | null
           end_date: string
           excess_km_rate: number
+          hold_comments: string | null
+          hold_date: string | null
+          hold_reason: string | null
           hourly_delay_rate: number
           id: string
           inspector_name: string
@@ -263,7 +269,7 @@ export type Database = {
           total_fees: number | null
           type: string | null
           updated_at: string | null
-          updated_by: string | null
+          user_id: string
           vehicle_color: string | null
           vehicle_daily_rent_rate: number | null
           vehicle_excess_km_rate: number | null
@@ -280,10 +286,10 @@ export type Database = {
         }
         Insert: {
           add_ons?: Json | null
+          branch_id?: string | null
           contract_number?: string | null
-          contract_number_type: string | null
+          contract_number_type?: string | null
           created_at?: string | null
-          created_by?: string | null
           current_km: string
           customer_address?: string | null
           customer_classification?: string | null
@@ -296,12 +302,16 @@ export type Database = {
           customer_nationality?: string | null
           customer_status_id?: string | null
           daily_rental_rate: number
+          deposit?: number
           documents?: Json | null
           documents_count?: number | null
           duration_in_days?: number | null
           duration_type?: string | null
           end_date: string
           excess_km_rate: number
+          hold_comments?: string | null
+          hold_date?: string | null
+          hold_reason?: string | null
           hourly_delay_rate: number
           id?: string
           inspector_name: string
@@ -320,7 +330,7 @@ export type Database = {
           total_fees?: number | null
           type?: string | null
           updated_at?: string | null
-          updated_by?: string | null
+          user_id: string
           vehicle_color?: string | null
           vehicle_daily_rent_rate?: number | null
           vehicle_excess_km_rate?: number | null
@@ -337,10 +347,10 @@ export type Database = {
         }
         Update: {
           add_ons?: Json | null
+          branch_id?: string | null
           contract_number?: string | null
           contract_number_type?: string | null
           created_at?: string | null
-          created_by?: string | null
           current_km?: string
           customer_address?: string | null
           customer_classification?: string | null
@@ -353,12 +363,16 @@ export type Database = {
           customer_nationality?: string | null
           customer_status_id?: string | null
           daily_rental_rate?: number
+          deposit?: number
           documents?: Json | null
           documents_count?: number | null
           duration_in_days?: number | null
           duration_type?: string | null
           end_date?: string
           excess_km_rate?: number
+          hold_comments?: string | null
+          hold_date?: string | null
+          hold_reason?: string | null
           hourly_delay_rate?: number
           id?: string
           inspector_name?: string
@@ -377,7 +391,7 @@ export type Database = {
           total_fees?: number | null
           type?: string | null
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string
           vehicle_color?: string | null
           vehicle_daily_rent_rate?: number | null
           vehicle_excess_km_rate?: number | null
@@ -394,10 +408,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "contracts_status_id_fkey"
-            columns: ["status_id"]
+            foreignKeyName: "contracts_branch_id_fkey"
+            columns: ["branch_id"]
             isOneToOne: false
-            referencedRelation: "contract_statuses"
+            referencedRelation: "branches"
             referencedColumns: ["id"]
           },
           {
@@ -405,6 +419,13 @@ export type Database = {
             columns: ["customer_status_id"]
             isOneToOne: false
             referencedRelation: "customer_statuses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "contract_statuses"
             referencedColumns: ["id"]
           },
         ]
@@ -467,34 +488,31 @@ export type Database = {
           classification: string
           code: number
           created_at: string | null
-          created_by: string | null
           description: string | null
           id: string
           is_active: boolean | null
           updated_at: string | null
-          updated_by: string | null
+          user_id: string | null
         }
         Insert: {
           classification: string
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Update: {
           classification?: string
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -561,6 +579,7 @@ export type Database = {
           document_name: string
           document_type: string
           document_url: string
+          file_name: string | null
           file_size: number | null
           id: string
           updated_at: string | null
@@ -572,6 +591,7 @@ export type Database = {
           document_name: string
           document_type: string
           document_url: string
+          file_name?: string | null
           file_size?: number | null
           id?: string
           updated_at?: string | null
@@ -583,6 +603,7 @@ export type Database = {
           document_name?: string
           document_type?: string
           document_url?: string
+          file_name?: string | null
           file_size?: number | null
           id?: string
           updated_at?: string | null
@@ -644,6 +665,54 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_finance_transactions: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          id: string
+          penalty_reason: string | null
+          transaction_category: string
+          transaction_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          id?: string
+          penalty_reason?: string | null
+          transaction_category: string
+          transaction_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          penalty_reason?: string | null
+          transaction_category?: string
+          transaction_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_finance_transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_finance_transactions_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "finance_transactions"
             referencedColumns: ["id"]
           },
         ]
@@ -724,35 +793,32 @@ export type Database = {
         Row: {
           code: number
           created_at: string | null
-          created_by: string | null
           description: string | null
           id: string
           is_active: boolean | null
           license_type: string
           updated_at: string | null
-          updated_by: string | null
+          user_id: string | null
         }
         Insert: {
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           license_type: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Update: {
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           license_type?: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -760,35 +826,32 @@ export type Database = {
         Row: {
           code: number
           created_at: string | null
-          created_by: string | null
           description: string | null
           id: string
           is_active: boolean | null
           nationality: string
           updated_at: string | null
-          updated_by: string | null
+          user_id: string | null
         }
         Insert: {
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           nationality: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Update: {
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           nationality?: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -859,35 +922,32 @@ export type Database = {
         Row: {
           code: number
           created_at: string | null
-          created_by: string | null
           description: string | null
           id: string
           is_active: boolean | null
           profession: string
           updated_at: string | null
-          updated_by: string | null
+          user_id: string | null
         }
         Insert: {
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           profession: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Update: {
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           profession?: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -896,43 +956,41 @@ export type Database = {
           code: number
           color: string | null
           created_at: string | null
-          created_by: string | null
           description: string | null
           id: string
           is_active: boolean | null
           name: string
           updated_at: string | null
-          updated_by: string | null
+          user_id: string | null
         }
         Insert: {
           code?: never
           color?: string | null
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           name: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Update: {
           code?: never
           color?: string | null
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
       customers: {
         Row: {
           address: string | null
+          branch_id: string | null
           classification_id: string
           created_at: string | null
           date_of_birth: string | null
@@ -950,9 +1008,11 @@ export type Database = {
           nationality_id: string
           status_id: string
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           address?: string | null
+          branch_id?: string | null
           classification_id: string
           created_at?: string | null
           date_of_birth?: string | null
@@ -970,9 +1030,11 @@ export type Database = {
           nationality_id: string
           status_id: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           address?: string | null
+          branch_id?: string | null
           classification_id?: string
           created_at?: string | null
           date_of_birth?: string | null
@@ -990,8 +1052,16 @@ export type Database = {
           nationality_id?: string
           status_id?: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "customers_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "customers_classification_id_fkey"
             columns: ["classification_id"]
@@ -1018,6 +1088,222 @@ export type Database = {
             columns: ["status_id"]
             isOneToOne: false
             referencedRelation: "customer_statuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_summaries: {
+        Row: {
+          created_at: string | null
+          entity_id: string | null
+          fuel_costs: number | null
+          id: string
+          insurance_costs: number | null
+          maintenance_costs: number | null
+          net_profit: number | null
+          penalty_income: number | null
+          rental_income: number | null
+          summary_date: string
+          summary_type: string
+          total_expenses: number | null
+          total_revenue: number | null
+          total_transactions: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          entity_id?: string | null
+          fuel_costs?: number | null
+          id?: string
+          insurance_costs?: number | null
+          maintenance_costs?: number | null
+          net_profit?: number | null
+          penalty_income?: number | null
+          rental_income?: number | null
+          summary_date: string
+          summary_type: string
+          total_expenses?: number | null
+          total_revenue?: number | null
+          total_transactions?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          entity_id?: string | null
+          fuel_costs?: number | null
+          id?: string
+          insurance_costs?: number | null
+          maintenance_costs?: number | null
+          net_profit?: number | null
+          penalty_income?: number | null
+          rental_income?: number | null
+          summary_date?: string
+          summary_type?: string
+          total_expenses?: number | null
+          total_revenue?: number | null
+          total_transactions?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      finance_transaction_types: {
+        Row: {
+          category: string
+          code: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          code: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      finance_transactions: {
+        Row: {
+          amount: number
+          branch_id: string | null
+          contract_id: string | null
+          created_at: string | null
+          currency: string | null
+          customer_id: string | null
+          description: string | null
+          employee_name: string | null
+          id: string
+          invoice_date: string | null
+          invoice_number: string | null
+          net_invoice: number
+          payment_type: string | null
+          remaining_amount: number | null
+          status: string | null
+          total_amount: number
+          total_discount: number | null
+          total_paid: number | null
+          transaction_date: string
+          transaction_number: string
+          transaction_type_id: string
+          updated_at: string | null
+          user_id: string
+          vat_amount: number | null
+          vat_included: boolean | null
+          vat_rate: number | null
+          vehicle_id: string | null
+        }
+        Insert: {
+          amount: number
+          branch_id?: string | null
+          contract_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          customer_id?: string | null
+          description?: string | null
+          employee_name?: string | null
+          id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
+          net_invoice: number
+          payment_type?: string | null
+          remaining_amount?: number | null
+          status?: string | null
+          total_amount: number
+          total_discount?: number | null
+          total_paid?: number | null
+          transaction_date: string
+          transaction_number: string
+          transaction_type_id: string
+          updated_at?: string | null
+          user_id: string
+          vat_amount?: number | null
+          vat_included?: boolean | null
+          vat_rate?: number | null
+          vehicle_id?: string | null
+        }
+        Update: {
+          amount?: number
+          branch_id?: string | null
+          contract_id?: string | null
+          created_at?: string | null
+          currency?: string | null
+          customer_id?: string | null
+          description?: string | null
+          employee_name?: string | null
+          id?: string
+          invoice_date?: string | null
+          invoice_number?: string | null
+          net_invoice?: number
+          payment_type?: string | null
+          remaining_amount?: number | null
+          status?: string | null
+          total_amount?: number
+          total_discount?: number | null
+          total_paid?: number | null
+          transaction_date?: string
+          transaction_number?: string
+          transaction_type_id?: string
+          updated_at?: string | null
+          user_id?: string
+          vat_amount?: number | null
+          vat_included?: boolean | null
+          vat_rate?: number | null
+          vehicle_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_transactions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_transactions_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_transactions_transaction_type_id_fkey"
+            columns: ["transaction_type_id"]
+            isOneToOne: false
+            referencedRelation: "finance_transaction_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_transactions_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
@@ -1074,6 +1360,7 @@ export type Database = {
           policy_number: string
           policy_type: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1087,6 +1374,7 @@ export type Database = {
           policy_number: string
           policy_type: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1100,6 +1388,7 @@ export type Database = {
           policy_number?: string
           policy_type?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1108,7 +1397,6 @@ export type Database = {
           avatar_url: string | null
           branch_id: string | null
           created_at: string | null
-          created_by: string | null
           first_name: string
           id: string
           is_active: boolean | null
@@ -1116,13 +1404,12 @@ export type Database = {
           phone: string | null
           role_id: string | null
           updated_at: string | null
-          updated_by: string | null
+          user_id: string | null
         }
         Insert: {
           avatar_url?: string | null
           branch_id?: string | null
           created_at?: string | null
-          created_by?: string | null
           first_name: string
           id: string
           is_active?: boolean | null
@@ -1130,13 +1417,12 @@ export type Database = {
           phone?: string | null
           role_id?: string | null
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Update: {
           avatar_url?: string | null
           branch_id?: string | null
           created_at?: string | null
-          created_by?: string | null
           first_name?: string
           id?: string
           is_active?: boolean | null
@@ -1144,7 +1430,7 @@ export type Database = {
           phone?: string | null
           role_id?: string | null
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1163,42 +1449,121 @@ export type Database = {
           },
         ]
       }
+      rental_expenses: {
+        Row: {
+          created_at: string | null
+          expense_type: string
+          id: string
+          receipt_date: string | null
+          receipt_number: string | null
+          transaction_id: string
+          updated_at: string | null
+          user_id: string
+          vendor_name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expense_type: string
+          id?: string
+          receipt_date?: string | null
+          receipt_number?: string | null
+          transaction_id: string
+          updated_at?: string | null
+          user_id: string
+          vendor_name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expense_type?: string
+          id?: string
+          receipt_date?: string | null
+          receipt_number?: string | null
+          transaction_id?: string
+          updated_at?: string | null
+          user_id?: string
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_expenses_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "finance_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rental_income: {
+        Row: {
+          created_at: string | null
+          id: string
+          income_type: string
+          source: string | null
+          transaction_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          income_type: string
+          source?: string | null
+          transaction_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          income_type?: string
+          source?: string | null
+          transaction_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_income_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "finance_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roles: {
         Row: {
           code: number
           created_at: string | null
-          created_by: string | null
           description: string | null
           id: string
           is_active: boolean | null
           name: string
           permissions: Json | null
           updated_at: string | null
-          updated_by: string | null
+          user_id: string | null
         }
         Insert: {
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           name: string
           permissions?: Json | null
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Update: {
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           permissions?: Json | null
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1267,42 +1632,39 @@ export type Database = {
           code: string
           contact_person: string | null
           created_at: string | null
-          created_by: string | null
           email: string | null
           id: string
           is_active: boolean | null
           name: string
           phone: string | null
           updated_at: string | null
-          updated_by: string | null
+          user_id: string | null
         }
         Insert: {
           address?: string | null
           code?: string
           contact_person?: string | null
           created_at?: string | null
-          created_by?: string | null
           email?: string | null
           id?: string
           is_active?: boolean | null
           name: string
           phone?: string | null
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Update: {
           address?: string | null
           code?: string
           contact_person?: string | null
           created_at?: string | null
-          created_by?: string | null
           email?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           phone?: string | null
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1310,114 +1672,142 @@ export type Database = {
         Row: {
           code: number
           created_at: string | null
-          created_by: string | null
           description: string | null
           hex_code: string | null
           id: string
           is_active: boolean | null
           name: string
           updated_at: string | null
-          updated_by: string | null
+          user_id: string | null
         }
         Insert: {
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           hex_code?: string | null
           id?: string
           is_active?: boolean | null
           name: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Update: {
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           hex_code?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
-      vehicle_documents: {
+      vehicle_features: {
         Row: {
+          code: number
           created_at: string | null
-          document_name: string | null
-          document_url: string | null
+          description: string | null
           id: string
+          is_active: boolean | null
+          name: string
           updated_at: string | null
-          uploaded_at: string | null
-          vehicle_id: string | null
+          user_id: string | null
         }
         Insert: {
+          code?: never
           created_at?: string | null
-          document_name?: string | null
-          document_url?: string | null
+          description?: string | null
           id?: string
+          is_active?: boolean | null
+          name: string
           updated_at?: string | null
-          uploaded_at?: string | null
-          vehicle_id?: string | null
+          user_id?: string | null
         }
         Update: {
+          code?: never
           created_at?: string | null
-          document_name?: string | null
-          document_url?: string | null
+          description?: string | null
           id?: string
+          is_active?: boolean | null
+          name?: string
           updated_at?: string | null
-          uploaded_at?: string | null
-          vehicle_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      vehicle_finance_transactions: {
+        Row: {
+          accident_description: string | null
+          created_at: string | null
+          expected_sale_price: number | null
+          id: string
+          insurance_company: string | null
+          lease_amount_increase: number | null
+          maintenance_type: string | null
+          penalty_date: string | null
+          penalty_reason: string | null
+          policy_number: string | null
+          service_type: string | null
+          transaction_category: string
+          transaction_id: string
+          updated_at: string | null
+          user_id: string
+          vehicle_id: string
+        }
+        Insert: {
+          accident_description?: string | null
+          created_at?: string | null
+          expected_sale_price?: number | null
+          id?: string
+          insurance_company?: string | null
+          lease_amount_increase?: number | null
+          maintenance_type?: string | null
+          penalty_date?: string | null
+          penalty_reason?: string | null
+          policy_number?: string | null
+          service_type?: string | null
+          transaction_category: string
+          transaction_id: string
+          updated_at?: string | null
+          user_id: string
+          vehicle_id: string
+        }
+        Update: {
+          accident_description?: string | null
+          created_at?: string | null
+          expected_sale_price?: number | null
+          id?: string
+          insurance_company?: string | null
+          lease_amount_increase?: number | null
+          maintenance_type?: string | null
+          penalty_date?: string | null
+          penalty_reason?: string | null
+          policy_number?: string | null
+          service_type?: string | null
+          transaction_category?: string
+          transaction_id?: string
+          updated_at?: string | null
+          user_id?: string
+          vehicle_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "vehicle_documents_vehicle_id_fkey"
+            foreignKeyName: "vehicle_finance_transactions_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "finance_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_finance_transactions_vehicle_id_fkey"
             columns: ["vehicle_id"]
             isOneToOne: false
             referencedRelation: "vehicles"
             referencedColumns: ["id"]
           },
         ]
-      }
-      vehicle_features: {
-        Row: {
-          code: number
-          created_at: string | null
-          created_by: string | null
-          description: string | null
-          id: string
-          is_active: boolean | null
-          name: string
-          updated_at: string | null
-          updated_by: string | null
-        }
-        Insert: {
-          code?: never
-          created_at?: string | null
-          created_by?: string | null
-          description?: string | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          updated_at?: string | null
-          updated_by?: string | null
-        }
-        Update: {
-          code?: never
-          created_at?: string | null
-          created_by?: string | null
-          description?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          updated_at?: string | null
-          updated_by?: string | null
-        }
-        Relationships: []
       }
       vehicle_inspections: {
         Row: {
@@ -1514,35 +1904,32 @@ export type Database = {
         Row: {
           code: number
           created_at: string | null
-          created_by: string | null
           description: string | null
           id: string
           is_active: boolean | null
           name: string
           updated_at: string | null
-          updated_by: string | null
+          user_id: string | null
         }
         Insert: {
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           name: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Update: {
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1550,38 +1937,35 @@ export type Database = {
         Row: {
           code: number
           created_at: string | null
-          created_by: string | null
           description: string | null
           id: string
           is_active: boolean | null
           make_id: string | null
           name: string
           updated_at: string | null
-          updated_by: string | null
+          user_id: string | null
         }
         Insert: {
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           make_id?: string | null
           name: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Update: {
           code?: never
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           make_id?: string | null
           name?: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1672,42 +2056,39 @@ export type Database = {
           code: string
           contact_person: string | null
           created_at: string | null
-          created_by: string | null
           email: string | null
           id: string
           is_active: boolean | null
           name: string
           phone: string | null
           updated_at: string | null
-          updated_by: string | null
+          user_id: string | null
         }
         Insert: {
           address?: string | null
           code?: string
           contact_person?: string | null
           created_at?: string | null
-          created_by?: string | null
           email?: string | null
           id?: string
           is_active?: boolean | null
           name: string
           phone?: string | null
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Update: {
           address?: string | null
           code?: string
           contact_person?: string | null
           created_at?: string | null
-          created_by?: string | null
           email?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           phone?: string | null
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1804,37 +2185,34 @@ export type Database = {
           code: number
           color: string | null
           created_at: string | null
-          created_by: string | null
           description: string | null
           id: string
           is_active: boolean | null
           name: string
           updated_at: string | null
-          updated_by: string | null
+          user_id: string | null
         }
         Insert: {
           code?: never
           color?: string | null
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           name: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Update: {
           code?: never
           color?: string | null
           created_at?: string | null
-          created_by?: string | null
           description?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           updated_at?: string | null
-          updated_by?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1988,6 +2366,8 @@ export type Database = {
         Row: {
           acquisition_date: string | null
           actual_user_id: string | null
+          actual_user_id_number: string | null
+          actual_user_name: string | null
           age_range: string | null
           branch: string | null
           branch_id: string | null
@@ -2031,7 +2411,6 @@ export type Database = {
           operating_card_expiration: string | null
           operation_date: string | null
           owner_id: string | null
-          owner_name: string | null
           periodic_inspection_end: string | null
           plate_number: string
           plate_registration_type: string
@@ -2039,13 +2418,17 @@ export type Database = {
           purchase_price: number | null
           serial_number: string
           status_id: string | null
+          technical_number: string | null
           updated_at: string | null
           user_id: string | null
+          vehicle_load_capacity: string | null
           year_of_manufacture: number | null
         }
         Insert: {
           acquisition_date?: string | null
           actual_user_id?: string | null
+          actual_user_id_number?: string | null
+          actual_user_name?: string | null
           age_range?: string | null
           branch?: string | null
           branch_id?: string | null
@@ -2089,7 +2472,6 @@ export type Database = {
           operating_card_expiration?: string | null
           operation_date?: string | null
           owner_id?: string | null
-          owner_name?: string | null
           periodic_inspection_end?: string | null
           plate_number: string
           plate_registration_type: string
@@ -2097,13 +2479,17 @@ export type Database = {
           purchase_price?: number | null
           serial_number: string
           status_id?: string | null
+          technical_number?: string | null
           updated_at?: string | null
           user_id?: string | null
+          vehicle_load_capacity?: string | null
           year_of_manufacture?: number | null
         }
         Update: {
           acquisition_date?: string | null
           actual_user_id?: string | null
+          actual_user_id_number?: string | null
+          actual_user_name?: string | null
           age_range?: string | null
           branch?: string | null
           branch_id?: string | null
@@ -2147,7 +2533,6 @@ export type Database = {
           operating_card_expiration?: string | null
           operation_date?: string | null
           owner_id?: string | null
-          owner_name?: string | null
           periodic_inspection_end?: string | null
           plate_number?: string
           plate_registration_type?: string
@@ -2155,8 +2540,10 @@ export type Database = {
           purchase_price?: number | null
           serial_number?: string
           status_id?: string | null
+          technical_number?: string | null
           updated_at?: string | null
           user_id?: string | null
+          vehicle_load_capacity?: string | null
           year_of_manufacture?: number | null
         }
         Relationships: [
@@ -2223,6 +2610,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_net_invoice: {
+        Args: {
+          total_amount: number
+          total_discount?: number
+          vat_amount?: number
+          vat_included?: boolean
+        }
+        Returns: number
+      }
+      calculate_remaining_amount: {
+        Args: { net_invoice: number; total_paid?: number }
+        Returns: number
+      }
+      calculate_vat_amount: {
+        Args: {
+          total_amount: number
+          vat_included?: boolean
+          vat_rate?: number
+        }
+        Returns: number
+      }
+      generate_transaction_number: {
+        Args: { transaction_type_code: string }
+        Returns: string
+      }
       get_user_profile: {
         Args: { user_id: string }
         Returns: {
@@ -2310,83 +2722,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      iceberg_namespaces: {
-        Row: {
-          bucket_id: string
-          created_at: string
-          id: string
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          bucket_id: string
-          created_at?: string
-          id?: string
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          bucket_id?: string
-          created_at?: string
-          id?: string
-          name?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "iceberg_namespaces_bucket_id_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "buckets_analytics"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      iceberg_tables: {
-        Row: {
-          bucket_id: string
-          created_at: string
-          id: string
-          location: string
-          name: string
-          namespace_id: string
-          updated_at: string
-        }
-        Insert: {
-          bucket_id: string
-          created_at?: string
-          id?: string
-          location: string
-          name: string
-          namespace_id: string
-          updated_at?: string
-        }
-        Update: {
-          bucket_id?: string
-          created_at?: string
-          id?: string
-          location?: string
-          name?: string
-          namespace_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "iceberg_tables_bucket_id_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "buckets_analytics"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "iceberg_tables_namespace_id_fkey"
-            columns: ["namespace_id"]
-            isOneToOne: false
-            referencedRelation: "iceberg_namespaces"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       migrations: {
         Row: {
@@ -2608,6 +2943,10 @@ export type Database = {
         Args: { bucketid: string; metadata: Json; name: string; owner: string }
         Returns: undefined
       }
+      delete_leaf_prefixes: {
+        Args: { bucket_ids: string[]; names: string[] }
+        Returns: undefined
+      }
       delete_prefix: {
         Args: { _bucket_id: string; _name: string }
         Returns: boolean
@@ -2673,6 +3012,10 @@ export type Database = {
           name: string
           updated_at: string
         }[]
+      }
+      lock_top_prefixes: {
+        Args: { bucket_ids: string[]; names: string[] }
+        Returns: undefined
       }
       operation: {
         Args: Record<PropertyKey, never>
@@ -2744,12 +3087,16 @@ export type Database = {
           levels?: number
           limits?: number
           prefix: string
+          sort_column?: string
+          sort_column_after?: string
+          sort_order?: string
           start_after?: string
         }
         Returns: {
           created_at: string
           id: string
           key: string
+          last_accessed_at: string
           metadata: Json
           name: string
           updated_at: string
@@ -2895,4 +3242,3 @@ export const Constants = {
     },
   },
 } as const
-

@@ -23,28 +23,33 @@ interface Vehicle {
   branch: { name: string; code: string; address?: string; phone?: string; email?: string } | string;
   daily_rental_rate: number;
   daily_minimum_rate: number;
-  daily_hourly_delay_rate: number;
   daily_permitted_km: number;
   daily_excess_km_rate: number;
   daily_open_km_rate: number;
   monthly_rental_rate: number;
   monthly_minimum_rate: number;
-  monthly_hourly_delay_rate: number;
   monthly_permitted_km: number;
   monthly_excess_km_rate: number;
   monthly_open_km_rate: number;
   hourly_rental_rate: number;
   hourly_permitted_km: number;
   hourly_excess_km_rate: number;
+  hourly_delay_rate: number;
+  payment_type?: string;
   car_pricing: number;
   acquisition_date: string;
   operation_date: string;
   depreciation_rate: number;
   depreciation_years: number;
+  installment_value?: number;
+  interest_rate?: number;
+  total_price?: number;
+  number_of_installments?: number;
   chassis_number: string;
   insurance_value: number;
   owner_id: string;
   actual_user_id: string;
+  vehicle_load_capacity: number;
   insurance_policy: {
     policy_company: string;
     policy_type: string;
@@ -270,26 +275,6 @@ export default function VehicleOverview() {
                 <div className="font-bold text-primary text-base">{vehicle.mileage !== null && vehicle.mileage !== undefined ? formatNumber(vehicle.mileage) : '-'}</div>
               </div>
               <div>
-                <div className="text-sm text-primary font-medium">Car Pricing</div>
-                <div className="font-bold text-primary text-base">{vehicle.car_pricing !== null && vehicle.car_pricing !== undefined ? formatCurrency(vehicle.car_pricing) : '-'}</div>
-              </div>
-              <div>
-                <div className="text-sm text-primary font-medium">Acquisition Date</div>
-                <div className="font-bold text-primary text-base">{formatDate(vehicle.acquisition_date)}</div>
-              </div>
-              <div>
-                <div className="text-sm text-primary font-medium">Operation Date</div>
-                <div className="font-bold text-primary text-base">{formatDate(vehicle.operation_date)}</div>
-              </div>
-              <div>
-                <div className="text-sm text-primary font-medium">Depreciation Rate</div>
-                <div className="font-bold text-primary text-base">{vehicle.depreciation_rate !== null && vehicle.depreciation_rate !== undefined ? `${vehicle.depreciation_rate}%` : '-'}</div>
-              </div>
-              <div>
-                <div className="text-sm text-primary font-medium">Depreciation Years</div>
-                <div className="font-bold text-primary text-base">{vehicle.depreciation_years !== null && vehicle.depreciation_years !== undefined ? vehicle.depreciation_years : '-'}</div>
-              </div>
-              <div>
                 <div className="text-sm text-primary font-medium">Expected Sale Price</div>
                 <div className="font-bold text-primary text-base">{vehicle.expected_sale_price !== null && vehicle.expected_sale_price !== undefined ? formatCurrency(vehicle.expected_sale_price) : '-'}</div>
               </div>
@@ -297,6 +282,87 @@ export default function VehicleOverview() {
                 <div className="text-sm text-primary font-medium">Branch</div>
                 <div className="font-bold text-primary text-base">{String(getValue(vehicle.branch))}</div>
               </div>
+              <div>
+                <div className="text-sm text-primary font-medium">Chassis Number</div>
+                <div className="font-bold text-primary text-base">{vehicle.chassis_number || '-'}</div>
+              </div>
+              <div>
+                <div className="text-sm text-primary font-medium">Vehicle Load Capacity</div>
+                <div className="font-bold text-primary text-base">{vehicle.vehicle_load_capacity !== null && vehicle.vehicle_load_capacity !== undefined ? vehicle.vehicle_load_capacity : '-'}</div>
+              </div>
+            </div>
+          </CollapsibleSection>
+
+          {/* Vehicle Pricing & Depreciation */}
+          <CollapsibleSection
+            title="Vehicle Pricing & Depreciation"
+            defaultOpen={true}
+            className="mb-6 mx-0"
+            headerClassName="bg-[#F6F9FF]"
+          >
+            <div className="flex flex-col gap-4">
+              {/* Payment Type */}
+              <div>
+                <div className="text-sm text-primary font-medium">Payment Type</div>
+                <div className="font-bold text-primary text-base">
+                  {vehicle.payment_type === 'LeaseToOwn' ? 'Lease-to-own' : vehicle.payment_type === 'cash' ? 'Cash Payment' : '-'}
+                </div>
+              </div>
+
+              {/* Cash Payment Fields */}
+              {vehicle.payment_type === 'cash' && (
+                <div className="grid grid-cols-5 gap-y-2 gap-x-6 text-base pt-4">
+                  <div>
+                    <div className="text-sm text-primary font-medium">Car Pricing</div>
+                    <div className="font-bold text-primary text-base">{vehicle.car_pricing !== null && vehicle.car_pricing !== undefined ? formatCurrency(vehicle.car_pricing) : '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-primary font-medium">Acquisition Date</div>
+                    <div className="font-bold text-primary text-base">{formatDate(vehicle.acquisition_date)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-primary font-medium">Operation Date</div>
+                    <div className="font-bold text-primary text-base">{formatDate(vehicle.operation_date)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-primary font-medium">Depreciation Rate</div>
+                    <div className="font-bold text-primary text-base">{vehicle.depreciation_rate !== null && vehicle.depreciation_rate !== undefined ? `${vehicle.depreciation_rate}%` : '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-primary font-medium">Depreciation Years</div>
+                    <div className="font-bold text-primary text-base">{vehicle.depreciation_years !== null && vehicle.depreciation_years !== undefined ? vehicle.depreciation_years : '-'}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Lease-to-own Fields */}
+              {vehicle.payment_type === 'LeaseToOwn' && (
+                <div className="grid grid-cols-4 gap-y-2 gap-x-6 text-base pt-4">
+                  <div>
+                    <div className="text-sm text-primary font-medium">Installment Value</div>
+                    <div className="font-bold text-primary text-base">{vehicle.installment_value !== null && vehicle.installment_value !== undefined ? formatCurrency(vehicle.installment_value) : '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-primary font-medium">Interest Rate</div>
+                    <div className="font-bold text-primary text-base">{vehicle.interest_rate !== null && vehicle.interest_rate !== undefined ? `${vehicle.interest_rate}%` : '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-primary font-medium">Total Price</div>
+                    <div className="font-bold text-primary text-base">{vehicle.total_price !== null && vehicle.total_price !== undefined ? formatCurrency(vehicle.total_price) : '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-primary font-medium">Number of Installments</div>
+                    <div className="font-bold text-primary text-base">{vehicle.number_of_installments !== null && vehicle.number_of_installments !== undefined ? vehicle.number_of_installments : '-'}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* No payment type selected */}
+              {!vehicle.payment_type && (
+                <div className="text-sm text-gray-500 pt-2">
+                  No payment type information available
+                </div>
+              )}
             </div>
           </CollapsibleSection>
 
@@ -311,10 +377,9 @@ export default function VehicleOverview() {
               {/* Daily rent */}
               <div>
                 <div className="font-bold text-primary text-base mb-2">Daily rent</div>
-                <div className="grid grid-cols-6 gap-4 text-base">
+                <div className="grid grid-cols-5 gap-4 text-base">
                   <div><span className="text-sm text-primary font-medium">Daily rental rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.daily_rental_rate !== null && vehicle.daily_rental_rate !== undefined ? formatCurrency(vehicle.daily_rental_rate) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Minimum rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.daily_minimum_rate !== null && vehicle.daily_minimum_rate !== undefined ? formatCurrency(vehicle.daily_minimum_rate) : '-'}</span></div>
-                  <div><span className="text-sm text-primary font-medium">Hourly delay rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.daily_hourly_delay_rate !== null && vehicle.daily_hourly_delay_rate !== undefined ? formatCurrency(vehicle.daily_hourly_delay_rate) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Permitted daily km</span><br /><span className="text-lg text-primary font-bold">{vehicle.daily_permitted_km !== null && vehicle.daily_permitted_km !== undefined ? formatNumber(vehicle.daily_permitted_km) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Excess km rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.daily_excess_km_rate !== null && vehicle.daily_excess_km_rate !== undefined ? formatCurrency(vehicle.daily_excess_km_rate) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Open km rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.daily_open_km_rate !== null && vehicle.daily_open_km_rate !== undefined ? formatCurrency(vehicle.daily_open_km_rate) : '-'}</span></div>
@@ -324,10 +389,9 @@ export default function VehicleOverview() {
               {/* Monthly rent */}
               <div>
                 <div className="font-bold text-primary text-base mb-2">Monthly rent</div>
-                <div className="grid grid-cols-6 gap-4 text-base">
+                <div className="grid grid-cols-5 gap-4 text-base">
                   <div><span className="text-sm text-primary font-medium">Monthly rental rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.monthly_rental_rate !== null && vehicle.monthly_rental_rate !== undefined ? formatCurrency(vehicle.monthly_rental_rate) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Minimum rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.monthly_minimum_rate !== null && vehicle.monthly_minimum_rate !== undefined ? formatCurrency(vehicle.monthly_minimum_rate) : '-'}</span></div>
-                  <div><span className="text-sm text-primary font-medium">Hourly delay rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.monthly_hourly_delay_rate !== null && vehicle.monthly_hourly_delay_rate !== undefined ? formatCurrency(vehicle.monthly_hourly_delay_rate) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Permitted daily km</span><br /><span className="text-lg text-primary font-bold">{vehicle.monthly_permitted_km !== null && vehicle.monthly_permitted_km !== undefined ? formatNumber(vehicle.monthly_permitted_km) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Excess km rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.monthly_excess_km_rate !== null && vehicle.monthly_excess_km_rate !== undefined ? formatCurrency(vehicle.monthly_excess_km_rate) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Open km rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.monthly_open_km_rate !== null && vehicle.monthly_open_km_rate !== undefined ? formatCurrency(vehicle.monthly_open_km_rate) : '-'}</span></div>
@@ -337,10 +401,11 @@ export default function VehicleOverview() {
               {/* Hourly rent */}
               <div>
                 <div className="font-bold text-primary text-base mb-2">Hourly rent</div>
-                <div className="grid grid-cols-6 gap-4 text-base">
+                <div className="grid grid-cols-4 gap-4 text-base">
                   <div><span className="text-sm text-primary font-medium">Hourly rental rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.hourly_rental_rate !== null && vehicle.hourly_rental_rate !== undefined ? formatCurrency(vehicle.hourly_rental_rate) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Permitted km per hour</span><br /><span className="text-lg text-primary font-bold">{vehicle.hourly_permitted_km !== null && vehicle.hourly_permitted_km !== undefined ? formatNumber(vehicle.hourly_permitted_km) : '-'}</span></div>
                   <div><span className="text-sm text-primary font-medium">Excess km rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.hourly_excess_km_rate !== null && vehicle.hourly_excess_km_rate !== undefined ? formatCurrency(vehicle.hourly_excess_km_rate) : '-'}</span></div>
+                  <div><span className="text-sm text-primary font-medium">Hourly delay rate</span><br /><span className="text-lg text-primary font-bold">{vehicle.hourly_delay_rate !== null && vehicle.hourly_delay_rate !== undefined ? formatCurrency(vehicle.hourly_delay_rate) : '-'}</span></div>
                 </div>
               </div>
             </div>
@@ -361,7 +426,7 @@ export default function VehicleOverview() {
               </div>
               <div>
                 <div className="text-sm text-primary font-medium">Owner's Name</div>
-                <div className="font-bold text-primary text-base">{String(getValue(vehicle.owner))}</div>
+                <div className="font-bold text-primary text-base">{String(getValue(vehicle.owner)) || '-'}</div>
               </div>
               <div>
                 <div className="text-sm text-primary font-medium">Owner ID</div>
@@ -369,7 +434,7 @@ export default function VehicleOverview() {
               </div>
               <div>
                 <div className="text-sm text-primary font-medium">Actual User</div>
-                <div className="font-bold text-primary text-base">{String(getValue(vehicle.actual_user))}</div>
+                <div className="font-bold text-primary text-base">{String(getValue(vehicle.actual_user)) || '-'}</div>
               </div>
               <div>
                 <div className="text-sm text-primary font-medium">User ID</div>
@@ -396,10 +461,6 @@ export default function VehicleOverview() {
                 <div>
                   <div className="text-sm text-primary font-medium">Insurance Value</div>
                   <div className="font-bold text-primary text-base">{vehicle.insurance_value !== null && vehicle.insurance_value !== undefined ? formatCurrency(vehicle.insurance_value) : '-'}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-primary font-medium">Chassis Number</div>
-                  <div className="font-bold text-primary text-base">{vehicle.chassis_number || '-'}</div>
                 </div>
                 <div>
                   <div className="text-sm text-primary font-medium">Deductible Premium</div>

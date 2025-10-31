@@ -78,7 +78,7 @@ export default function VehicleDocuments({ vehicleId }: VehicleDocumentsProps) {
         console.error('Error fetching documents:', response.error);
         setError('Failed to fetch documents');
         if (response.error) {
-          alert(`Error: ${response.error}`);
+          toast.error(`Error: ${response.error}`);
         }
       }
     } catch (error) {

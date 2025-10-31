@@ -18,31 +18,29 @@ import CustomCard from '../reusableComponents/CustomCard';
 import CustomTable, { TableColumn, TableAction } from '../reusableComponents/CustomTable';
 import ContractModal from './ContractModal/index';
 import { useHttpService } from '../../lib/http-service';
+import { useBranch } from '../../contexts/branch-context';
 
 interface Contract {
   id: string;
   contract_number: string;
   tajeer_number?: string;
-  customer_name: string;
-  customer_type: 'existing' | 'new';
-  vehicle_plate: string;
+  customer_name?: string; // Deprecated field, use customer.name
+  customer_type?: 'existing' | 'new';
+  vehicle_plate?: string; // Deprecated field, use vehicle.plate_number
   start_date: string;
   end_date: string;
   status_id?: string;
   status?: { name: string; color?: string };
   total_amount: number;
   created_at: string;
-  // Relations
-  customers?: {
-    id: string;
+  // Relations from API joins
+  customer?: {
     name: string;
     id_number: string;
   };
-  vehicles?: {
-    id: string;
+  vehicle?: {
     plate_number: string;
-    make: string;
-    model: string;
+    serial_number: string;
   };
 }
 
@@ -79,6 +77,7 @@ export default function ContractsList() {
     hasPrevPage: false
   });
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const { selectedBranch, isLoading: isBranchLoading } = useBranch();
 
   const handleContractAdded = () => {
     setRefreshTrigger(prev => prev + 1);
@@ -95,6 +94,11 @@ export default function ContractsList() {
 
   // Fetch contracts from API
   const fetchContracts = async () => {
+    // Don't fetch if branch context is still loading
+    if (isBranchLoading) {
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -105,6 +109,11 @@ export default function ContractsList() {
         ...(debouncedSearch && { search: debouncedSearch }),
         ...(statusFilter !== 'all' && { status: statusFilter })
       });
+
+      // Add selected branch filter if a branch is selected
+      if (selectedBranch) {
+        params.append('branch_id', selectedBranch.id);
+      }
 
       const response = await getRequest(`/api/contracts?${params}`);
       if (response.success && response.data) {
@@ -122,75 +131,6 @@ export default function ContractsList() {
     }
   };
 
-  // Fetch contract statuses from database
-  const fetchContractStatuses = useCallback(async () => {
-    try {
-      const response = await getRequest('/api/contract-statuses?limit=100');
-      if (response.success && response.data) {
-        // Convert statuses to the format expected by CustomTable
-        const statusConfigData: any = { status: {} };
-
-        response.data.statuses?.forEach((status: any) => {
-          // Use inline styles instead of dynamic CSS classes to avoid parsing issues
-          statusConfigData.status[status.name] = {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: status.name,
-            style: {
-              backgroundColor: `${status.color}20`, // 20% opacity
-              color: status.color,
-              border: `1px solid ${status.color}40` // 40% opacity for border
-            }
-          };
-        });
-
-        setStatusConfig(statusConfigData);
-      }
-    } catch (err: any) {
-      console.error('Error fetching contract statuses:', err);
-      // Fallback to default status config if API fails
-      setStatusConfig({
-        status: {
-          'active': {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: 'Active',
-            style: {
-              backgroundColor: '#3B82F620',
-              color: '#3B82F6',
-              border: '1px solid #3B82F640'
-            }
-          },
-          'completed': {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: 'Completed',
-            style: {
-              backgroundColor: '#10B98120',
-              color: '#10B981',
-              border: '1px solid #10B98140'
-            }
-          },
-          'draft': {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: 'Draft',
-            style: {
-              backgroundColor: '#F59E0B20',
-              color: '#F59E0B',
-              border: '1px solid #F59E0B40'
-            }
-          },
-          'cancelled': {
-            className: 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium',
-            label: 'Cancelled',
-            style: {
-              backgroundColor: '#EF444420',
-              color: '#EF4444',
-              border: '1px solid #EF444440'
-            }
-          }
-        }
-      });
-    }
-  }, [getRequest]);
-
   // Debounce search input
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -202,12 +142,8 @@ export default function ContractsList() {
 
   // Fetch contracts on component mount and when dependencies change
   useEffect(() => {
-    fetchContractStatuses();
-  }, [fetchContractStatuses]);
-
-  useEffect(() => {
     fetchContracts();
-  }, [currentPage, currentLimit, debouncedSearch, statusFilter, refreshTrigger]);
+  }, [currentPage, currentLimit, debouncedSearch, statusFilter, refreshTrigger, selectedBranch, isBranchLoading]);
 
   // Reset page to 1 when search changes
   useEffect(() => {
@@ -243,8 +179,8 @@ export default function ContractsList() {
       ['Contract No.', 'Customer Name', 'Vehicle', 'Start Date', 'End Date', 'Status', 'Price'],
       ...contracts.map(contract => [
         contract.contract_number || contract.tajeer_number || contract.id.slice(0, 8),
-        contract.customer_name || contract.customers?.name || 'N/A',
-        contract.vehicle_plate || contract.vehicles?.plate_number || 'N/A',
+        contract.customer?.name || contract.customer_name || 'N/A',
+        contract.vehicle?.plate_number || contract.vehicle_plate || 'N/A',
         formatDate(contract.start_date),
         formatDate(contract.end_date),
         contract.status?.name || contract.status || 'Unknown',
@@ -279,7 +215,7 @@ export default function ContractsList() {
       type: 'text',
       render: (value, row) => (
         <span className=" font-medium">
-          {value || row.customers?.name || 'N/A'}
+          {row.customer?.name || value || 'N/A'}
         </span>
       )
     },
@@ -289,7 +225,7 @@ export default function ContractsList() {
       type: 'text',
       render: (value, row) => (
         <span className=" font-medium">
-          {value || row.vehicles?.plate_number || 'N/A'}
+          {row.vehicle?.plate_number || value || 'N/A'}
         </span>
       )
     },
@@ -318,22 +254,26 @@ export default function ContractsList() {
       label: 'Status',
       type: 'badge',
       render: (value: any, row: any) => {
-        // Handle new status structure: row.status.name or fallback to value
+        // Use status color directly from backend join
         const statusName = row.status?.name || value || 'Unknown';
-        const statusInfo = statusConfig.status[statusName];
+        const statusColor = row.status?.color;
 
-        if (statusInfo) {
+        if (statusColor) {
           return (
             <span
-              className={statusInfo.className}
-              style={statusInfo.style}
+              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+              style={{
+                backgroundColor: `${statusColor}20`, // 20% opacity
+                color: statusColor,
+                border: `1px solid ${statusColor}40` // 40% opacity for border
+              }}
             >
-              {statusInfo.label}
+              {statusName}
             </span>
           );
         }
 
-        // Fallback for unknown status
+        // Fallback for unknown status (no color from backend)
         return (
           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-600 dark:bg-gray-900/20 dark:text-gray-400">
             {statusName}
@@ -369,9 +309,6 @@ export default function ContractsList() {
     }
   ];
 
-  // Status configuration for CustomTable - will be populated from database
-  const [statusConfig, setStatusConfig] = useState<any>({ status: {} });
-
   // Calculate summary data
   const summaryData = [
     {
@@ -398,7 +335,7 @@ export default function ContractsList() {
   ];
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto">
+    <div className="w-full  mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
@@ -481,7 +418,6 @@ export default function ContractsList() {
               ? 'Try adjusting your search or filters.'
               : 'Get started by creating your first contract.'
           }
-          statusConfig={statusConfig}
           searchable={false}
           pagination={true}
           currentPage={pagination.page}
